@@ -1,0 +1,70 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userPath() {
+      return /databases/(default)/documents/users/$(request.auth.uid);
+    }
+
+    function userExists() {
+      return isSignedIn() && exists(userPath());
+    }
+
+    function userData() {
+      return get(userPath()).data;
+    }
+
+    function isActive() {
+      return userExists() && userData().isActive == true;
+    }
+
+    function role() {
+      return userData().role;
+    }
+
+    function hospitalId() {
+      return userData().hospitalId;
+    }
+
+    function isReader() {
+      return isActive() && (role() == "lector" || role() == "editor" || role() == "admin");
+    }
+
+    function isEditor() {
+      return isActive() && (role() == "editor" || role() == "admin");
+    }
+
+    function isAllowedContentType() {
+      return request.resource.contentType == "application/pdf"
+        || request.resource.contentType == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        || request.resource.contentType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    }
+
+    function underMaxSize() {
+      // 25 MB
+      return request.resource.size < 25 * 1024 * 1024;
+    }
+
+    // ----- Documentos -----
+    match /documentos/{hid}/{amb}/{car}/{pv}/{em}/{docId}/{fileName} {
+
+      // Read: cualquier usuario lector del mismo hospital
+      allow read: if isReader() && hid == hospitalId();
+
+      // Create: solo editor/admin del mismo hospital + validaciones
+      allow create: if isEditor()
+        && hid == hospitalId()
+        && isAllowedContentType()
+        && underMaxSize();
+
+      // Update/Delete: restringir (recomendado: NO permitir update/delete en cliente)
+      // Si quieres reemplazo, súbelo como nueva versión (nuevo path) y actualiza Firestore.
+      allow update, delete: if false;
+    }
+  }
+}

@@ -1,0 +1,150 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Helpers ----------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userExists() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isActive() {
+      return userExists() && userDoc().data.isActive == true;
+    }
+
+    function role() {
+      return userDoc().data.role;
+    }
+
+    function hospitalId() {
+      return userDoc().data.hospitalId;
+    }
+
+    function isAdmin() {
+      return isActive() && role() == "admin";
+    }
+
+    function isEditor() {
+      return isActive() && (role() == "editor" || role() == "admin");
+    }
+
+    function isReader() {
+      return isActive() && (role() == "lector" || role() == "editor" || role() == "admin");
+    }
+
+    function sameHospital(resourceHospitalId) {
+      return isReader() && resourceHospitalId == hospitalId();
+    }
+
+    // Validaciones mínimas para documents
+    function validDocumentCreate() {
+      return request.resource.data.hospitalId == hospitalId()
+        && request.resource.data.titulo is string
+        && request.resource.data.tipoDocumentoId is string
+        && request.resource.data.version is string
+        && request.resource.data.estadoDocId is string
+        && request.resource.data.ambitoId is string
+        && request.resource.data.caracteristicaId is string
+        && request.resource.data.puntoVerificacionId is string
+        && request.resource.data.elementoMedibleId is string
+        && request.resource.data.responsableNombre is string
+        && request.resource.data.responsableEmail is string
+        && request.resource.data.fileName is string
+        && request.resource.data.fileExt is string
+        && request.resource.data.storagePath is string
+        && request.resource.data.fileSize is number
+        && request.resource.data.mimeType is string
+        && request.resource.data.createdByUid == request.auth.uid;
+    }
+
+    function validDocumentUpdate() {
+      // Evita que cambien hospitalId y createdByUid
+      return request.resource.data.hospitalId == resource.data.hospitalId
+        && request.resource.data.createdByUid == resource.data.createdByUid;
+    }
+
+    // ---------- Users ----------
+    match /users/{uid} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == uid || isAdmin()
+      );
+
+      // Por seguridad: solo admin gestiona usuarios (crea/edita roles/isActive) dentro de su hospital.
+      allow create: if isAdmin()
+        && request.resource.data.hospitalId == hospitalId()
+        && request.resource.data.role in ["admin", "editor", "lector"];
+
+      allow update: if isAdmin()
+        && resource.data.hospitalId == hospitalId()
+        && request.resource.data.hospitalId == resource.data.hospitalId
+        && request.resource.data.role in ["admin", "editor", "lector"];
+
+      allow delete: if false;
+    }
+
+    // ---------- Hospitals (opcional: restringir a admin) ----------
+    match /hospitals/{hid} {
+      allow read: if isReader() && hid == hospitalId();
+      allow write: if isAdmin() && hid == hospitalId();
+    }
+
+    // ---------- Catalogs ----------
+    match /catalogs/{hid} {
+      allow read: if isReader() && hid == hospitalId();
+      allow create, update: if isAdmin() && hid == hospitalId();
+      allow delete: if false;
+    }
+
+    // ---------- Documents ----------
+    match /documents/{docId} {
+      allow read: if isReader() && sameHospital(resource.data.hospitalId);
+
+      allow create: if isEditor() && validDocumentCreate();
+
+      allow update: if isEditor()
+        && sameHospital(resource.data.hospitalId)
+        && validDocumentUpdate();
+
+      // No borrar físico: solo soft delete (isDeleted=true) permitido a admin
+      allow delete: if false;
+    }
+
+    // ---------- Document Versions (opcional) ----------
+    match /document_versions/{versionId} {
+      allow read: if isReader() && sameHospital(resource.data.hospitalId);
+
+      allow create: if isEditor()
+        && request.resource.data.hospitalId == hospitalId()
+        && request.resource.data.docId is string
+        && request.resource.data.version is string
+        && request.resource.data.storagePath is string
+        && request.resource.data.fileSize is number
+        && request.resource.data.createdByUid == request.auth.uid;
+
+      allow update, delete: if false;
+    }
+
+    // ---------- Audit Logs ----------
+    match /audit_logs/{logId} {
+      // Escritura: cualquier lector activo puede registrar eventos,
+      // pero SOLO dentro de su hospital
+      allow create: if isReader()
+        && request.resource.data.hospitalId == hospitalId()
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.action is string
+        && request.resource.data.timestamp is timestamp;
+
+      // Lectura: solo admin
+      allow read: if isAdmin() && resource.data.hospitalId == hospitalId();
+
+      allow update, delete: if false;
+    }
+  }
+}
