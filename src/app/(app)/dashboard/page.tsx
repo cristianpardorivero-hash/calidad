@@ -9,7 +9,6 @@ import {
   FileText,
   FileCheck2,
   FileClock,
-  BookCopy,
   PlusCircle,
   FolderOpen,
 } from "lucide-react";
@@ -17,13 +16,10 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { getDashboardKPIs } from "@/lib/data";
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
   ChartConfig,
 } from "@/components/ui/chart";
-import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
-import { useAuth } from "@/hooks/use-auth";
+import { DashboardChart } from "@/components/dashboard/dashboard-chart";
+
 
 const chartConfig = {
   docs: {
@@ -125,35 +121,7 @@ export default async function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-64 w-full">
-              <BarChart accessibilityLayer data={kpis.docsPorAmbito}>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="name"
-                  tickLine={false}
-                  tickMargin={10}
-                  axisLine={false}
-                  tickFormatter={(value) => value.slice(0, 15)}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent indicator="dot" />}
-                />
-                <Bar
-                  dataKey="value"
-                  radius={8}
-                  barSize={40}
-                >
-                  {kpis.docsPorAmbito.map((entry) => (
-                    <Bar
-                      key={entry.name}
-                      dataKey="value"
-                      fill={chartConfig[entry.name as keyof typeof chartConfig]?.color || 'hsl(var(--primary))'}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ChartContainer>
+            <DashboardChart data={kpis.docsPorAmbito} chartConfig={chartConfig} />
           </CardContent>
         </Card>
       </div>
