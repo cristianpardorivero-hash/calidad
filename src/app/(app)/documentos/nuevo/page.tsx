@@ -1,27 +1,31 @@
 'use client';
 
 import { DocumentForm } from "@/components/documents/document-form";
-import { getCatalogs } from "@/lib/data";
+import { getCatalogs, getDocuments } from "@/lib/data";
 import { useAuth } from "@/hooks/use-auth";
 import { useEffect, useState } from "react";
-import type { Catalogs } from "@/lib/types";
+import type { Catalogs, Documento } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function NuevoDocumentoPage() {
   const { user } = useAuth();
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
+  const [documents, setDocuments] = useState<Documento[] | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user?.hospitalId) {
       setLoading(true);
-      getCatalogs(user.hospitalId)
-        .then(data => {
-          setCatalogs(data);
+      Promise.all([
+        getCatalogs(user.hospitalId),
+        getDocuments(user.hospitalId, user)
+      ]).then(([catalogsData, documentsData]) => {
+          setCatalogs(catalogsData);
+          setDocuments(documentsData);
           setLoading(false);
         })
         .catch(error => {
-          console.error("Failed to fetch catalogs", error);
+          console.error("Failed to fetch data", error);
           setLoading(false);
         });
     }
@@ -36,7 +40,7 @@ export default function NuevoDocumentoPage() {
     </div>
   );
 
-  if (loading || !catalogs) {
+  if (loading || !catalogs || !documents) {
     return (
         <div className="container mx-auto max-w-5xl">
             {pageHeader}
@@ -52,7 +56,7 @@ export default function NuevoDocumentoPage() {
   return (
     <div className="container mx-auto max-w-5xl">
       {pageHeader}
-      <DocumentForm catalogs={catalogs} />
+      <DocumentForm catalogs={catalogs} documents={documents} />
     </div>
   );
 }

@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { useAuth } from "@/hooks/use-auth";
 import { addDocument } from "@/lib/data";
@@ -66,6 +66,7 @@ const formSchema = z.object({
   fechaVigenciaHasta: z.date().optional(),
   file: z.any().refine((file) => file, "El archivo es requerido."),
   tags: z.string().optional().default(""),
+  linkedDocumentId: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -73,7 +74,7 @@ type FormValues = z.infer<typeof formSchema>;
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
 const ALLOWED_EXTENSIONS = ["pdf", "docx", "xlsx"];
 
-export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
+export function DocumentForm({ catalogs, documents }: { catalogs: Catalogs, documents: Documento[] }) {
   const { user, firebaseUser } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -92,11 +93,20 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
       responsableEmail: "",
       tags: "",
       servicioIds: [],
+      linkedDocumentId: "",
     },
   });
 
+  const tipoDocumentoId = form.watch("tipoDocumentoId");
   const ambitoId = form.watch("ambitoId");
   const caracteristicaId = form.watch("caracteristicaId");
+  const elementoMedibleId = form.watch("elementoMedibleId");
+
+  const pautaDeCotejoId = React.useMemo(() => {
+    return catalogs.tiposDocumento.find(td => td.nombre.toLowerCase() === 'pauta de cotejo')?.id;
+  }, [catalogs.tiposDocumento]);
+
+  const isPautaDeCotejo = tipoDocumentoId === pautaDeCotejoId;
 
   const filteredCaracteristicas = React.useMemo(() => {
     if (!ambitoId) return [];
@@ -107,6 +117,31 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
     if (!caracteristicaId) return [];
     return catalogs.elementosMedibles.filter((e) => e.caracteristicaId === caracteristicaId);
   }, [caracteristicaId, catalogs.elementosMedibles]);
+
+  const linkableDocuments = React.useMemo(() => {
+    if (!documents) return [];
+
+    let filtered = documents.filter(doc => doc.tipoDocumentoId !== pautaDeCotejoId);
+
+    if (!ambitoId && !caracteristicaId && !elementoMedibleId) {
+        return [];
+    }
+
+    if (ambitoId) {
+        filtered = filtered.filter(doc => doc.ambitoId === ambitoId);
+    }
+    if (caracteristicaId) {
+        filtered = filtered.filter(doc => doc.caracteristicaId === caracteristicaId);
+    }
+    if (elementoMedibleId) {
+        filtered = filtered.filter(doc => doc.elementoMedibleId === elementoMedibleId);
+    }
+
+    return filtered;
+  }, [documents, ambitoId, caracteristicaId, elementoMedibleId, pautaDeCotejoId]);
+  
+  const hasClassification = ambitoId || caracteristicaId || elementoMedibleId;
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -173,7 +208,6 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
     setIsSubmitting(true);
     setUploadProgress(0);
 
-    // Simulate upload progress
     const progressInterval = setInterval(() => {
       setUploadProgress((prev) => {
         if (prev >= 95) {
@@ -207,9 +241,6 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
     };
 
     try {
-        // In real app, first upload to storage, get URL, then save document.
-        // For now, we simulate success.
-        // const downloadUrl = await uploadFileAndGetURL(values.file, storagePath);
         const finalDoc = {...docData, downloadUrl: '#' };
 
         const savedDoc = await addDocument(finalDoc);
@@ -395,6 +426,43 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
             </div>
           </CardContent>
         </Card>
+
+        {isPautaDeCotejo && (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Vinculación de Documento</CardTitle>
+                    <CardDescription>
+                        Si este documento es una pauta de cotejo, selecciona el documento principal que verifica. Los documentos se filtran por la clasificación de acreditación seleccionada.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <FormField
+                        control={form.control}
+                        name="linkedDocumentId"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Documento a Vincular</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value || ''} disabled={!hasClassification || linkableDocuments.length === 0}>
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder={!hasClassification ? "Completa la clasificación para filtrar" : "No hay documentos que coincidan"} />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {linkableDocuments.map((doc) => (
+                                            <SelectItem key={doc.id} value={doc.id}>
+                                                {doc.titulo} (v{doc.version})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </CardContent>
+            </Card>
+        )}
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         <Card>

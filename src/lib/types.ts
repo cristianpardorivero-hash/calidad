@@ -101,8 +101,9 @@ export interface Documento {
   storagePath: string;
   downloadUrl: string;
   checksum?: string;
-  // Etiquetas
+  // Etiquetas y Vinculación
   tags?: string[];
+  linkedDocumentId?: string;
   // Control / trazabilidad
   createdByUid: string;
   createdByEmail: string;
