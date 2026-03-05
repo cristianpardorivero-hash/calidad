@@ -43,10 +43,11 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "../ui/progress";
 import { suggestDocumentMetadata } from "@/ai/flows/ai-metadata-suggester";
+import { Label } from "@/components/ui/label";
 
 const formSchema = z.object({
-  titulo: z.string().min(5, "El título debe tener al menos 5 caracteres."),
-  descripcion: z.string().optional(),
+  titulo: z.string().min(5, "El título debe tener al menos 5 caracteres.").default(""),
+  descripcion: z.string().optional().default(""),
   tipoDocumentoId: z.string({ required_error: "Debe seleccionar un tipo." }),
   version: z.string().min(1, "La versión es requerida.").default("1.0"),
   estadoDocId: z.string({ required_error: "Debe seleccionar un estado." }),
@@ -55,13 +56,13 @@ const formSchema = z.object({
   puntoVerificacionId: z.string({ required_error: "Debe seleccionar un punto de verificación." }),
   elementoMedibleId: z.string({ required_error: "Debe seleccionar un elemento medible." }),
   servicioId: z.string().optional(),
-  responsableNombre: z.string().min(2, "El nombre del responsable es requerido."),
-  responsableEmail: z.string().email("Correo electrónico inválido."),
+  responsableNombre: z.string().min(2, "El nombre del responsable es requerido.").default(""),
+  responsableEmail: z.string().email("Correo electrónico inválido.").default(""),
   fechaDocumento: z.date({ required_error: "La fecha del documento es requerida." }),
   fechaVigenciaDesde: z.date().optional(),
   fechaVigenciaHasta: z.date().optional(),
   file: z.any().refine((file) => file, "El archivo es requerido."),
-  tags: z.string().optional(),
+  tags: z.string().optional().default(""),
 });
 
 type FormValues = z.infer<typeof formSchema>;
