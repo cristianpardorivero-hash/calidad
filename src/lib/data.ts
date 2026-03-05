@@ -62,7 +62,7 @@ let mockUsers: UserProfile[] = [
 export async function getCatalogs(hospitalId: string): Promise<Catalogs> {
   console.log(`Fetching catalogs for hospital: ${hospitalId}`);
   // In a real app, this would be a Firestore query
-  return Promise.resolve(seedCatalogs);
+  return Promise.resolve(JSON.parse(JSON.stringify(seedCatalogs)));
 }
 
 export async function getDocuments(hospitalId: string, user: UserProfile): Promise<Documento[]> {
@@ -157,7 +157,7 @@ export async function addDocument(doc: Omit<Documento, 'id' | 'createdAt' | 'upd
 }
 
 export async function addCatalogItem(catalogName: keyof Catalogs, itemData: any): Promise<any> {
-    const catalog = seedCatalogs[catalogName] as any[];
+    const catalog = (seedCatalogs as any)[catalogName] as any[];
     const newId = `${catalogName.substring(0, 3)}-${Date.now()}`;
     const newItem = {
         ...itemData,
@@ -169,4 +169,38 @@ export async function addCatalogItem(catalogName: keyof Catalogs, itemData: any)
         catalog.sort((a, b) => a.orden - b.orden);
     }
     return Promise.resolve(newItem);
+}
+
+export async function updateCatalogItem(catalogName: keyof Catalogs, itemId: string, updates: any): Promise<any> {
+    const catalog = (seedCatalogs as any)[catalogName] as any[];
+    let updatedItem: any | undefined;
+    const newCatalog = catalog.map(item => {
+        if (item.id === itemId) {
+            updatedItem = { ...item, ...updates };
+            return updatedItem;
+        }
+        return item;
+    });
+    if (!updatedItem) throw new Error("Item not found");
+    
+    (seedCatalogs as any)[catalogName] = newCatalog;
+
+    if ('orden' in updatedItem) {
+        (seedCatalogs as any)[catalogName].sort((a: any, b: any) => a.orden - b.orden);
+    }
+    
+    return Promise.resolve(updatedItem);
+}
+
+export async function deleteCatalogItem(catalogName: keyof Catalogs, itemId: string): Promise<{ id: string }> {
+    const catalog = (seedCatalogs as any)[catalogName] as any[];
+    const initialLength = catalog.length;
+    
+    (seedCatalogs as any)[catalogName] = catalog.filter(item => item.id !== itemId);
+    
+    if ((seedCatalogs as any)[catalogName].length === initialLength) {
+        throw new Error("Item not found");
+    }
+    
+    return Promise.resolve({ id: itemId });
 }
