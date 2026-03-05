@@ -27,6 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save } from "lucide-react";
 import { addCatalogItem, updateCatalogItem } from "@/lib/data";
 import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 const catalogTypeOptions = [
     { value: "ambitos", label: "Ámbito" },
@@ -63,6 +64,7 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user: authUser } = useAuth();
   const isEditing = !!item;
 
   const initialValues = useMemo(() => {
@@ -131,14 +133,18 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
 
 
   async function onSubmit(values: FormValues) {
+    if (!authUser) {
+      toast({ variant: "destructive", title: "Error de autenticación", description: "No se pudo verificar el usuario." });
+      return;
+    }
     setIsSubmitting(true);
     try {
       const { catalogType, ...data } = values;
       if (isEditing && item) {
-          await updateCatalogItem(catalogType as keyof Catalogs, item.data.id, data);
+          await updateCatalogItem(authUser.hospitalId, catalogType as keyof Catalogs, item.data.id, data);
           toast({ title: "Ítem actualizado", description: "El ítem de catálogo ha sido guardado." });
       } else {
-        await addCatalogItem(catalogType as CatalogType, data);
+        await addCatalogItem(authUser.hospitalId, catalogType as CatalogType, data);
         toast({ title: "Ítem creado", description: "El nuevo ítem de catálogo ha sido guardado." });
       }
 

@@ -315,32 +315,35 @@ export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | 
 }
 
 export async function addCatalogItem(
+  hospitalId: string,
   catalogName: keyof Catalogs,
   itemData: any
 ): Promise<any> {
-    const collRef = collection(db, "catalogs", "hcurepto", catalogName);
-    try {
-        const docRef = await addDoc(collRef, itemData);
-        return { id: docRef.id, ...itemData };
-    } catch (error) {
-        errorEmitter.emit(
-            'permission-error',
-            new FirestorePermissionError({
-              path: collRef.path,
-              operation: 'create',
-              requestResourceData: itemData,
-            })
-        );
-        throw error;
-    }
+  const collRef = collection(db, "catalogs", hospitalId, catalogName);
+  const dataToSave = { ...itemData, hospitalId };
+  try {
+    const docRef = await addDoc(collRef, dataToSave);
+    return { id: docRef.id, ...dataToSave };
+  } catch (error) {
+    errorEmitter.emit(
+      'permission-error',
+      new FirestorePermissionError({
+        path: collRef.path,
+        operation: 'create',
+        requestResourceData: dataToSave,
+      })
+    );
+    throw error;
+  }
 }
 
 export async function updateCatalogItem(
+  hospitalId: string,
   catalogName: keyof Catalogs,
   itemId: string,
   updates: any
 ): Promise<any> {
-  const docRef = doc(db, "catalogs", "hcurepto", catalogName, itemId);
+  const docRef = doc(db, "catalogs", hospitalId, catalogName, itemId);
   try {
     await updateDoc(docRef, updates);
     return { id: itemId, ...updates };
@@ -358,10 +361,11 @@ export async function updateCatalogItem(
 }
 
 export async function deleteCatalogItem(
+  hospitalId: string,
   catalogName: keyof Catalogs,
   itemId: string
 ): Promise<{ id: string }> {
-  const docRef = doc(db, "catalogs", "hcurepto", catalogName, itemId);
+  const docRef = doc(db, "catalogs", hospitalId, catalogName, itemId);
   try {
     await deleteDoc(docRef);
     return { id: itemId };

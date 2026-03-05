@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Catalogs } from "@/lib/types";
@@ -40,6 +41,7 @@ import {
 import { CatalogForm } from "./catalog-form";
 import { deleteCatalogItem } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 
 type CatalogItem = { id: string, nombre: string, [key: string]: any };
@@ -105,6 +107,7 @@ export function CatalogManager({ catalogs, onCatalogsChange }: { catalogs: Catal
   const [itemToEdit, setItemToEdit] = useState<{ data: CatalogItem; type: string } | null>(null);
   const [itemToDelete, setItemToDelete] = useState<{ data: CatalogItem; type: string } | null>(null);
   const { toast } = useToast();
+  const { user: authUser } = useAuth();
   
   const catalogTabs = [
     { value: "ambitos", label: "Ámbitos", data: catalogs.ambitos, headers: [{key: 'nombre', label: 'Nombre'}, {key: 'orden', label: 'Orden'}] },
@@ -125,10 +128,10 @@ export function CatalogManager({ catalogs, onCatalogsChange }: { catalogs: Catal
   }
 
   const handleDeleteConfirm = async () => {
-    if (!itemToDelete) return;
+    if (!itemToDelete || !authUser) return;
     setLoadingStates(prev => ({...prev, [itemToDelete.data.id]: true}));
     try {
-        await deleteCatalogItem(itemToDelete.type as keyof Catalogs, itemToDelete.data.id);
+        await deleteCatalogItem(authUser.hospitalId, itemToDelete.type as keyof Catalogs, itemToDelete.data.id);
         toast({
             title: "Ítem Eliminado",
             description: `El ítem "${itemToDelete.data.nombre}" ha sido eliminado.`,
