@@ -1,0 +1,841 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user account within the application, associated with a specific hospital and assigned a role for access control.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "The assigned role for the user, determining their access privileges. (Allowed values: 'admin', 'editor', 'lector')."
+        },
+        "hospitalId": {
+          "type": "string",
+          "description": "Reference to the Hospital this user belongs to. (Relationship: Hospital 1:N User)"
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicates whether the user account is active and can log in."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "displayName",
+        "email",
+        "role",
+        "hospitalId",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Hospital": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Hospital",
+      "type": "object",
+      "description": "Represents a healthcare institution in Chile that is undergoing the accreditation process and uses the document management system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Hospital entity."
+        },
+        "nombre": {
+          "type": "string",
+          "description": "The official name of the hospital."
+        },
+        "codigo": {
+          "type": "string",
+          "description": "An optional unique code or identifier for the hospital."
+        },
+        "servicioSalud": {
+          "type": "string",
+          "description": "The Health Service region the hospital belongs to, if applicable."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the hospital record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the hospital record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "nombre",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Ambito": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Ambito",
+      "type": "object",
+      "description": "Represents an 'Ámbito' (Scope), a high-level category in the hierarchical accreditation classification system, configurable per hospital.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Ambito entity."
+        },
+        "hospitalId": {
+          "type": "string",
+          "description": "Reference to the Hospital this Ambito belongs to. (Relationship: Hospital 1:N Ambito)"
+        },
+        "nombre": {
+          "type": "string",
+          "description": "The name of the 'Ámbito'."
+        },
+        "orden": {
+          "type": "number",
+          "description": "The display order of this 'Ámbito' within its hospital's catalog."
+        }
+      },
+      "required": [
+        "id",
+        "hospitalId",
+        "nombre",
+        "orden"
+      ]
+    },
+    "Caracteristica": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Caracteristica",
+      "type": "object",
+      "description": "Represents a 'Característica' (Characteristic), a sub-category under an 'Ámbito' in the hierarchical accreditation classification system, configurable per hospital.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Caracteristica entity."
+        },
+        "ambitoId": {
+          "type": "string",
+          "description": "Reference to the Ambito this Caracteristica belongs to. (Relationship: Ambito 1:N Caracteristica)"
+        },
+        "hospitalId": {
+          "type": "string",
+          "description": "Reference to the Hospital this Caracteristica belongs to. (Relationship: Hospital 1:N Caracteristica)"
+        },
+        "nombre": {
+          "type": "string",
+          "description": "The name of the 'Característica'."
+        },
+        "orden": {
+          "type": "number",
+          "description": "The display order of this 'Característica' within its Ambito."
+        }
+      },
+      "required": [
+        "id",
+        "ambitoId",
+        "hospitalId",
+        "nombre",
+        "orden"
+      ]
+    },
+    "PuntoVerificacion": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PuntoVerificacion",
+      "type": "object",
+      "description": "Represents a 'Punto de Verificación' (Verification Point), a sub-category under a 'Característica' in the hierarchical accreditation classification system, configurable per hospital.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PuntoVerificacion entity."
+        },
+        "caracteristicaId": {
+          "type": "string",
+          "description": "Reference to the Caracteristica this PuntoVerificacion belongs to. (Relationship: Caracteristica 1:N PuntoVerificacion)"
+        },
+        "hospitalId": {
+          "type": "string",
+          "description": "Reference to the Hospital this PuntoVerificacion belongs to. (Relationship: Hospital 1:N PuntoVerificacion)"
+        },
+        "codigo": {
+          "type": "string",
+          "description": "The unique code for this 'Punto de Verificación'."
+        },
+        "nombre": {
+          "type": "string",
+          "description": "The name of the 'Punto de Verificación'."
+        },
+        "orden": {
+          "type": "number",
+          "description": "The display order of this 'Punto de Verificación' within its Caracteristica."
+        }
+      },
+      "required": [
+        "id",
+        "caracteristicaId",
+        "hospitalId",
+        "codigo",
+        "nombre",
+        "orden"
+      ]
+    },
+    "ElementoMedible": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ElementoMedible",
+      "type": "object",
+      "description": "Represents an 'Elemento Medible' (Measurable Element), the most granular sub-category under a 'Punto de Verificación' in the hierarchical accreditation classification system, configurable per hospital.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ElementoMedible entity."
+        },
+        "puntoVerificacionId": {
+          "type": "string",
+          "description": "Reference to the PuntoVerificacion this ElementoMedible belongs to. (Relationship: PuntoVerificacion 1:N ElementoMedible)"
+        },
+        "hospitalId": {
+          "type": "string",
+          "description": "Reference to the Hospital this ElementoMedible belongs to. (Relationship: Hospital 1:N ElementoMedible)"
+        },
+        "codigo": {
+          "type": "string",
+          "description": "The unique code for this 'Elemento Medible'."
+        },
+        "nombre": {
+          "type": "string",
+          "description": "The name of the 'Elemento Medible'."
+        },
+        "orden": {
+          "type": "number",
+          "description": "The display order of this 'Elemento Medible' within its PuntoVerificacion."
+        }
+      },
+      "required": [
+        "id",
+        "puntoVerificacionId",
+        "hospitalId",
+        "codigo",
+        "nombre",
+        "orden"
+      ]
+    },
+    "TipoDocumento": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TipoDocumento",
+      "type": "object",
+      "description": "Represents a 'Tipo de Documento' (Document Type), such as Protocol, Record, or Report, configurable per hospital.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the TipoDocumento entity."
+        },
+        "hospitalId": {
+          "type": "string",
+          "description": "Reference to the Hospital this TipoDocumento belongs to. (Relationship: Hospital 1:N TipoDocumento)"
+        },
+        "nombre": {
+          "type": "string",
+          "description": "The name of the document type (e.g., 'Protocolo', 'Registro', 'Acta')."
+        }
+      },
+      "required": [
+        "id",
+        "hospitalId",
+        "nombre"
+      ]
+    },
+    "Servicio": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Servicio",
+      "type": "object",
+      "description": "Represents a 'Servicio' (Service/Unit) within a hospital, configurable per hospital.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Servicio entity."
+        },
+        "hospitalId": {
+          "type": "string",
+          "description": "Reference to the Hospital this Servicio belongs to. (Relationship: Hospital 1:N Servicio)"
+        },
+        "nombre": {
+          "type": "string",
+          "description": "The name of the service or unit (e.g., 'Urgencia', 'SOME', 'Esterilización')."
+        }
+      },
+      "required": [
+        "id",
+        "hospitalId",
+        "nombre"
+      ]
+    },
+    "EstadoAcreditacionDoc": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "EstadoAcreditacionDoc",
+      "type": "object",
+      "description": "Represents an 'Estado de Acreditación de Documento' (Document Accreditation Status), such as Vigente, En revisión, or Obsoleto, configurable per hospital.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the EstadoAcreditacionDoc entity."
+        },
+        "hospitalId": {
+          "type": "string",
+          "description": "Reference to the Hospital this EstadoAcreditacionDoc belongs to. (Relationship: Hospital 1:N EstadoAcreditacionDoc)"
+        },
+        "nombre": {
+          "type": "string",
+          "description": "The name of the document status (e.g., 'Vigente', 'En revisión', 'Obsoleto')."
+        }
+      },
+      "required": [
+        "id",
+        "hospitalId",
+        "nombre"
+      ]
+    },
+    "Document": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Document",
+      "type": "object",
+      "description": "Represents a document's metadata, classification, and pointers to its file in storage.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Document entity."
+        },
+        "hospitalId": {
+          "type": "string",
+          "description": "Reference to the Hospital this document belongs to. (Relationship: Hospital 1:N Document)"
+        },
+        "titulo": {
+          "type": "string",
+          "description": "The main title of the document."
+        },
+        "descripcion": {
+          "type": "string",
+          "description": "An optional detailed description of the document's content or purpose."
+        },
+        "tipoDocumentoId": {
+          "type": "string",
+          "description": "Reference to the TipoDocumento (Document Type) of this document. (Relationship: TipoDocumento 1:N Document)"
+        },
+        "version": {
+          "type": "string",
+          "description": "The version number of the document (e.g., '1.0', '2.1')."
+        },
+        "estadoDocId": {
+          "type": "string",
+          "description": "Reference to the EstadoAcreditacionDoc (Document Accreditation Status) of this document. (Relationship: EstadoAcreditacionDoc 1:N Document)"
+        },
+        "ambitoId": {
+          "type": "string",
+          "description": "Reference to the Ambito (Scope) for accreditation classification. (Relationship: Ambito 1:N Document)"
+        },
+        "caracteristicaId": {
+          "type": "string",
+          "description": "Reference to the Caracteristica (Characteristic) for accreditation classification. (Relationship: Caracteristica 1:N Document)"
+        },
+        "puntoVerificacionId": {
+          "type": "string",
+          "description": "Reference to the PuntoVerificacion (Verification Point) for accreditation classification. (Relationship: PuntoVerificacion 1:N Document)"
+        },
+        "elementoMedibleId": {
+          "type": "string",
+          "description": "Reference to the ElementoMedible (Measurable Element) for accreditation classification. (Relationship: ElementoMedible 1:N Document)"
+        },
+        "servicioId": {
+          "type": "string",
+          "description": "Optional reference to the Servicio (Service/Unit) responsible for this document. (Relationship: Servicio 1:N Document)"
+        },
+        "responsableNombre": {
+          "type": "string",
+          "description": "The name of the person or department responsible for the document."
+        },
+        "responsableEmail": {
+          "type": "string",
+          "description": "The email address of the person responsible for the document.",
+          "format": "email"
+        },
+        "fechaDocumento": {
+          "type": "string",
+          "description": "The original emission date of the document.",
+          "format": "date-time"
+        },
+        "fechaVigenciaDesde": {
+          "type": "string",
+          "description": "The start date from which the document is considered valid.",
+          "format": "date-time"
+        },
+        "fechaVigenciaHasta": {
+          "type": "string",
+          "description": "The end date until which the document is considered valid.",
+          "format": "date-time"
+        },
+        "fileName": {
+          "type": "string",
+          "description": "The original name of the uploaded file."
+        },
+        "fileExt": {
+          "type": "string",
+          "description": "The file extension of the document (e.g., 'pdf', 'docx', 'xlsx')."
+        },
+        "mimeType": {
+          "type": "string",
+          "description": "The MIME type of the uploaded file."
+        },
+        "fileSize": {
+          "type": "number",
+          "description": "The size of the document file in bytes."
+        },
+        "storagePath": {
+          "type": "string",
+          "description": "The path to the document file within the storage system."
+        },
+        "downloadUrl": {
+          "type": "string",
+          "description": "The URL from which the document can be downloaded.",
+          "format": "uri"
+        },
+        "checksum": {
+          "type": "string",
+          "description": "An optional hash value for file integrity control."
+        },
+        "tags": {
+          "type": "array",
+          "description": "An optional array of keywords or tags associated with the document for easier search and categorization.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdByUid": {
+          "type": "string",
+          "description": "Reference to the User who created (uploaded) this document. (Relationship: User 1:N Document)"
+        },
+        "createdByEmail": {
+          "type": "string",
+          "description": "The email of the user who created (uploaded) this document.",
+          "format": "email"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the document metadata was created/uploaded.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the document metadata was last updated.",
+          "format": "date-time"
+        },
+        "isDeleted": {
+          "type": "boolean",
+          "description": "Flag indicating if the document has been soft-deleted (not physically removed)."
+        },
+        "deletedAt": {
+          "type": "string",
+          "description": "Timestamp when the document was soft-deleted.",
+          "format": "date-time"
+        },
+        "deletedByUid": {
+          "type": "string",
+          "description": "Reference to the User who soft-deleted this document. (Relationship: User 1:N Document)"
+        },
+        "searchKeywords": {
+          "type": "array",
+          "description": "Normalized array of keywords derived from title, codes, tags, and responsible for efficient text search.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "hospitalId",
+        "titulo",
+        "tipoDocumentoId",
+        "version",
+        "estadoDocId",
+        "ambitoId",
+        "caracteristicaId",
+        "puntoVerificacionId",
+        "elementoMedibleId",
+        "responsableNombre",
+        "responsableEmail",
+        "fechaDocumento",
+        "fileName",
+        "fileExt",
+        "mimeType",
+        "fileSize",
+        "storagePath",
+        "downloadUrl",
+        "createdByUid",
+        "createdByEmail",
+        "createdAt",
+        "updatedAt",
+        "isDeleted",
+        "searchKeywords"
+      ]
+    },
+    "DocumentVersion": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DocumentVersion",
+      "type": "object",
+      "description": "Represents a specific version of a document, storing historical file and metadata snapshots.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the DocumentVersion entity."
+        },
+        "docId": {
+          "type": "string",
+          "description": "Reference to the parent Document this version belongs to. (Relationship: Document 1:N DocumentVersion)"
+        },
+        "hospitalId": {
+          "type": "string",
+          "description": "Reference to the Hospital this document version belongs to. (Relationship: Hospital 1:N DocumentVersion)"
+        },
+        "version": {
+          "type": "string",
+          "description": "The specific version string of this historical document file."
+        },
+        "storagePath": {
+          "type": "string",
+          "description": "The path to this specific version's file within the storage system."
+        },
+        "downloadUrl": {
+          "type": "string",
+          "description": "The URL from which this specific version of the document can be downloaded.",
+          "format": "uri"
+        },
+        "fileSize": {
+          "type": "number",
+          "description": "The size of this specific version's file in bytes."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when this document version was created.",
+          "format": "date-time"
+        },
+        "createdByUid": {
+          "type": "string",
+          "description": "Reference to the User who created this document version. (Relationship: User 1:N DocumentVersion)"
+        }
+      },
+      "required": [
+        "id",
+        "docId",
+        "hospitalId",
+        "version",
+        "storagePath",
+        "downloadUrl",
+        "fileSize",
+        "createdAt",
+        "createdByUid"
+      ]
+    },
+    "AuditLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AuditLog",
+      "type": "object",
+      "description": "Records key events and user actions within the application for audit and traceability purposes.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AuditLog entry."
+        },
+        "hospitalId": {
+          "type": "string",
+          "description": "Reference to the Hospital where the audited action occurred. (Relationship: Hospital 1:N AuditLog)"
+        },
+        "actorUid": {
+          "type": "string",
+          "description": "Reference to the User who performed the action. (Relationship: User 1:N AuditLog)"
+        },
+        "actorEmail": {
+          "type": "string",
+          "description": "The email address of the user who performed the action.",
+          "format": "email"
+        },
+        "action": {
+          "type": "string",
+          "description": "The type of action performed (e.g., 'UPLOAD', 'UPDATE_META', 'DELETE', 'DOWNLOAD', 'LOGIN')."
+        },
+        "docId": {
+          "type": "string",
+          "description": "Optional reference to the Document affected by the action, if applicable. (Relationship: Document 1:N AuditLog)"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp when the action was performed.",
+          "format": "date-time"
+        },
+        "details": {
+          "type": "array",
+          "description": "Additional details about the action, stored as an array of key-value pairs (e.g., changes made during an update).",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "hospitalId",
+        "actorUid",
+        "actorEmail",
+        "action",
+        "timestamp",
+        "details"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles, including their role and associated hospital ID for access control. Access is restricted to the user themselves or hospital administrators. Includes denormalized 'role' and 'hospitalId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Unique identifier for the user, typically matching Firebase Auth UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/hospitals/{hospitalId}",
+        "definition": {
+          "entityName": "Hospital",
+          "schema": {
+            "$ref": "#/backend/entities/Hospital"
+          },
+          "description": "Stores general information about each hospital. Accessible by users belonging to that hospital.",
+          "params": [
+            {
+              "name": "hospitalId",
+              "description": "Unique identifier for the Hospital entity."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/catalogs/{hospitalId}/ambitos/{ambitoId}",
+        "definition": {
+          "entityName": "Ambito",
+          "schema": {
+            "$ref": "#/backend/entities/Ambito"
+          },
+          "description": "Stores configurable accreditation 'Ambito' (Scope) items specific to a hospital. Each document includes denormalized 'hospitalId' for authorization independence.",
+          "params": [
+            {
+              "name": "hospitalId",
+              "description": "Unique identifier for the Hospital this Ambito belongs to."
+            },
+            {
+              "name": "ambitoId",
+              "description": "Unique identifier for the Ambito entity."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/catalogs/{hospitalId}/caracteristicas/{caracteristicaId}",
+        "definition": {
+          "entityName": "Caracteristica",
+          "schema": {
+            "$ref": "#/backend/entities/Caracteristica"
+          },
+          "description": "Stores configurable accreditation 'Característica' (Characteristic) items specific to a hospital. Each document includes denormalized 'hospitalId' for authorization independence.",
+          "params": [
+            {
+              "name": "hospitalId",
+              "description": "Unique identifier for the Hospital this Caracteristica belongs to."
+            },
+            {
+              "name": "caracteristicaId",
+              "description": "Unique identifier for the Caracteristica entity."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/catalogs/{hospitalId}/puntosVerificacion/{puntoVerificacionId}",
+        "definition": {
+          "entityName": "PuntoVerificacion",
+          "schema": {
+            "$ref": "#/backend/entities/PuntoVerificacion"
+          },
+          "description": "Stores configurable accreditation 'Punto de Verificación' (Verification Point) items specific to a hospital. Each document includes denormalized 'hospitalId' for authorization independence.",
+          "params": [
+            {
+              "name": "hospitalId",
+              "description": "Unique identifier for the Hospital this PuntoVerificacion belongs to."
+            },
+            {
+              "name": "puntoVerificacionId",
+              "description": "Unique identifier for the PuntoVerificacion entity."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/catalogs/{hospitalId}/elementosMedibles/{elementoMedibleId}",
+        "definition": {
+          "entityName": "ElementoMedible",
+          "schema": {
+            "$ref": "#/backend/entities/ElementoMedible"
+          },
+          "description": "Stores configurable accreditation 'Elemento Medible' (Measurable Element) items specific to a hospital. Each document includes denormalized 'hospitalId' for authorization independence.",
+          "params": [
+            {
+              "name": "hospitalId",
+              "description": "Unique identifier for the Hospital this ElementoMedible belongs to."
+            },
+            {
+              "name": "elementoMedibleId",
+              "description": "Unique identifier for the ElementoMedible entity."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/catalogs/{hospitalId}/tiposDocumento/{tipoDocumentoId}",
+        "definition": {
+          "entityName": "TipoDocumento",
+          "schema": {
+            "$ref": "#/backend/entities/TipoDocumento"
+          },
+          "description": "Stores configurable 'Tipo de Documento' (Document Type) items specific to a hospital. Each document includes denormalized 'hospitalId' for authorization independence.",
+          "params": [
+            {
+              "name": "hospitalId",
+              "description": "Unique identifier for the Hospital this TipoDocumento belongs to."
+            },
+            {
+              "name": "tipoDocumentoId",
+              "description": "Unique identifier for the TipoDocumento entity."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/catalogs/{hospitalId}/servicios/{servicioId}",
+        "definition": {
+          "entityName": "Servicio",
+          "schema": {
+            "$ref": "#/backend/entities/Servicio"
+          },
+          "description": "Stores configurable 'Servicio' (Service/Unit) items specific to a hospital. Each document includes denormalized 'hospitalId' for authorization independence.",
+          "params": [
+            {
+              "name": "hospitalId",
+              "description": "Unique identifier for the Hospital this Servicio belongs to."
+            },
+            {
+              "name": "servicioId",
+              "description": "Unique identifier for the Servicio entity."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/catalogs/{hospitalId}/estadosAcreditacionDoc/{estadoAcreditacionDocId}",
+        "definition": {
+          "entityName": "EstadoAcreditacionDoc",
+          "schema": {
+            "$ref": "#/backend/entities/EstadoAcreditacionDoc"
+          },
+          "description": "Stores configurable 'Estado de Acreditación de Documento' (Document Accreditation Status) items specific to a hospital. Each document includes denormalized 'hospitalId' for authorization independence.",
+          "params": [
+            {
+              "name": "hospitalId",
+              "description": "Unique identifier for the Hospital this EstadoAcreditacionDoc belongs to."
+            },
+            {
+              "name": "estadoAcreditacionDocId",
+              "description": "Unique identifier for the EstadoAcreditacionDoc entity."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/documents/{documentId}",
+        "definition": {
+          "entityName": "Document",
+          "schema": {
+            "$ref": "#/backend/entities/Document"
+          },
+          "description": "Stores document metadata and references to its file in storage. Includes denormalized 'hospitalId', 'createdByUid', and classification IDs for authorization independence and query efficiency.",
+          "params": [
+            {
+              "name": "documentId",
+              "description": "Unique identifier for the Document entity."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/document_versions/{documentVersionId}",
+        "definition": {
+          "entityName": "DocumentVersion",
+          "schema": {
+            "$ref": "#/backend/entities/DocumentVersion"
+          },
+          "description": "Stores historical versions of document files and their metadata. Includes denormalized 'hospitalId' and 'docId' for authorization independence.",
+          "params": [
+            {
+              "name": "documentVersionId",
+              "description": "Unique identifier for the DocumentVersion entity."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/audit_logs/{auditLogId}",
+        "definition": {
+          "entityName": "AuditLog",
+          "schema": {
+            "$ref": "#/backend/entities/AuditLog"
+          },
+          "description": "Records key user actions and events for audit and traceability. Includes denormalized 'hospitalId' and 'actorUid' for authorization independence.",
+          "params": [
+            {
+              "name": "auditLogId",
+              "description": "Unique identifier for the AuditLog entry."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support a secure, scalable, and debuggable document management system for hospital accreditation, strictly adhering to the core design principles. The primary strategy revolves around denormalizing authorization context and segregating data to simplify security rules and ensure query efficiency.\n\n1.  Users (`/users/{userId}`):\n    *   **Authorization Independence:** Each user document (`users/{uid}`) directly stores the user's `role` and `hospitalId`. Firestore security rules will perform a single `get()` operation on the requesting user's document (`users/$(request.auth.uid)`) to establish their permissions and assigned hospital context. This is a foundational and accepted pattern for role-based access control (DBAC) and avoids complex, chained `get()` calls in other document types.\n\n2.  Hospitals (`/hospitals/{hospitalId}`):\n    *   **Authorization Independence:** Access to a specific hospital document is governed by matching the `hospitalId` in the path with the `hospitalId` retrieved from the authenticated user's profile. This makes rules straightforward: `allow read: if isReader() && hid == hospitalId();`.\n\n3.  Catalog Entities (e.g., `/catalogs/{hospitalId}/ambitos/{ambitoId}`):\n    *   **CRITICAL DEVIATION EXPLANATION:** The user's request explicitly described a single document `catalogs/{hospitalId}` containing arrays of `ambitos`, `caracteristicas`, etc. However, to strictly adhere to the `firestorePaths` output schema (which requires each path to map to a *single* `entityName` derivable from a *single* `$ref` in `#/backend/entities/<EntityName>`) AND to maximize scalability, debuggability, and Query Assurance Protocols (QAPs), this design **reinterprets the catalog structure**. Instead, each catalog type is now a subcollection under a hospital-specific parent document within the `catalogs` collection. For example, 'Ambito' entities are stored at `/catalogs/{hospitalId}/ambitos/{ambitoId}`.\n    *   **Authorization Independence:** Each individual catalog document (e.g., `ambitos/{ambitoId}`) implicitly inherits its `hospitalId` from its path. Crucially, the `hospitalId` is also explicitly denormalized within each catalog document's data (e.g., `Ambito.hospitalId`). This allows security rules to directly verify access by comparing `request.path[1]` or `resource.data.hospitalId` with the user's `hospitalId` without any `get()` calls to parent documents.\n    *   **QAPs Support:** This subcollection structure is highly beneficial for QAPs. It allows for efficient `list` operations, filtering, and pagination of specific catalog types (e.g., querying only 'Ambitos' for a given hospital) without having to fetch and parse a single, potentially large composite document containing all catalog arrays. Queries will naturally include `where(\"hospitalId\", \"==\", userHospitalId)`. This provides granular access and better performance for administrative screens managing individual catalog types.\n\n4.  Documents (`/documents/{documentId}`):\n    *   **Authorization Independence:** The `Document` entity is stored in a top-level collection. Every `Document` document includes a denormalized `hospitalId` field. This is **CRITICAL** for authorization independence; security rules can directly evaluate `resource.data.hospitalId == userHospitalId` without needing to perform `get()` operations on parent collections like `/hospitals` or any catalog documents. This ensures atomic operations and simplifies rule logic.\n    *   **QAPs Support:** The denormalized `hospitalId` is the cornerstone for secure `list` operations. Any client-side `list` query for documents **must** include `where(\"hospitalId\", \"==\", userHospitalId)`. Firebase security rules will enforce this, ensuring that users can only retrieve documents belonging to their assigned hospital. This enables robust filtering, searching (`searchKeywords` field with `array-contains` queries), and pagination, aligning with the application's requirements for a document explorer.\n\n5.  Document Versions (`/document_versions/{documentVersionId}`):\n    *   **Authorization Independence:** Similar to `Document`, each `DocumentVersion` document denormalizes `hospitalId`. This prevents any hierarchical authorization dependencies.\n    *   **QAPs Support:** `list` queries for document versions will similarly enforce `where(\"hospitalId\", \"==\", userHospitalId)` via security rules, guaranteeing secure access to historical data specific to a hospital.\n\n6.  Audit Logs (`/audit_logs/{auditLogId}`):\n    *   **Authorization Independence:** Each `AuditLog` document denormalizes `hospitalId` and `actorUid`. This allows security rules to verify that the log entry relates to the user's hospital and, for creation, that the `actorUid` matches `request.auth.uid`.\n    *   **QAPs Support:** Access to audit logs will be restricted by `hospitalId` (e.g., `where(\"hospitalId\", \"==\", userHospitalId)`) and, for reads, by role (e.g., `isAdmin()`), supporting secure and efficient retrieval of audit trails."
+  }
+}

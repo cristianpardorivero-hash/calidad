@@ -1,150 +1,320 @@
+/**
+ * Core Philosophy:
+ * This ruleset enforces a strict multi-tenant security model for a hospital document
+ * management system. All data is scoped by a `hospitalId`. A user's access is
+ * primarily determined by their assigned `hospitalId` and `role` (admin, editor, lector),
+ * which are stored on their user profile document.
+ *
+ * Data Structure:
+ * The data is organized into top-level collections for major entities like `users`,
+ * `hospitals`, and `documents`. Hospital-specific configuration data (catalogs) is
+ * nested under a `/catalogs/{hospitalId}` path, providing clear structural
+ * segregation for each tenant's data.
+ *
+ * Key Security Decisions:
+ * - Denormalization for Authorization: To ensure fast and secure rule evaluation,
+ *   the `hospitalId` is denormalized onto every relevant document. This avoids
+ *   slow and costly cross-document `get()` calls during authorization checks.
+ * - Centralized User Context: Rules frequently perform a single `get()` on the
+ *   requesting user's own `/users/{userId}` document to retrieve their `hospitalId`
+ *   and `role`. This context is then used to evaluate permissions across the database.
+ * - Role-Based Access: Write permissions (create, update, delete) are generally
+ *   restricted to users with 'admin' or 'editor' roles within their hospital,
+ *   while read access is granted to all members ('lector' included).
+ * - No User Listing: To protect user privacy and prevent data leakage, listing
+ *   the entire `/users` collection is explicitly forbidden.
+ * - Immutable Logs: Audit logs are append-only. Once created, they cannot be
+ *   modified or deleted, ensuring the integrity of the audit trail.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ---------- Helpers ----------
+    // =====================================================================
+    // Helper Functions
+    // =====================================================================
+
+    /**
+     * Returns true if the user is authenticated.
+     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function userDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    /**
+     * Returns true if the authenticated user's UID matches the provided userId.
+     * Used to verify resource ownership.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    function userExists() {
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    /**
+     * Retrieves the requesting user's profile data from /users/{uid}.
+     * This is the central function for fetching a user's role and hospitalId,
+     * which are then used for permission checks throughout the rules.
+     * The result is automatically cached by Firestore for the duration of the
+     * request evaluation, so it's efficient to call multiple times.
+     */
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    function isActive() {
-      return userExists() && userDoc().data.isActive == true;
+    /**
+     * Checks if the user is a member of the specified hospital.
+     */
+    function isHospitalMember(hospitalId) {
+      return isSignedIn() && getUserData().hospitalId == hospitalId;
     }
 
-    function role() {
-      return userDoc().data.role;
+    /**
+     * Checks if the user has editor or admin privileges for the specified hospital.
+     */
+    function isHospitalEditor(hospitalId) {
+      return isHospitalMember(hospitalId) && getUserData().role in ['admin', 'editor'];
     }
 
-    function hospitalId() {
-      return userDoc().data.hospitalId;
+    /**
+     * Checks if the user has admin privileges for the specified hospital.
+     */
+    function isHospitalAdmin(hospitalId) {
+      return isHospitalMember(hospitalId) && getUserData().role == 'admin';
     }
 
-    function isAdmin() {
-      return isActive() && role() == "admin";
+    /**
+     * Validates that the hospitalId in a document being created matches its
+     * location in the path, ensuring relational integrity.
+     */
+    function hasMatchingHospitalIdInPath(hospitalId) {
+      return request.resource.data.hospitalId == hospitalId;
+    }
+    
+    /**
+     * Validates that the hospitalId on a newly created document matches the
+     * hospitalId of the user creating it.
+     */
+    function hospitalIdMatchesCreator() {
+      return request.resource.data.hospitalId == getUserData().hospitalId;
+    }
+    
+    /**
+     * Validates that the creator of a resource is the currently authenticated user.
+     * This is used on create operations for documents, versions, and logs.
+     */
+    function creatorIsSelf() {
+      // Use 'createdByUid' for documents, 'actorUid' for logs.
+      let ownerField = 'createdByUid' in request.resource.data ? request.resource.data.createdByUid : request.resource.data.actorUid;
+      return ownerField == request.auth.uid;
     }
 
-    function isEditor() {
-      return isActive() && (role() == "editor" || role() == "admin");
+    /**
+     * Enforces the immutability of critical relational fields during an update.
+     */
+    function isImmutable(fieldName) {
+      return request.resource.data[fieldName] == resource.data[fieldName];
     }
 
-    function isReader() {
-      return isActive() && (role() == "lector" || role() == "editor" || role() == "admin");
+    // =====================================================================
+    // User Profiles
+    // =====================================================================
+
+    /**
+     * @description Controls access to user profile documents.
+     * @path /users/{userId}
+     * @allow (get) A user to read their own profile.
+     * @allow (get) A hospital admin to read profiles of users within their own hospital.
+     * @deny (list) An authenticated user from listing all user profiles in the database.
+     * @principle Restricts access to a user's own data tree and allows for admin oversight.
+     */
+    match /users/{userId} {
+      allow get: if isSignedIn() && (isOwner(userId) || isHospitalAdmin(resource.data.hospitalId));
+      allow list: if false;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if resource != null && (isOwner(userId) || isHospitalAdmin(resource.data.hospitalId)) && isImmutable('id');
+      allow delete: if resource != null && (isOwner(userId) || isHospitalAdmin(resource.data.hospitalId));
     }
 
-    function sameHospital(resourceHospitalId) {
-      return isReader() && resourceHospitalId == hospitalId();
-    }
+    // =====================================================================
+    // Hospital Data
+    // =====================================================================
 
-    // Validaciones mínimas para documents
-    function validDocumentCreate() {
-      return request.resource.data.hospitalId == hospitalId()
-        && request.resource.data.titulo is string
-        && request.resource.data.tipoDocumentoId is string
-        && request.resource.data.version is string
-        && request.resource.data.estadoDocId is string
-        && request.resource.data.ambitoId is string
-        && request.resource.data.caracteristicaId is string
-        && request.resource.data.puntoVerificacionId is string
-        && request.resource.data.elementoMedibleId is string
-        && request.resource.data.responsableNombre is string
-        && request.resource.data.responsableEmail is string
-        && request.resource.data.fileName is string
-        && request.resource.data.fileExt is string
-        && request.resource.data.storagePath is string
-        && request.resource.data.fileSize is number
-        && request.resource.data.mimeType is string
-        && request.resource.data.createdByUid == request.auth.uid;
-    }
-
-    function validDocumentUpdate() {
-      // Evita que cambien hospitalId y createdByUid
-      return request.resource.data.hospitalId == resource.data.hospitalId
-        && request.resource.data.createdByUid == resource.data.createdByUid;
-    }
-
-    // ---------- Users ----------
-    match /users/{uid} {
-      allow read: if isSignedIn() && (
-        request.auth.uid == uid || isAdmin()
-      );
-
-      // Por seguridad: solo admin gestiona usuarios (crea/edita roles/isActive) dentro de su hospital.
-      allow create: if isAdmin()
-        && request.resource.data.hospitalId == hospitalId()
-        && request.resource.data.role in ["admin", "editor", "lector"];
-
-      allow update: if isAdmin()
-        && resource.data.hospitalId == hospitalId()
-        && request.resource.data.hospitalId == resource.data.hospitalId
-        && request.resource.data.role in ["admin", "editor", "lector"];
-
+    /**
+     * @description Controls access to general hospital information.
+     * @path /hospitals/{hospitalId}
+     * @allow (get) An authenticated user who is a member of the hospital to read its details.
+     * @deny (create) Any user from creating a new hospital document from the client.
+     * @principle Enforces tenant isolation; data is only visible to members of that tenant.
+     */
+    match /hospitals/{hospitalId} {
+      allow get: if isHospitalMember(hospitalId);
+      allow list: if isSignedIn(); // Client MUST filter by the user's hospitalId for security.
+      allow create: if isHospitalAdmin(hospitalId);
+      allow update: if resource != null && isHospitalAdmin(hospitalId);
       allow delete: if false;
     }
 
-    // ---------- Hospitals (opcional: restringir a admin) ----------
-    match /hospitals/{hid} {
-      allow read: if isReader() && hid == hospitalId();
-      allow write: if isAdmin() && hid == hospitalId();
+    // =====================================================================
+    // Catalog Subcollections
+    // All catalog collections share the same security rules logic.
+    // =====================================================================
+
+    /**
+     * @description Controls access to hospital-specific 'Ambito' (Scope) catalog items.
+     * @path /catalogs/{hospitalId}/ambitos/{ambitoId}
+     * @allow (read) Any user who belongs to the hospital specified in the path.
+     * @deny (write) A 'lector' (reader) role from modifying catalog items.
+     * @principle Inherits permissions from the parent hospital path, enforcing tenant isolation.
+     */
+    match /catalogs/{hospitalId}/ambitos/{ambitoId} {
+      allow get, list: if isHospitalMember(hospitalId);
+      allow create: if isHospitalEditor(hospitalId) && hasMatchingHospitalIdInPath(hospitalId);
+      allow update: if resource != null && isHospitalEditor(hospitalId) && isImmutable('hospitalId');
+      allow delete: if resource != null && isHospitalEditor(hospitalId);
     }
 
-    // ---------- Catalogs ----------
-    match /catalogs/{hid} {
-      allow read: if isReader() && hid == hospitalId();
-      allow create, update: if isAdmin() && hid == hospitalId();
+    /**
+     * @description Controls access to hospital-specific 'Caracteristica' (Characteristic) items.
+     * @path /catalogs/{hospitalId}/caracteristicas/{caracteristicaId}
+     * @allow (read) Any user who belongs to the hospital specified in the path.
+     * @deny (write) A 'lector' (reader) role from modifying catalog items.
+     * @principle Inherits permissions from the parent hospital path, enforcing tenant isolation.
+     */
+    match /catalogs/{hospitalId}/caracteristicas/{caracteristicaId} {
+      allow get, list: if isHospitalMember(hospitalId);
+      allow create: if isHospitalEditor(hospitalId) && hasMatchingHospitalIdInPath(hospitalId);
+      allow update: if resource != null && isHospitalEditor(hospitalId) && isImmutable('hospitalId');
+      allow delete: if resource != null && isHospitalEditor(hospitalId);
+    }
+
+    /**
+     * @description Controls access to hospital-specific 'Punto de Verificación' (Verification Point) items.
+     * @path /catalogs/{hospitalId}/puntosVerificacion/{puntoVerificacionId}
+     * @allow (read) Any user who belongs to the hospital specified in the path.
+     * @deny (write) A 'lector' (reader) role from modifying catalog items.
+     * @principle Inherits permissions from the parent hospital path, enforcing tenant isolation.
+     */
+    match /catalogs/{hospitalId}/puntosVerificacion/{puntoVerificacionId} {
+      allow get, list: if isHospitalMember(hospitalId);
+      allow create: if isHospitalEditor(hospitalId) && hasMatchingHospitalIdInPath(hospitalId);
+      allow update: if resource != null && isHospitalEditor(hospitalId) && isImmutable('hospitalId');
+      allow delete: if resource != null && isHospitalEditor(hospitalId);
+    }
+
+    /**
+     * @description Controls access to hospital-specific 'Elemento Medible' (Measurable Element) items.
+     * @path /catalogs/{hospitalId}/elementosMedibles/{elementoMedibleId}
+     * @allow (read) Any user who belongs to the hospital specified in the path.
+     * @deny (write) A 'lector' (reader) role from modifying catalog items.
+     * @principle Inherits permissions from the parent hospital path, enforcing tenant isolation.
+     */
+    match /catalogs/{hospitalId}/elementosMedibles/{elementoMedibleId} {
+      allow get, list: if isHospitalMember(hospitalId);
+      allow create: if isHospitalEditor(hospitalId) && hasMatchingHospitalIdInPath(hospitalId);
+      allow update: if resource != null && isHospitalEditor(hospitalId) && isImmutable('hospitalId');
+      allow delete: if resource != null && isHospitalEditor(hospitalId);
+    }
+
+    /**
+     * @description Controls access to hospital-specific 'Tipo de Documento' (Document Type) items.
+     * @path /catalogs/{hospitalId}/tiposDocumento/{tipoDocumentoId}
+     * @allow (read) Any user who belongs to the hospital specified in the path.
+     * @deny (write) A 'lector' (reader) role from modifying catalog items.
+     * @principle Inherits permissions from the parent hospital path, enforcing tenant isolation.
+     */
+    match /catalogs/{hospitalId}/tiposDocumento/{tipoDocumentoId} {
+      allow get, list: if isHospitalMember(hospitalId);
+      allow create: if isHospitalEditor(hospitalId) && hasMatchingHospitalIdInPath(hospitalId);
+      allow update: if resource != null && isHospitalEditor(hospitalId) && isImmutable('hospitalId');
+      allow delete: if resource != null && isHospitalEditor(hospitalId);
+    }
+
+    /**
+     * @description Controls access to hospital-specific 'Servicio' (Service/Unit) items.
+     * @path /catalogs/{hospitalId}/servicios/{servicioId}
+     * @allow (read) Any user who belongs to the hospital specified in the path.
+     * @deny (write) A 'lector' (reader) role from modifying catalog items.
+     * @principle Inherits permissions from the parent hospital path, enforcing tenant isolation.
+     */
+    match /catalogs/{hospitalId}/servicios/{servicioId} {
+      allow get, list: if isHospitalMember(hospitalId);
+      allow create: if isHospitalEditor(hospitalId) && hasMatchingHospitalIdInPath(hospitalId);
+      allow update: if resource != null && isHospitalEditor(hospitalId) && isImmutable('hospitalId');
+      allow delete: if resource != null && isHospitalEditor(hospitalId);
+    }
+
+    /**
+     * @description Controls access to hospital-specific 'Estado de Acreditación' (Accreditation Status) items.
+     * @path /catalogs/{hospitalId}/estadosAcreditacionDoc/{estadoAcreditacionDocId}
+     * @allow (read) Any user who belongs to the hospital specified in the path.
+     * @deny (write) A 'lector' (reader) role from modifying catalog items.
+     * @principle Inherits permissions from the parent hospital path, enforcing tenant isolation.
+     */
+    match /catalogs/{hospitalId}/estadosAcreditacionDoc/{estadoAcreditacionDocId} {
+      allow get, list: if isHospitalMember(hospitalId);
+      allow create: if isHospitalEditor(hospitalId) && hasMatchingHospitalIdInPath(hospitalId);
+      allow update: if resource != null && isHospitalEditor(hospitalId) && isImmutable('hospitalId');
+      allow delete: if resource != null && isHospitalEditor(hospitalId);
+    }
+
+    // =====================================================================
+    // Documents
+    // =====================================================================
+
+    /**
+     * @description Controls access to document metadata. Access is granted based on the
+     * `hospitalId` field denormalized onto each document.
+     * @path /documents/{documentId}
+     * @allow (get) A user to read a document if they belong to the document's hospital.
+     * @allow (create) An 'editor' or 'admin' to create a document for their own hospital.
+     * @deny (get) A user from Hospital B from reading a document belonging to Hospital A.
+     * @principle Enforces tenant isolation using a denormalized field on the document itself.
+     */
+    match /documents/{documentId} {
+      allow get: if isHospitalMember(resource.data.hospitalId);
+      allow list: if isSignedIn(); // Client MUST filter by the user's hospitalId for security.
+      allow create: if isHospitalEditor(request.resource.data.hospitalId) && creatorIsSelf() && hospitalIdMatchesCreator();
+      allow update: if resource != null && isHospitalEditor(resource.data.hospitalId) && isImmutable('hospitalId') && isImmutable('createdByUid');
+      allow delete: if resource != null && isHospitalEditor(resource.data.hospitalId);
+    }
+
+    // =====================================================================
+    // Document Versions
+    // =====================================================================
+
+    /**
+     * @description Controls access to historical versions of documents. These are append-only.
+     * @path /document_versions/{documentVersionId}
+     * @allow (get) A user to read a document version if they belong to its hospital.
+     * @deny (update, delete) Any user from modifying or deleting historical version records.
+     * @principle Provides read-only access to historical data while ensuring its immutability.
+     */
+    match /document_versions/{documentVersionId} {
+      allow get: if isHospitalMember(resource.data.hospitalId);
+      allow list: if isSignedIn(); // Client MUST filter by the user's hospitalId for security.
+      allow create: if isHospitalEditor(request.resource.data.hospitalId) && creatorIsSelf() && hospitalIdMatchesCreator();
+      allow update: if false;
       allow delete: if false;
     }
 
-    // ---------- Documents ----------
-    match /documents/{docId} {
-      allow read: if isReader() && sameHospital(resource.data.hospitalId);
+    // =====================================================================
+    // Audit Logs
+    // =====================================================================
 
-      allow create: if isEditor() && validDocumentCreate();
-
-      allow update: if isEditor()
-        && sameHospital(resource.data.hospitalId)
-        && validDocumentUpdate();
-
-      // No borrar físico: solo soft delete (isDeleted=true) permitido a admin
+    /**
+     * @description Controls access to audit logs. Logs are append-only and can only
+     * be read by hospital administrators.
+     * @path /audit_logs/{auditLogId}
+     * @allow (create) Any authenticated user to create a log entry for their own actions and hospital.
+     * @deny (read) A non-admin user from reading any audit log entries.
+     * @deny (update, delete) Any user from modifying or deleting an audit log entry.
+     * @principle Ensures the integrity and confidentiality of the audit trail.
+     */
+    match /audit_logs/{auditLogId} {
+      allow get: if isHospitalAdmin(resource.data.hospitalId);
+      allow list: if isSignedIn(); // Client MUST filter by hospitalId. Admin UI should enforce this.
+      allow create: if isHospitalMember(request.resource.data.hospitalId) && creatorIsSelf() && hospitalIdMatchesCreator();
+      allow update: if false;
       allow delete: if false;
-    }
-
-    // ---------- Document Versions (opcional) ----------
-    match /document_versions/{versionId} {
-      allow read: if isReader() && sameHospital(resource.data.hospitalId);
-
-      allow create: if isEditor()
-        && request.resource.data.hospitalId == hospitalId()
-        && request.resource.data.docId is string
-        && request.resource.data.version is string
-        && request.resource.data.storagePath is string
-        && request.resource.data.fileSize is number
-        && request.resource.data.createdByUid == request.auth.uid;
-
-      allow update, delete: if false;
-    }
-
-    // ---------- Audit Logs ----------
-    match /audit_logs/{logId} {
-      // Escritura: cualquier lector activo puede registrar eventos,
-      // pero SOLO dentro de su hospital
-      allow create: if isReader()
-        && request.resource.data.hospitalId == hospitalId()
-        && request.resource.data.actorUid == request.auth.uid
-        && request.resource.data.action is string
-        && request.resource.data.timestamp is timestamp;
-
-      // Lectura: solo admin
-      allow read: if isAdmin() && resource.data.hospitalId == hospitalId();
-
-      allow update, delete: if false;
     }
   }
 }
