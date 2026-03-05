@@ -8,6 +8,7 @@ export interface UserProfile {
   email: string;
   role: UserRole;
   hospitalId: string;
+  servicioId?: string;
   isActive: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;

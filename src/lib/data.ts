@@ -53,10 +53,10 @@ let mockDocuments: Documento[] = Array.from({ length: 28 }, (_, i) => {
 });
 
 let mockUsers: UserProfile[] = [
-    { uid: '1a2b3c', displayName: 'Director HC', email: 'director@hospital.cl', role: 'admin', hospitalId: 'hcurepto', isActive: true, createdAt: new Date() as any, updatedAt: new Date() as any },
-    { uid: '4d5e6f', displayName: 'Editor Contenidos', email: 'editor@hospital.cl', role: 'editor', hospitalId: 'hcurepto', isActive: true, createdAt: new Date() as any, updatedAt: new Date() as any },
-    { uid: '7g8h9i', displayName: 'Lector Calidad', email: 'lector@hospital.cl', role: 'lector', hospitalId: 'hcurepto', isActive: true, createdAt: new Date() as any, updatedAt: new Date() as any },
-    { uid: 'j1k2l3', displayName: 'Usuario Inactivo', email: 'inactivo@hospital.cl', role: 'lector', hospitalId: 'hcurepto', isActive: false, createdAt: new Date() as any, updatedAt: new Date() as any },
+    { uid: '1a2b3c', displayName: 'Director HC', email: 'director@hospital.cl', role: 'admin', hospitalId: 'hcurepto', servicioId: 'srv-dir', isActive: true, createdAt: new Date() as any, updatedAt: new Date() as any },
+    { uid: '4d5e6f', displayName: 'Editor Contenidos', email: 'editor@hospital.cl', role: 'editor', hospitalId: 'hcurepto', servicioId: 'srv-med', isActive: true, createdAt: new Date() as any, updatedAt: new Date() as any },
+    { uid: '7g8h9i', displayName: 'Lector Calidad', email: 'lector@hospital.cl', role: 'lector', hospitalId: 'hcurepto', servicioId: 'srv-cal', isActive: true, createdAt: new Date() as any, updatedAt: new Date() as any },
+    { uid: 'j1k2l3', displayName: 'Usuario Inactivo', email: 'inactivo@hospital.cl', role: 'lector', hospitalId: 'hcurepto', servicioId: 'srv-urg', isActive: false, createdAt: new Date() as any, updatedAt: new Date() as any },
 ];
 
 export async function getCatalogs(hospitalId: string): Promise<Catalogs> {
@@ -65,10 +65,17 @@ export async function getCatalogs(hospitalId: string): Promise<Catalogs> {
   return Promise.resolve(seedCatalogs);
 }
 
-export async function getDocuments(hospitalId: string): Promise<Documento[]> {
-  console.log(`Fetching documents for hospital: ${hospitalId}`);
-  // In a real app, this would be a Firestore query
-  return Promise.resolve(mockDocuments.filter(doc => !doc.isDeleted));
+export async function getDocuments(hospitalId: string, user: UserProfile): Promise<Documento[]> {
+  console.log(`Fetching documents for hospital: ${hospitalId} for user ${user.email}`);
+  // In a real app, this would be a Firestore query based on user role
+  const allDocs = mockDocuments.filter(doc => !doc.isDeleted && doc.hospitalId === hospitalId);
+
+  if (user.role === 'lector' && user.servicioId) {
+    return Promise.resolve(allDocs.filter(doc => doc.servicioId === user.servicioId));
+  }
+  
+  // Admins and Editors see all documents
+  return Promise.resolve(allDocs);
 }
 
 export async function getDocumentById(docId: string): Promise<Documento | undefined> {
