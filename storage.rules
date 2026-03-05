@@ -51,19 +51,20 @@ service firebase.storage {
     }
 
     // ----- Documentos -----
-    match /documentos/{hid}/{amb}/{car}/{pv}/{em}/{docId}/{fileName} {
+    // Matches any file within a hospital-specific folder.
+    match /documentos/{hid}/{allPaths=**} {
 
-      // Read: cualquier usuario lector del mismo hospital
+      // Read: any reader from the same hospital can read files.
       allow read: if isReader() && hid == hospitalId();
 
-      // Create: solo editor/admin del mismo hospital + validaciones
+      // Create: only editor/admin from the same hospital can upload.
       allow create: if isEditor()
         && hid == hospitalId()
         && isAllowedContentType()
         && underMaxSize();
 
-      // Update/Delete: restringir (recomendado: NO permitir update/delete en cliente)
-      // Si quieres reemplazo, súbelo como nueva versión (nuevo path) y actualiza Firestore.
+      // Update/Delete: Not allowed from client-side for data integrity.
+      // File replacement should be handled as a new version.
       allow update, delete: if false;
     }
   }

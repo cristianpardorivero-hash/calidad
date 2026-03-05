@@ -45,6 +45,9 @@ import { suggestDocumentMetadata } from "@/ai/flows/ai-metadata-suggester";
 import { Label } from "../ui/label";
 import { Checkbox } from "../ui/checkbox";
 import { ScrollArea } from "../ui/scroll-area";
+import { storage } from "@/lib/firebase";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -260,64 +263,79 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
         }
         setUploadProgress(0);
 
-        const progressInterval = setInterval(() => {
-          setUploadProgress((prev) => {
-            if (prev >= 95) {
-              clearInterval(progressInterval);
-              return prev;
+        const fileToUpload = values.file;
+        const storagePath = `documentos/${user.hospitalId}/${Date.now()}-${fileToUpload.name}`;
+        const storageRef = ref(storage, storagePath);
+        const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
+
+        uploadTask.on('state_changed',
+            (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                setUploadProgress(progress);
+            },
+            (error) => {
+                console.error("Upload failed", error);
+                toast({
+                    variant: "destructive",
+                    title: "Error de Subida",
+                    description: "No se pudo subir el archivo. Por favor, inténtalo de nuevo.",
+                });
+                setIsSubmitting(false);
+                setUploadProgress(0);
+            },
+            () => {
+                getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
+                    const { fechaVigenciaDesde, fechaVigenciaHasta, file, ...restValues } = values;
+                    const fileExt = fileToUpload.name.split(".").pop() as "pdf" | "docx" | "xlsx";
+
+                    const docData: Omit<Documento, 'id'|'createdAt'|'updatedAt'> = {
+                        ...restValues,
+                        hospitalId: user.hospitalId,
+                        fileName: fileToUpload.name,
+                        fileExt: fileExt,
+                        fileSize: fileToUpload.size,
+                        mimeType: fileToUpload.type,
+                        storagePath: storagePath, 
+                        downloadUrl: downloadURL,
+                        tags: values.tags?.split(",").map(t => t.trim()).filter(Boolean),
+                        createdByUid: firebaseUser.uid,
+                        createdByEmail: firebaseUser.email || 'N/A',
+                        isDeleted: false,
+                        searchKeywords: [values.titulo, values.responsableNombre, ...(values.tags?.split(",").map(t => t.trim()).filter(Boolean) || [])],
+                        ...(fechaVigenciaDesde && { fechaVigenciaDesde }),
+                        ...(fechaVigenciaHasta && { fechaVigenciaHasta }),
+                    };
+
+                    try {
+                        const savedDoc = await addDocument(docData);
+                        
+                        toast({
+                            title: "Documento subido con éxito",
+                            description: `El documento "${savedDoc.titulo}" ha sido guardado.`,
+                        });
+
+                        router.push(`/documentos/${savedDoc.id}`);
+
+                    } catch(e) {
+                        setIsSubmitting(false);
+                        console.error(e);
+                        toast({
+                            variant: "destructive",
+                            title: "Error al guardar",
+                            description: "No se pudo guardar la información del documento. Inténtalo de nuevo.",
+                        });
+                    }
+                }).catch((error) => {
+                    console.error("Failed to get download URL", error);
+                    toast({
+                        variant: "destructive",
+                        title: "Error de Subida",
+                        description: "No se pudo obtener la URL de descarga. Por favor, inténtalo de nuevo.",
+                    });
+                    setIsSubmitting(false);
+                });
             }
-            return prev + 5;
-          });
-        }, 200);
-
-        const fileExt = values.file.name.split(".").pop() as "pdf" | "docx" | "xlsx";
-        const storagePath = `documentos/${user.hospitalId}/${values.ambitoId}/${Date.now()}/${values.file.name}`;
-        
-        const { fechaVigenciaDesde, fechaVigenciaHasta, file, ...restValues } = values;
-
-        const docData: Omit<Documento, 'id'|'createdAt'|'updatedAt'|'downloadUrl'> = {
-            ...restValues,
-            hospitalId: user.hospitalId,
-            fileName: values.file.name,
-            fileExt: fileExt,
-            fileSize: values.file.size,
-            mimeType: values.file.type,
-            storagePath: storagePath, 
-            tags: values.tags?.split(",").map(t => t.trim()).filter(Boolean),
-            createdByUid: firebaseUser.uid,
-            createdByEmail: firebaseUser.email || 'N/A',
-            isDeleted: false,
-            searchKeywords: [values.titulo, values.responsableNombre, ...(values.tags?.split(",").map(t => t.trim()).filter(Boolean) || [])],
-            ...(fechaVigenciaDesde && { fechaVigenciaDesde }),
-            ...(fechaVigenciaHasta && { fechaVigenciaHasta }),
-        };
-
-        try {
-            const finalDoc = {...docData, downloadUrl: '#' };
-
-            const savedDoc = await addDocument(finalDoc);
-            
-            setUploadProgress(100);
-            clearInterval(progressInterval);
-            
-            toast({
-                title: "Documento subido con éxito",
-                description: `El documento "${savedDoc.titulo}" ha sido guardado.`,
-            });
-
-            router.push(`/documentos/${savedDoc.id}`);
-
-        } catch(e) {
-            setIsSubmitting(false);
-            setUploadProgress(0);
-            clearInterval(progressInterval);
-            console.error(e);
-            toast({
-                variant: "destructive",
-                title: "Error al subir",
-                description: "No se pudo guardar el documento. Inténtalo de nuevo.",
-            });
-        }
+        );
     }
   }
 
@@ -485,7 +503,7 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
                 <CardHeader>
                     <CardTitle>Vinculación de Documento</CardTitle>
                     <CardDescription>
-                        Si este documento es una pauta o indicador, selecciona el documento principal que verifica. Los documentos se filtran por la clasificación de acreditación seleccionada.
+                        Si este documento es una pauta, indicador o similar, selecciona el documento principal que verifica. Los documentos se filtran por la clasificación de acreditación seleccionada.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

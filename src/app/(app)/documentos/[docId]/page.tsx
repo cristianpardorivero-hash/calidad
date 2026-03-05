@@ -140,21 +140,28 @@ export default function DocumentoDetailPage() {
   };
 
   const renderPDF = (url: string) => {
-    // In a real app, `url` would be a secure download URL from Firebase Storage
-    // For this mock, we can't embed a PDF.
+    if (url === '#') {
+      return (
+        <div className="flex h-full min-h-[600px] w-full flex-col items-center justify-center rounded-lg border border-dashed bg-muted/50">
+          <FileText className="h-16 w-16 text-muted-foreground" />
+          <p className="mt-4 text-center text-muted-foreground">
+            El archivo de este documento aún no está disponible para previsualización.
+          </p>
+          <Button asChild className="mt-4" disabled>
+            <a>
+              <Download className="mr-2 h-4 w-4" /> Descargar PDF
+            </a>
+          </Button>
+        </div>
+      );
+    }
+
     return (
-      <div className="flex h-full min-h-[600px] w-full flex-col items-center justify-center rounded-lg border border-dashed bg-muted/50">
-        <FileText className="h-16 w-16 text-muted-foreground" />
-        <p className="mt-4 text-center text-muted-foreground">
-          La previsualización de PDF no está disponible en este entorno de
-          demostración.
-        </p>
-        <Button asChild className="mt-4">
-          <a href={url} download={document.fileName}>
-            <Download className="mr-2 h-4 w-4" /> Descargar PDF
-          </a>
-        </Button>
-      </div>
+      <iframe
+        src={url}
+        className="h-[800px] w-full rounded-lg border"
+        title={document.titulo}
+      />
     );
   };
   
@@ -192,8 +199,8 @@ export default function DocumentoDetailPage() {
           <p className="max-w-prose text-muted-foreground">{document.descripcion}</p>
         </div>
         <div className="flex flex-shrink-0 gap-2">
-          <Button variant="outline"><Edit className="mr-2 h-4 w-4" /> Editar</Button>
-          <Button><Download className="mr-2 h-4 w-4" /> Descargar</Button>
+          <Button variant="outline" asChild><Link href={`/documentos/${document.id}/editar`}><Edit className="mr-2 h-4 w-4" /> Editar</Link></Button>
+          <Button asChild><a href={document.downloadUrl} download={document.fileName}><Download className="mr-2 h-4 w-4" /> Descargar</a></Button>
           <Button variant="destructive" className="hidden sm:inline-flex"><Trash2 className="mr-2 h-4 w-4" /> Eliminar</Button>
         </div>
       </div>
