@@ -25,6 +25,7 @@ import {
   Info,
   ClipboardCheck,
   Link as LinkIcon,
+  Eye,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -246,11 +247,18 @@ export default function DocumentoDetailPage() {
                               <span className="text-xs text-muted-foreground">v{pauta.version}</span>
                           </div>
                       </div>
-                      <Button variant="ghost" size="icon" asChild>
-                          <a href={pauta.downloadUrl} download={pauta.fileName}>
-                              <Download className="h-4 w-4" />
-                          </a>
-                      </Button>
+                      <div className="flex items-center">
+                          <Button variant="ghost" size="icon" asChild>
+                              <Link href={`/documentos/${pauta.id}`} title="Ver documento">
+                                  <Eye className="h-4 w-4" />
+                              </Link>
+                          </Button>
+                          <Button variant="ghost" size="icon" asChild>
+                              <a href={pauta.downloadUrl} download={pauta.fileName} title="Descargar archivo">
+                                  <Download className="h-4 w-4" />
+                              </a>
+                          </Button>
+                      </div>
                   </div>
               ))}
               </CardContent>
@@ -271,11 +279,18 @@ export default function DocumentoDetailPage() {
                               <span className="text-xs text-muted-foreground">v{mainDocument.version}</span>
                           </div>
                       </div>
-                      <Button variant="ghost" size="icon" asChild>
-                          <a href={mainDocument.downloadUrl} download={mainDocument.fileName}>
-                              <Download className="h-4 w-4" />
-                          </a>
-                      </Button>
+                      <div className="flex items-center">
+                          <Button variant="ghost" size="icon" asChild>
+                              <Link href={`/documentos/${mainDocument.id}`} title="Ver documento">
+                                  <Eye className="h-4 w-4" />
+                              </Link>
+                          </Button>
+                          <Button variant="ghost" size="icon" asChild>
+                              <a href={mainDocument.downloadUrl} download={mainDocument.fileName} title="Descargar archivo">
+                                  <Download className="h-4 w-4" />
+                              </a>
+                          </Button>
+                      </div>
                   </div>
                   </CardContent>
               </Card>
