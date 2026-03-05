@@ -2,6 +2,7 @@ import { CatalogManager } from "@/components/admin/catalog-manager";
 import { getCatalogs } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
+import Link from "next/link";
 
 export default async function AdminCatalogsPage() {
     const hospitalId = "hcurepto";
@@ -16,8 +17,10 @@ export default async function AdminCatalogsPage() {
                         Administra las opciones de clasificación para los documentos.
                     </p>
                 </div>
-                <Button>
-                    <PlusCircle className="mr-2 h-4 w-4"/> Añadir Nuevo
+                <Button asChild>
+                    <Link href="/admin/catalogos/nuevo">
+                        <PlusCircle className="mr-2 h-4 w-4"/> Añadir Nuevo
+                    </Link>
                 </Button>
             </div>
             <CatalogManager catalogs={catalogs} />

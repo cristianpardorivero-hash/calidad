@@ -1,6 +1,6 @@
 import type { Catalogs } from "./types";
 
-export const seedCatalogs: Catalogs = {
+export let seedCatalogs: Catalogs = {
   "ambitos": [
     { "id": "amb-dp", "nombre": "Dignidad del Paciente", "orden": 1 },
     { "id": "amb-gcl", "nombre": "Gestión Clínica", "orden": 2 },

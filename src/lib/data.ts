@@ -155,3 +155,18 @@ export async function addDocument(doc: Omit<Documento, 'id' | 'createdAt' | 'upd
     mockDocuments.unshift(newDoc);
     return Promise.resolve(newDoc);
 }
+
+export async function addCatalogItem(catalogName: keyof Catalogs, itemData: any): Promise<any> {
+    const catalog = seedCatalogs[catalogName] as any[];
+    const newId = `${catalogName.substring(0, 3)}-${Date.now()}`;
+    const newItem = {
+        ...itemData,
+        id: newId,
+    };
+    catalog.unshift(newItem);
+    // Sort by order if it exists
+    if ('orden' in newItem) {
+        catalog.sort((a, b) => a.orden - b.orden);
+    }
+    return Promise.resolve(newItem);
+}
