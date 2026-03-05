@@ -45,7 +45,7 @@ import { suggestDocumentMetadata } from "@/ai/flows/ai-metadata-suggester";
 import { Label } from "../ui/label";
 import { Checkbox } from "../ui/checkbox";
 import { ScrollArea } from "../ui/scroll-area";
-import { storage } from "@/lib/firebase";
+import { auth, storage } from "@/lib/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 
@@ -261,6 +261,12 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
             setIsSubmitting(false);
             return;
         }
+
+        console.log("--- DEBUG CHECK ---");
+        console.log("AUTH uid:", auth.currentUser?.uid);
+        console.log("STORAGE BUCKET:", storage.app.options.storageBucket);
+        console.log("--- END DEBUG CHECK ---");
+
         setUploadProgress(0);
 
         const fileToUpload = values.file;
