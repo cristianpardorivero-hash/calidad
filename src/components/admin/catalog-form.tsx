@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Catalogs } from "@/lib/types";
@@ -67,6 +68,8 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
+  
+  const { reset } = form;
 
   useEffect(() => {
     if (isEditing && item) {
@@ -88,11 +91,11 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
                 defaultValues.ambitoId = caracteristica.ambitoId;
             }
         }
-        form.reset(defaultValues);
+        reset(defaultValues);
     } else {
-        form.reset({ catalogType: undefined, nombre: '', codigo: '', orden: undefined, ambitoId: undefined, caracteristicaId: undefined, puntoVerificacionId: undefined });
+        reset({ catalogType: undefined, nombre: '', codigo: '', orden: undefined, ambitoId: undefined, caracteristicaId: undefined, puntoVerificacionId: undefined });
     }
-  }, [item, isEditing, catalogs, form]);
+  }, [item, isEditing, catalogs, reset]);
   
   const catalogType = form.watch("catalogType");
   const ambitoIdForFilter = form.watch("ambitoId" as any);
