@@ -3,68 +3,70 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
+    // Helper functions to read user data from Firestore
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function userPath() {
-      return /databases/(default)/documents/users/$(request.auth.uid);
+    function getUserData() {
+      // Path to the user's profile document in Firestore
+      let userDocPath = /databases/(default)/documents/users/$(request.auth.uid);
+      // Get the document data
+      return get(userDocPath).data;
     }
 
-    function userExists() {
-      return isSignedIn() && exists(userPath());
-    }
-
-    function userData() {
-      return get(userPath()).data;
-    }
-
+    // Checks if the user's profile exists and is active
     function isActive() {
-      return userExists() && userData().isActive == true;
+      return isSignedIn() && exists(/databases/(default)/documents/users/$(request.auth.uid)) && getUserData().isActive == true;
     }
 
-    function role() {
-      return userData().role;
+    // Gets the user's role from their Firestore document
+    function getRole() {
+      return getUserData().role;
     }
 
-    function hospitalId() {
-      return userData().hospitalId;
+    // Gets the user's hospital ID from their Firestore document
+    function getHospitalId() {
+      return getUserData().hospitalId;
     }
 
+    // Checks if the user has at least read permissions
     function isReader() {
-      return isActive() && (role() == "lector" || role() == "editor" || role() == "admin");
+      return isActive() && getRole() in ['lector', 'editor', 'admin'];
     }
-
+    
+    // Checks if the user has write permissions
     function isEditor() {
-      return isActive() && (role() == "editor" || role() == "admin");
+      return isActive() && getRole() in ['editor', 'admin'];
     }
 
+    // Validates the content type of the uploaded file
     function isAllowedContentType() {
       return request.resource.contentType == "application/pdf"
         || request.resource.contentType == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         || request.resource.contentType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     }
 
-    function underMaxSize() {
-      // 25 MB
+    // Validates the file size (e.g., max 25MB)
+    function isUnderMaxSize() {
       return request.resource.size < 25 * 1024 * 1024;
     }
 
-    // ----- Documentos -----
-    // Matches any file within a hospital-specific folder.
+    // Match the path where documents are stored: /documentos/{hospitalId}/...
     match /documentos/{hid}/{allPaths=**} {
 
-      // Read: any reader from the same hospital can read files.
-      allow read: if isReader() && hid == hospitalId();
+      // READ access is granted if the user is a reader and belongs to the hospital (`hid`) specified in the path.
+      allow read: if isReader() && hid == getHospitalId();
 
-      // Create: only editor/admin from the same hospital can upload.
+      // CREATE (upload) access is granted if the user is an editor/admin, belongs to the correct hospital,
+      // and the file meets content type and size constraints.
       allow create: if isEditor()
-        && hid == hospitalId()
+        && hid == getHospitalId()
         && isAllowedContentType()
-        && underMaxSize();
-
-      // Update/Delete: Not allowed from client-side for data integrity.
-      // File replacement should be handled as a new version.
+        && isUnderMaxSize();
+        
+      // UPDATE and DELETE are disallowed from the client to protect file integrity.
+      // File changes should be handled as new uploads/versions.
       allow update, delete: if false;
     }
   }
