@@ -34,11 +34,13 @@ import { useAuth } from "@/hooks/use-auth";
 import type { Catalogs, Documento } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
+import { storage } from "@/lib/firebase";
+import { ref, getBlob } from "firebase/storage";
 
 export default function DocumentoDetailPage() {
   const params = useParams();
   const docId = params.docId as string;
-  const { user } = useAuth();
+  const { user, firebaseUser } = useAuth();
 
   const [document, setDocument] = useState<Documento | null>(null);
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
@@ -46,15 +48,19 @@ export default function DocumentoDetailPage() {
   const [mainDocument, setMainDocument] = useState<Documento | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
 
   useEffect(() => {
-    if (user && docId) {
+    let objectUrl: string | null = null;
+    
+    if (user && docId && firebaseUser) {
       const fetchData = async () => {
         setLoading(true);
         setError(null);
         setLinkedDocuments([]);
         setMainDocument(null);
+        setPreviewUrl(null);
         try {
           const [docData, catalogsData] = await Promise.all([
             getDocumentById(docId),
@@ -69,6 +75,21 @@ export default function DocumentoDetailPage() {
 
           setDocument(docData);
           setCatalogs(catalogsData);
+
+          // Create a secure, local URL for the PDF preview
+          if (docData.fileExt === 'pdf' && docData.storagePath) {
+            try {
+              const storageRef = ref(storage, docData.storagePath);
+              const blob = await getBlob(storageRef);
+              objectUrl = URL.createObjectURL(blob);
+              setPreviewUrl(objectUrl);
+            } catch (e: any) {
+              console.error("Error creating PDF preview:", e);
+              if (e.code === 'storage/unauthorized') {
+                setError("No tienes permiso para ver este archivo. Contacta al administrador.");
+              }
+            }
+          }
 
           // Now fetch linked documents based on the docData
           const [linkedDocumentsData, mainDocData] = await Promise.all([
@@ -87,11 +108,16 @@ export default function DocumentoDetailPage() {
         }
       };
       fetchData();
-    } else if (!user) {
-      // still waiting for user auth state
+    } else if (!user && !firebaseUser) {
       setLoading(true);
     }
-  }, [user, docId]);
+
+    return () => {
+        if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+        }
+    }
+  }, [user, docId, firebaseUser]);
 
   if (loading) {
     return (
@@ -121,7 +147,7 @@ export default function DocumentoDetailPage() {
     );
   }
 
-  if (error) {
+  if (error && !document) { // only show full page error if doc fails to load
     return <div className="text-center text-destructive">{error}</div>;
   }
   
@@ -139,16 +165,17 @@ export default function DocumentoDetailPage() {
     return servicioIds.map(id => getCatalogName("servicios", id)).join(", ");
   };
 
-  const renderPDF = (url: string) => {
-    if (url === '#') {
+  const renderPDF = (url: string | null) => {
+    if (!url || error) { // Also check for general error
       return (
-        <div className="flex h-full min-h-[600px] w-full flex-col items-center justify-center rounded-lg border border-dashed bg-muted/50">
+        <div className="flex h-full min-h-[600px] w-full flex-col items-center justify-center rounded-lg border border-dashed bg-muted/50 p-4">
           <FileText className="h-16 w-16 text-muted-foreground" />
-          <p className="mt-4 text-center text-muted-foreground">
-            El archivo de este documento aún no está disponible para previsualización.
+          <p className="mt-4 text-center font-semibold text-muted-foreground">
+            No se pudo cargar la previsualización del PDF.
           </p>
-          <Button asChild className="mt-4" disabled>
-            <a>
+          {error && <p className="mt-2 text-center text-sm text-destructive">{error}</p>}
+          <Button asChild className="mt-4" disabled={!document.downloadUrl}>
+            <a href={document.downloadUrl}>
               <Download className="mr-2 h-4 w-4" /> Descargar PDF
             </a>
           </Button>
@@ -212,7 +239,7 @@ export default function DocumentoDetailPage() {
             <Card className="h-full">
                 <CardHeader><CardTitle>Previsualización del Documento</CardTitle></CardHeader>
                 <CardContent>
-                    {document.fileExt === "pdf" ? renderPDF(document.downloadUrl) : renderOther(document.downloadUrl)}
+                    {document.fileExt === "pdf" ? renderPDF(previewUrl) : renderOther(document.downloadUrl)}
                 </CardContent>
             </Card>
         </div>
