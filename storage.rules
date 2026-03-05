@@ -2,21 +2,32 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // WARNING: TEMPORARY DEBUGGING RULES
-    // These rules are insecure and are for diagnostic purposes only.
-    match /documentos/{hospitalId}/{allPaths=**} {
-      
-      // Temporarily allow any authenticated user to read.
-      allow read: if request.auth != null;
 
-      // Temporarily allow any authenticated user to write, only checking file size and type.
-      // This is to test if the Firestore 'get()' call is the source of the error.
+    function getUserData() {
+      // Directly access the user's document in Firestore.
+      return get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    match /documentos/{hospitalId}/{allPaths=**} {
+      // Allow reads if the user is authenticated and belongs to the hospital specified in the path.
+      allow read: if request.auth != null &&
+                     getUserData().hospitalId == hospitalId;
+      
+      // Allow creates (uploads) if:
+      // 1. The user is authenticated.
+      // 2. Their role is 'admin' or 'editor'.
+      // 3. Their hospitalId matches the one in the path they're trying to write to.
+      // 4. The file is under 25MB.
+      // 5. The file type is one of the allowed types.
       allow create: if request.auth != null &&
+                       getUserData().role in ['admin', 'editor'] &&
+                       getUserData().hospitalId == hospitalId &&
                        request.resource.size < 25 * 1024 * 1024 &&
                        (request.resource.contentType == 'application/pdf' ||
                         request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
                         request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        
+      
+      // Disallow updates and deletes from the client for data integrity.
       allow update, delete: if false;
     }
   }
