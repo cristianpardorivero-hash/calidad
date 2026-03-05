@@ -34,15 +34,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setFirebaseUser(fbUser);
       if (fbUser) {
         setLoading(true);
-        try {
-          const profile = await getUserProfile(fbUser.uid);
-          setUser(profile);
-        } catch(e) {
-          console.error("Error fetching user profile", e);
-          setUser(null);
-        } finally {
-          setLoading(false);
+        let profile = await getUserProfile(fbUser.uid);
+
+        // If the user exists in Auth but not in Firestore, create their profile.
+        // This handles the case of the very first user signing up.
+        if (!profile) {
+          try {
+             profile = await createUserProfile(fbUser.uid, {
+              displayName: fbUser.email?.split('@')[0] || "Nuevo Usuario",
+              email: fbUser.email || "",
+              role: 'admin', // First user is an admin
+              hospitalId: 'hcurepto',
+              isActive: true,
+            });
+          } catch (e) {
+            console.error("Failed to create user profile automatically", e);
+          }
         }
+        
+        setUser(profile);
+        setLoading(false);
+
       } else {
         setUser(null);
         setLoading(false);
@@ -54,49 +66,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, pass: string) => {
     try {
+      // Try to sign in first
       await signInWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will handle setting user state and loading state
+      // onAuthStateChanged will handle the rest
     } catch (error: any) {
-      if (error.code === 'auth/invalid-credential') {
+      // If user does not exist, create them
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
         try {
-          const userCredential = await createUserWithEmailAndPassword(
-            auth,
-            email,
-            pass
-          );
-          const { user: fbUser } = userCredential;
-
-          if (fbUser) {
-            await createUserProfile(fbUser.uid, {
-              id: fbUser.uid,
-              displayName: email.split('@')[0],
-              email: email,
-              role: 'admin', 
-              hospitalId: 'hcurepto',
-              isActive: true,
-            });
-             // onAuthStateChanged will handle setting the user state.
-          }
-        } catch (creationError: any) {
-          console.error(
-            'User creation failed after sign-in failed:',
-            creationError
-          );
-          // Re-throw the CREATION error to be caught by the form
-          throw creationError;
+          await createUserWithEmailAndPassword(auth, email, pass);
+          // onAuthStateChanged will fire and handle creating the profile.
+        } catch (creationError) {
+          console.error("Account creation failed:", creationError);
+          throw creationError; // Let the form handle the error
         }
       } else {
-        console.error('Sign-in error:', error);
-        // If the error is something else (e.g., network error), re-throw it.
-        throw error;
+        console.error("Sign-in failed:", error);
+        throw error; // Let the form handle the error
       }
     }
   };
 
   const logout = async () => {
     await signOut(auth);
-    setUser(null);
-    setFirebaseUser(null);
+    // onAuthStateChanged will handle clearing user and firebaseUser state.
   };
 
   const value = { user, firebaseUser, loading, login, logout };
