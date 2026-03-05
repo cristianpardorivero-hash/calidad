@@ -3,21 +3,40 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    function isEditor() {
-      return get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'editor'];
-    }
+    // This rule governs access to all files within the 'documentos' folder.
+    // The path is structured as /documentos/{hospitalId}/... where {hospitalId}
+    // is a wildcard matching the specific hospital's folder.
+    match /documentos/{hospitalId}/{allPaths=**} {
+      
+      /**
+       * READ permission:
+       * Allows a user to read (download/view) a file if:
+       * 1. They are signed in (request.auth != null).
+       * 2. Their hospitalId (from their Firestore user profile) matches the
+       *    {hospitalId} from the file path they are trying to access.
+       */
+      allow read: if request.auth != null &&
+                     get(/databases/(default)/documents/users/$(request.auth.uid)).data.hospitalId == hospitalId;
 
-    function getHospitalId() {
-       return get(/databases/(default)/documents/users/$(request.auth.uid)).data.hospitalId;
-    }
-
-    match /documentos/{hid}/{allPaths=**} {
-      // Temporarily simplify read access as well for debugging
-      allow read: if request.auth != null && hid == getHospitalId();
-
-      // The simplified create rule for debugging
-      allow create: if isEditor() && hid == getHospitalId();
+      /**
+       * CREATE permission:
+       * Allows a user to create (upload) a file if all the following conditions are met:
+       * 1. They are signed in.
+       * 2. Their hospitalId from their Firestore user profile matches the {hospitalId}
+       *    in the upload path. This ensures users can only upload to their own hospital's folder.
+       * 3. Their role in their Firestore user profile is either 'admin' or 'editor'.
+       * 4. The size of the file being uploaded is less than 25MB.
+       * 5. The content type of the file is one of the allowed types (pdf, docx, xlsx).
+       */
+      allow create: if request.auth != null &&
+                       get(/databases/(default)/documents/users/$(request.auth.uid)).data.hospitalId == hospitalId &&
+                       get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'editor'] &&
+                       request.resource.size < 25 * 1024 * 1024 &&
+                       (request.resource.contentType.matches('application/pdf') ||
+                        request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.wordprocessingml.document') ||
+                        request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'));
         
+      // UPDATE and DELETE are disallowed from the client to prevent accidental data loss or modification.
       allow update, delete: if false;
     }
   }
