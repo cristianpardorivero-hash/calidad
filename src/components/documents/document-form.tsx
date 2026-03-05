@@ -103,7 +103,8 @@ export function DocumentForm({ catalogs, documents }: { catalogs: Catalogs, docu
   const elementoMedibleId = form.watch("elementoMedibleId");
 
   const pautaDeCotejoId = React.useMemo(() => {
-    return catalogs.tiposDocumento.find(td => td.nombre.toLowerCase() === 'pauta de cotejo')?.id;
+    const pautaNames = ['pauta de cotejo', 'pauta de evaluacion'];
+    return catalogs.tiposDocumento.find(td => pautaNames.includes(td.nombre.toLowerCase()))?.id;
   }, [catalogs.tiposDocumento]);
 
   const isPautaDeCotejo = tipoDocumentoId === pautaDeCotejoId;
