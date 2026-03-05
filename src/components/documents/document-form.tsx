@@ -263,7 +263,10 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
         }
 
         console.log("--- DEBUG CHECK ---");
+        console.log("AUTH app name:", auth.app.name);
+        console.log("STORAGE app name:", storage.app.name);
         console.log("AUTH uid:", auth.currentUser?.uid);
+        console.log("HOOK uid:", firebaseUser.uid);
         console.log("STORAGE BUCKET:", storage.app.options.storageBucket);
         console.log("--- END DEBUG CHECK ---");
 

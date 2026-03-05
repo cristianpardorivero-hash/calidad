@@ -2,23 +2,28 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-
     match /documentos/{hospitalId}/{allPaths=**} {
       
-      // Allow reads if the user is a member of the hospital
-      allow read: if request.auth != null && 
-                     get(/databases/(default)/documents/users/$(request.auth.uid)).data.hospitalId == hospitalId;
-      
-      // Allow creates (uploads) for admins or editors of the correct hospital
-      allow create: if request.auth != null &&
-                       get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'editor'] &&
-                       get(/databases/(default)/documents/users/$(request.auth.uid)).data.hospitalId == hospitalId &&
-                       request.resource.size < 25 * 1024 * 1024 &&
-                       (request.resource.contentType == 'application/pdf' ||
-                        request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-                        request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      
-      // Disallow updates and deletes from the client for data integrity
+      function isUserFromHospital() {
+        return request.auth != null &&
+               exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.hospitalId == hospitalId;
+      }
+
+      function canUpload() {
+          let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
+          return request.auth != null &&
+                 exists(userDocPath) &&
+                 get(userDocPath).data.role in ['admin', 'editor'] &&
+                 get(userDocPath).data.hospitalId == hospitalId &&
+                 request.resource.size < 25 * 1024 * 1024 &&
+                 (request.resource.contentType == 'application/pdf' ||
+                  request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                  request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      }
+
+      allow read: if isUserFromHospital();
+      allow create: if canUpload();
       allow update, delete: if false;
     }
   }
