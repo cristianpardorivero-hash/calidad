@@ -1,6 +1,4 @@
-
-
-"use client";
+'use client';
 
 import type { Catalogs, Documento } from "@/lib/types";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -102,12 +100,14 @@ export function DocumentForm({ catalogs, documents }: { catalogs: Catalogs, docu
   const caracteristicaId = form.watch("caracteristicaId");
   const elementoMedibleId = form.watch("elementoMedibleId");
 
-  const pautaDeCotejoId = React.useMemo(() => {
-    const pautaNames = ['pauta de cotejo', 'pauta de evaluacion'];
-    return catalogs.tiposDocumento.find(td => pautaNames.includes(td.nombre.toLowerCase()))?.id;
+  const linkableDocTypeIds = React.useMemo(() => {
+    const linkableNames = ['pauta de cotejo', 'pauta de evaluacion', 'indicador'];
+    return catalogs.tiposDocumento
+      .filter(td => linkableNames.includes(td.nombre.toLowerCase()))
+      .map(td => td.id);
   }, [catalogs.tiposDocumento]);
 
-  const isPautaDeCotejo = tipoDocumentoId === pautaDeCotejoId;
+  const isLinkableDocType = tipoDocumentoId ? linkableDocTypeIds.includes(tipoDocumentoId) : false;
 
   const filteredCaracteristicas = React.useMemo(() => {
     if (!ambitoId) return [];
@@ -118,13 +118,15 @@ export function DocumentForm({ catalogs, documents }: { catalogs: Catalogs, docu
     if (!caracteristicaId) return [];
     return catalogs.elementosMedibles.filter((e) => e.caracteristicaId === caracteristicaId);
   }, [caracteristicaId, catalogs.elementosMedibles]);
+  
+  const hasClassification = ambitoId || caracteristicaId || elementoMedibleId;
 
   const linkableDocuments = React.useMemo(() => {
     if (!documents) return [];
 
-    let filtered = documents.filter(doc => doc.tipoDocumentoId !== pautaDeCotejoId);
+    let filtered = documents.filter(doc => !linkableDocTypeIds.includes(doc.tipoDocumentoId));
 
-    if (!ambitoId && !caracteristicaId && !elementoMedibleId) {
+    if (!hasClassification) {
         return [];
     }
 
@@ -139,11 +141,8 @@ export function DocumentForm({ catalogs, documents }: { catalogs: Catalogs, docu
     }
 
     return filtered;
-  }, [documents, ambitoId, caracteristicaId, elementoMedibleId, pautaDeCotejoId]);
+  }, [documents, ambitoId, caracteristicaId, elementoMedibleId, linkableDocTypeIds, hasClassification]);
   
-  const hasClassification = ambitoId || caracteristicaId || elementoMedibleId;
-
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -428,12 +427,12 @@ export function DocumentForm({ catalogs, documents }: { catalogs: Catalogs, docu
           </CardContent>
         </Card>
 
-        {isPautaDeCotejo && (
+        {isLinkableDocType && (
             <Card>
                 <CardHeader>
                     <CardTitle>Vinculación de Documento</CardTitle>
                     <CardDescription>
-                        Si este documento es una pauta de cotejo, selecciona el documento principal que verifica. Los documentos se filtran por la clasificación de acreditación seleccionada.
+                        Si este documento es una pauta o indicador, selecciona el documento principal que verifica. Los documentos se filtran por la clasificación de acreditación seleccionada.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
