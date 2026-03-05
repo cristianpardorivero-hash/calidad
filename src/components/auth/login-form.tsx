@@ -13,9 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "../ui/skeleton";
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg viewBox="0 0 48 48" {...props}>
@@ -28,30 +29,61 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export function LoginForm() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState("director@hospital.cl");
   const [password, setPassword] = useState("password");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.push("/dashboard");
+    }
+  }, [user, authLoading, router]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await login(email, password); 
-      router.push("/dashboard");
+      await login(email, password);
+      // No router.push here. The useEffect will handle it.
     } catch (error: any) {
         console.error(error);
         toast({
             variant: "destructive",
             title: "Error de inicio de sesión",
-            description: error.message || "Ocurrió un error. Por favor, inténtalo de nuevo."
+            description: "No se pudo iniciar sesión. " + error.message,
         })
     } finally {
         setIsLoading(false);
     }
   };
+
+  // While auth state is loading, or if user is already logged in, show a loader/skeleton
+  if (authLoading || user) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-8 w-3/5" />
+          <Skeleton className="h-4 w-4/5" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <div className="space-y-2">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="space-y-2">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-10 w-full" />
+            </div>
+        </CardContent>
+        <CardFooter className="flex flex-col gap-4">
+            <Skeleton className="h-10 w-full" />
+        </CardFooter>
+      </Card>
+    )
+  }
 
   return (
     <Card>

@@ -78,10 +78,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             'User creation failed after sign-in failed:',
             creationError
           );
+          setLoading(false);
           // Re-throw the CREATION error to be caught by the form
           throw creationError;
         }
       } else {
+        setLoading(false);
         // If the error is something else (e.g., network error), re-throw it.
         throw error;
       }
