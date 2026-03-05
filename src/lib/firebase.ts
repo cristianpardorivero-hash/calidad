@@ -14,4 +14,4 @@ if (!getApps().length) {
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
+export const storage = getStorage(app, "gs://studio-2230611052-d47e4.firebasestorage.app");
