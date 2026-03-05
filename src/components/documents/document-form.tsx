@@ -273,9 +273,6 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
         const storagePath = `documentos/${user.hospitalId}/${Date.now()}-${fileToUpload.name}`;
         const storageRef = ref(storage, storagePath);
         
-        console.log("DEBUG: Iniciando subida de archivo. Usuario:", { uid: user.uid, email: user.email, hospitalId: user.hospitalId, role: user.role });
-        console.log("DEBUG: Ruta de almacenamiento de destino:", storagePath);
-        
         const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
 
         uploadTask.on('state_changed',
@@ -294,10 +291,7 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
                 setUploadProgress(0);
             },
             () => {
-                console.log("DEBUG: Subida a Storage completada. Obteniendo URL de descarga...");
                 getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
-                    console.log("DEBUG: URL de descarga obtenida:", downloadURL);
-                    console.log("DEBUG: Intentando guardar metadatos en Firestore...");
 
                     const { fechaVigenciaDesde, fechaVigenciaHasta, file, ...restValues } = values;
                     const fileExt = fileToUpload.name.split(".").pop() as "pdf" | "docx" | "xlsx";

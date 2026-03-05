@@ -3,45 +3,22 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Helper functions to improve readability
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function getUserDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
-    function userExists() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
-    function isAllowedToUpload(hospitalId) {
-      let userData = getUserDoc().data;
-      let isRoleOk = userData.role in ['admin', 'editor'];
-      let isHospitalOk = userData.hospitalId == hospitalId;
-      let isValidSize = request.resource.size < 25 * 1024 * 1024;
-      let isValidType = request.resource.contentType == 'application/pdf' ||
-                        request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-                        request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-      
-      return isSignedIn() && userExists() && isRoleOk && isHospitalOk && isValidSize && isValidType;
-    }
-    
-    function canRead(hospitalId) {
-      return isSignedIn() && userExists() && getUserDoc().data.hospitalId == hospitalId;
-    }
-
-    // Match document paths for the application
     match /documentos/{hospitalId}/{allPaths=**} {
       
-      // Allow reads only if the user is signed in and belongs to the correct hospital.
-      allow read: if canRead(hospitalId);
+      // Allow reads if the user is a member of the hospital
+      allow read: if request.auth != null && 
+                     get(/databases/(default)/documents/users/$(request.auth.uid)).data.hospitalId == hospitalId;
       
-      // Allow creates (uploads) based on a comprehensive set of conditions.
-      allow create: if isAllowedToUpload(hospitalId);
+      // Allow creates (uploads) for admins or editors of the correct hospital
+      allow create: if request.auth != null &&
+                       get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'editor'] &&
+                       get(/databases/(default)/documents/users/$(request.auth.uid)).data.hospitalId == hospitalId &&
+                       request.resource.size < 25 * 1024 * 1024 &&
+                       (request.resource.contentType == 'application/pdf' ||
+                        request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                        request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       
-      // Disallow updates and deletes from the client for data integrity.
+      // Disallow updates and deletes from the client for data integrity
       allow update, delete: if false;
     }
   }
