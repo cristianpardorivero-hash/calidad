@@ -10,12 +10,16 @@ service firebase.storage {
 
     function getUserData() {
       // Path to the user's profile document in Firestore
-      return get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function userDocExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
     // Checks if the user's profile exists and is active
     function isActive() {
-      return isSignedIn() && exists(/databases/(default)/documents/users/$(request.auth.uid)) && getUserData().isActive == true;
+      return isSignedIn() && userDocExists() && getUserData().isActive == true;
     }
 
     // Gets the user's role from their Firestore document
