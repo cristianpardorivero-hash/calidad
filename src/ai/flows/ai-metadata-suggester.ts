@@ -13,7 +13,7 @@ import {z} from 'genkit';
 const CatalogsSchema = z.object({
   ambitos: z.array(z.object({ id: z.string(), nombre: z.string(), orden: z.number() })).describe('List of accreditation ambitos.'),
   caracteristicas: z.array(z.object({ id: z.string(), ambitoId: z.string(), nombre: z.string(), orden: z.number() })).describe('List of accreditation caracteristicas.'),
-  puntosVerificacion: z.array(z.object({ id: z.string(), caracteristicaId: z.string(), codigo: z.string(), nombre: z.string(), orden: z.number() })).describe('List of accreditation puntos de verificacion.'),
+  puntosVerificacion: z.array(z.object({ id: z.string(), codigo: z.string(), nombre: z.string(), orden: z.number() })).describe('List of accreditation puntos de verificacion.'),
   elementosMedibles: z.array(z.object({ id: z.string(), puntoVerificacionId: z.string(), codigo: z.string(), nombre: z.string(), orden: z.number() })).describe('List of accreditation elementos medibles.'),
   tiposDocumento: z.array(z.object({ id: z.string(), nombre: z.string() })).describe('List of available document types.'),
   servicios: z.array(z.object({ id: z.string(), nombre: z.string() })).describe('List of hospital services.'),

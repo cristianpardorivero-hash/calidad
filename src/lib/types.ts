@@ -39,7 +39,6 @@ export interface Caracteristica {
 
 export interface PuntoVerificacion {
   id: string;
-  caracteristicaId: string;
   codigo: string;
   nombre: string;
   orden: number;

@@ -162,15 +162,11 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "PuntoVerificacion",
       "type": "object",
-      "description": "Represents a 'Punto de Verificación' (Verification Point), a sub-category under a 'Característica' in the hierarchical accreditation classification system, configurable per hospital.",
+      "description": "Represents a 'Punto de Verificación' (Verification Point), an item in the accreditation classification system, configurable per hospital.",
       "properties": {
         "id": {
           "type": "string",
           "description": "Unique identifier for the PuntoVerificacion entity."
-        },
-        "caracteristicaId": {
-          "type": "string",
-          "description": "Reference to the Caracteristica this PuntoVerificacion belongs to. (Relationship: Caracteristica 1:N PuntoVerificacion)"
         },
         "hospitalId": {
           "type": "string",
@@ -191,7 +187,6 @@
       },
       "required": [
         "id",
-        "caracteristicaId",
         "hospitalId",
         "codigo",
         "nombre",

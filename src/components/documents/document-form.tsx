@@ -102,9 +102,9 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
   }, [ambitoId, catalogs.caracteristicas]);
 
   const filteredPuntos = React.useMemo(() => {
-    if (!caracteristicaId) return [];
-    return catalogs.puntosVerificacion.filter((p) => p.caracteristicaId === caracteristicaId);
-  }, [caracteristicaId, catalogs.puntosVerificacion]);
+    // Puntos de Verificación are now independent
+    return catalogs.puntosVerificacion;
+  }, [catalogs.puntosVerificacion]);
 
   const filteredElementos = React.useMemo(() => {
     if (!puntoVerificacionId) return [];
@@ -343,70 +343,74 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-                <CardTitle>B) Clasificación de Acreditación (cascada)</CardTitle>
+                <CardTitle>B) Clasificación de Acreditación</CardTitle>
                 <Button type="button" variant="outline" size="sm" onClick={handleAiSuggest} disabled={isAiLoading || isSubmitting}>
                     {isAiLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4 text-primary" />}
                     Sugerir con IA
                 </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="ambitoId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Ámbito</FormLabel>
-                  <Select onValueChange={(value) => { field.onChange(value); form.setValue("caracteristicaId", undefined); form.setValue("puntoVerificacionId", undefined); form.setValue("elementoMedibleId", undefined)}} value={field.value || ''}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un ámbito" /></SelectTrigger></FormControl>
-                    <SelectContent>{catalogs.ambitos.map((a) => (<SelectItem key={a.id} value={a.id}>{a.nombre}</SelectItem>))}</SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="caracteristicaId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Característica</FormLabel>
-                  <Select onValueChange={(value) => { field.onChange(value); form.setValue("puntoVerificacionId", undefined); form.setValue("elementoMedibleId", undefined)}} value={field.value || ''} disabled={!ambitoId}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Selecciona una característica" /></SelectTrigger></FormControl>
-                    <SelectContent>{filteredCaracteristicas.map((c) => (<SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>))}</SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="puntoVerificacionId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Punto de verificación</FormLabel>
-                  <Select onValueChange={(value) => { field.onChange(value); form.setValue("elementoMedibleId", undefined)}} value={field.value || ''} disabled={!caracteristicaId}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un punto" /></SelectTrigger></FormControl>
-                    <SelectContent>{filteredPuntos.map((p) => (<SelectItem key={p.id} value={p.id}>{p.codigo} - {p.nombre}</SelectItem>))}</SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="elementoMedibleId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Elemento medible</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ''} disabled={!puntoVerificacionId}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un elemento" /></SelectTrigger></FormControl>
-                    <SelectContent>{filteredElementos.map((e) => (<SelectItem key={e.id} value={e.id}>{e.codigo} - {e.nombre}</SelectItem>))}</SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-4">
+                <FormField
+                control={form.control}
+                name="ambitoId"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Ámbito</FormLabel>
+                    <Select onValueChange={(value) => { field.onChange(value); form.setValue("caracteristicaId", undefined)}} value={field.value || ''}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un ámbito" /></SelectTrigger></FormControl>
+                        <SelectContent>{catalogs.ambitos.map((a) => (<SelectItem key={a.id} value={a.id}>{a.nombre}</SelectItem>))}</SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="caracteristicaId"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Característica</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ''} disabled={!ambitoId}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Selecciona una característica" /></SelectTrigger></FormControl>
+                        <SelectContent>{filteredCaracteristicas.map((c) => (<SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>))}</SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
+            <div className="space-y-4">
+                <FormField
+                control={form.control}
+                name="puntoVerificacionId"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Punto de verificación</FormLabel>
+                    <Select onValueChange={(value) => { field.onChange(value); form.setValue("elementoMedibleId", undefined)}} value={field.value || ''}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un punto" /></SelectTrigger></FormControl>
+                        <SelectContent>{filteredPuntos.map((p) => (<SelectItem key={p.id} value={p.id}>{p.codigo} - {p.nombre}</SelectItem>))}</SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="elementoMedibleId"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Elemento medible</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ''} disabled={!puntoVerificacionId}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un elemento" /></SelectTrigger></FormControl>
+                        <SelectContent>{filteredElementos.map((e) => (<SelectItem key={e.id} value={e.id}>{e.codigo} - {e.nombre}</SelectItem>))}</SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
           </CardContent>
         </Card>
 

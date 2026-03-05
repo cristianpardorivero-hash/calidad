@@ -112,7 +112,7 @@ export function CatalogManager({ catalogs, onCatalogsChange }: { catalogs: Catal
   const catalogTabs = [
     { value: "ambitos", label: "Ámbitos", data: catalogs.ambitos, headers: [{key: 'nombre', label: 'Nombre'}, {key: 'orden', label: 'Orden'}] },
     { value: "caracteristicas", label: "Características", data: catalogs.caracteristicas, headers: [{key: 'nombre', label: 'Nombre'}, {key: 'ambitoId', label: 'ID Ámbito'}, {key: 'orden', label: 'Orden'}] },
-    { value: "puntosVerificacion", label: "Puntos de Verificación", data: catalogs.puntosVerificacion, headers: [{key: 'codigo', label: 'Código'}, {key: 'nombre', label: 'Nombre'}, {key: 'caracteristicaId', label: 'ID Característica'}] },
+    { value: "puntosVerificacion", label: "Puntos de Verificación", data: catalogs.puntosVerificacion, headers: [{key: 'codigo', label: 'Código'}, {key: 'nombre', label: 'Nombre'}, {key: 'orden', label: 'Orden'}] },
     { value: "elementosMedibles", label: "Elementos Medibles", data: catalogs.elementosMedibles, headers: [{key: 'codigo', label: 'Código'}, {key: 'nombre', label: 'Nombre'}, {key: 'puntoVerificacionId', label: 'ID Punto'}] },
     { value: "tiposDocumento", label: "Tipos de Documento", data: catalogs.tiposDocumento, headers: [{key: 'nombre', label: 'Nombre'}] },
     { value: "servicios", label: "Servicios", data: catalogs.servicios, headers: [{key: 'nombre', label: 'Nombre'}] },

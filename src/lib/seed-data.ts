@@ -17,22 +17,22 @@ export let seedCatalogs: Catalogs = {
     { "id": "car-reg-2", "ambitoId": "amb-reg", "nombre": "Gestión documental institucional", "orden": 2 }
   ],
   "puntosVerificacion": [
-    { "id": "pv-dp-1-1", "caracteristicaId": "car-dp-1", "codigo": "DP.1.1", "nombre": "Información clara y oportuna al paciente", "orden": 1 },
-    { "id": "pv-dp-1-2", "caracteristicaId": "car-dp-1", "codigo": "DP.1.2", "nombre": "Respeto y trato digno en la atención", "orden": 2 },
+    { "id": "pv-dp-1-1", "codigo": "DP.1.1", "nombre": "Información clara y oportuna al paciente", "orden": 1 },
+    { "id": "pv-dp-1-2", "codigo": "DP.1.2", "nombre": "Respeto y trato digno en la atención", "orden": 2 },
 
-    { "id": "pv-dp-2-1", "caracteristicaId": "car-dp-2", "codigo": "DP.2.1", "nombre": "Resguardo de confidencialidad", "orden": 1 },
+    { "id": "pv-dp-2-1", "codigo": "DP.2.1", "nombre": "Resguardo de confidencialidad", "orden": 1 },
 
-    { "id": "pv-gcl-1-1", "caracteristicaId": "car-gcl-1", "codigo": "GCL.1.1", "nombre": "Evaluación inicial documentada", "orden": 1 },
-    { "id": "pv-gcl-1-2", "caracteristicaId": "car-gcl-1", "codigo": "GCL.1.2", "nombre": "Reevaluación según evolución clínica", "orden": 2 },
+    { "id": "pv-gcl-1-1", "codigo": "GCL.1.1", "nombre": "Evaluación inicial documentada", "orden": 1 },
+    { "id": "pv-gcl-1-2", "codigo": "GCL.1.2", "nombre": "Reevaluación según evolución clínica", "orden": 2 },
 
-    { "id": "pv-gcl-2-1", "caracteristicaId": "car-gcl-2", "codigo": "GCL.2.1", "nombre": "Notificación y análisis de eventos adversos", "orden": 1 },
-    { "id": "pv-gcl-2-2", "caracteristicaId": "car-gcl-2", "codigo": "GCL.2.2", "nombre": "Acciones de mejora y seguimiento", "orden": 2 },
+    { "id": "pv-gcl-2-1", "codigo": "GCL.2.1", "nombre": "Notificación y análisis de eventos adversos", "orden": 1 },
+    { "id": "pv-gcl-2-2", "codigo": "GCL.2.2", "nombre": "Acciones de mejora y seguimiento", "orden": 2 },
 
-    { "id": "pv-reg-1-1", "caracteristicaId": "car-reg-1", "codigo": "REG.1.1", "nombre": "Ficha clínica completa y trazable", "orden": 1 },
-    { "id": "pv-reg-1-2", "caracteristicaId": "car-reg-1", "codigo": "REG.1.2", "nombre": "Acceso y custodia del registro", "orden": 2 },
+    { "id": "pv-reg-1-1", "codigo": "REG.1.1", "nombre": "Ficha clínica completa y trazable", "orden": 1 },
+    { "id": "pv-reg-1-2", "codigo": "REG.1.2", "nombre": "Acceso y custodia del registro", "orden": 2 },
 
-    { "id": "pv-reg-2-1", "caracteristicaId": "car-reg-2", "codigo": "REG.2.1", "nombre": "Control de versiones y vigencia documental", "orden": 1 },
-    { "id": "pv-reg-2-2", "caracteristicaId": "car-reg-2", "codigo": "REG.2.2", "nombre": "Disponibilidad y búsqueda de documentos", "orden": 2 }
+    { "id": "pv-reg-2-1", "codigo": "REG.2.1", "nombre": "Control de versiones y vigencia documental", "orden": 1 },
+    { "id": "pv-reg-2-2", "codigo": "REG.2.2", "nombre": "Disponibilidad y búsqueda de documentos", "orden": 2 }
   ],
   "elementosMedibles": [
     { "id": "em-dp-1-1-a", "puntoVerificacionId": "pv-dp-1-1", "codigo": "DP.1.1-A", "nombre": "Documento institucional de información al usuario", "orden": 1 },
