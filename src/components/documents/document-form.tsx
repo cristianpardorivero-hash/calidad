@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Catalogs, Documento } from "@/lib/types";
@@ -81,6 +82,11 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       version: "1.0",
+      titulo: "",
+      descripcion: "",
+      responsableNombre: "",
+      responsableEmail: "",
+      tags: "",
     },
   });
 
