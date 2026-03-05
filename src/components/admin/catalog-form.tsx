@@ -65,38 +65,56 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditing = !!item;
 
+  const initialValues = useMemo(() => {
+    if (isEditing && item) {
+      let defaultValues: any = { catalogType: item.type, ...item.data };
+
+      // Pre-fill parent selects for cascading dropdowns to work on edit
+      if (item.type === "elementosMedibles") {
+        const punto = catalogs.puntosVerificacion.find(
+          (p) => p.id === item.data.puntoVerificacionId
+        );
+        if (punto) {
+          defaultValues.caracteristicaId = punto.caracteristicaId;
+          const caracteristica = catalogs.caracteristicas.find(
+            (c) => c.id === punto.caracteristicaId
+          );
+          if (caracteristica) {
+            defaultValues.ambitoId = caracteristica.ambitoId;
+          }
+        }
+      } else if (item.type === "puntosVerificacion") {
+        const caracteristica = catalogs.caracteristicas.find(
+          (c) => c.id === item.data.caracteristicaId
+        );
+        if (caracteristica) {
+          defaultValues.ambitoId = caracteristica.ambitoId;
+        }
+      }
+      return defaultValues;
+    }
+    // For create form
+    return {
+      catalogType: undefined,
+      nombre: "",
+      codigo: "",
+      orden: undefined,
+      ambitoId: undefined,
+      caracteristicaId: undefined,
+      puntoVerificacionId: undefined,
+    };
+  }, [item, isEditing, catalogs]);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    defaultValues: initialValues,
   });
-  
-  const { reset } = form;
 
+  // This effect will re-sync the form if the `item` prop changes while the component is mounted.
   useEffect(() => {
-    if (isEditing && item) {
-        let defaultValues: any = { catalogType: item.type, ...item.data };
+    form.reset(initialValues);
+  }, [initialValues, form]);
 
-        // Pre-fill parent selects for cascading dropdowns to work on edit
-        if (item.type === 'elementosMedibles') {
-            const punto = catalogs.puntosVerificacion.find(p => p.id === item.data.puntoVerificacionId);
-            if (punto) {
-                defaultValues.caracteristicaId = punto.caracteristicaId;
-                const caracteristica = catalogs.caracteristicas.find(c => c.id === punto.caracteristicaId);
-                if (caracteristica) {
-                    defaultValues.ambitoId = caracteristica.ambitoId;
-                }
-            }
-        } else if (item.type === 'puntosVerificacion') {
-            const caracteristica = catalogs.caracteristicas.find(c => c.id === item.data.caracteristicaId);
-            if (caracteristica) {
-                defaultValues.ambitoId = caracteristica.ambitoId;
-            }
-        }
-        reset(defaultValues);
-    } else {
-        reset({ catalogType: undefined, nombre: '', codigo: '', orden: undefined, ambitoId: undefined, caracteristicaId: undefined, puntoVerificacionId: undefined });
-    }
-  }, [item, isEditing, catalogs, reset]);
-  
   const catalogType = form.watch("catalogType");
   const ambitoIdForFilter = form.watch("ambitoId" as any);
   const caracteristicaIdForFilter = form.watch("caracteristicaId" as any);
@@ -120,7 +138,7 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
           await updateCatalogItem(catalogType as keyof Catalogs, item.data.id, data);
           toast({ title: "Ítem actualizado", description: "El ítem de catálogo ha sido guardado." });
       } else {
-        await addCatalogItem(catalogType, data);
+        await addCatalogItem(catalogType as CatalogType, data);
         toast({ title: "Ítem creado", description: "El nuevo ítem de catálogo ha sido guardado." });
       }
 
