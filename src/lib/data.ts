@@ -17,6 +17,10 @@ import { db } from "@/lib/firebase";
 import type { Catalogs, Documento, UserProfile } from "./types";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
+import { initializeApp, deleteApp } from "firebase/app";
+import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import { firebaseConfig } from "@/firebase/config";
+
 
 export async function getCatalogs(hospitalId: string): Promise<Catalogs> {
   const catalogNames: (keyof Catalogs)[] = [
@@ -216,18 +220,29 @@ export async function getUsers(hospitalId: string): Promise<UserProfile[]> {
   });
 }
 
-export async function addUser(uid: string, user: Omit<UserProfile, 'uid' | 'createdAt' | 'updatedAt' | 'isDeleted'>): Promise<UserProfile> {
-    const userRef = doc(db, "users", uid);
-    const dataToSave = {
-        ...user,
-        uid: uid,
-        id: uid, // for consistency with security rules
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        isDeleted: false,
-    };
+export async function addUser(user: Omit<UserProfile, 'uid' | 'createdAt' | 'updatedAt' | 'isDeleted'> & { password: string }): Promise<UserProfile> {
+    const tempAppName = `user-creation-${Date.now()}`;
+    const tempApp = initializeApp(firebaseConfig, tempAppName);
+    const tempAuth = getAuth(tempApp);
+
     try {
+        const userCredential = await createUserWithEmailAndPassword(tempAuth, user.email, user.password);
+        const uid = userCredential.user.uid;
+
+        const userRef = doc(db, "users", uid);
+        const { password, ...profileData } = user;
+        
+        const dataToSave = {
+            ...profileData,
+            uid: uid,
+            id: uid,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            isDeleted: false,
+        };
+
         await setDoc(userRef, dataToSave);
+        
         const newUserSnap = await getDoc(userRef);
         const data = newUserSnap.data();
 
@@ -237,16 +252,20 @@ export async function addUser(uid: string, user: Omit<UserProfile, 'uid' | 'crea
             createdAt: (data?.createdAt as Timestamp)?.toDate(),
             updatedAt: (data?.updatedAt as Timestamp)?.toDate(),
         } as UserProfile;
-    } catch (error) {
-        errorEmitter.emit(
-            'permission-error',
-            new FirestorePermissionError({
-              path: userRef.path,
-              operation: 'create',
-              requestResourceData: dataToSave,
-            })
-        );
-        throw error;
+    } catch (error: any) {
+        if (error.code === 'auth/email-already-in-use') {
+            throw new Error("Este correo electrónico ya está en uso.");
+        }
+        if (error.code === 'auth/weak-password') {
+            throw new Error("La contraseña debe tener al menos 6 caracteres.");
+        }
+        if (error.name === 'FirebaseError') { // Firestore permission error
+            throw error;
+        }
+        console.error("User creation error:", error);
+        throw new Error("No se pudo crear el usuario. Revisa los datos e inténtalo de nuevo.");
+    } finally {
+        await deleteApp(tempApp);
     }
 }
 
@@ -282,11 +301,21 @@ export async function updateUser(
 
 export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | "updatedAt">): Promise<Documento> {
   const collRef = collection(db, "documents");
-  const dataToSave = {
+  
+  const dataToSave: any = {
     ...docData,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
+
+  // Conditionally add date fields only if they exist
+  if (docData.fechaVigenciaDesde) {
+    dataToSave.fechaVigenciaDesde = Timestamp.fromDate(docData.fechaVigenciaDesde);
+  }
+  if (docData.fechaVigenciaHasta) {
+    dataToSave.fechaVigenciaHasta = Timestamp.fromDate(docData.fechaVigenciaHasta);
+  }
+
   try {
     const docRef = await addDoc(collRef, dataToSave);
     const newDocSnap = await getDoc(docRef);

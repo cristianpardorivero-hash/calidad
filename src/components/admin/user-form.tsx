@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { Catalogs, UserProfile } from "@/lib/types";
@@ -24,21 +25,28 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save } from "lucide-react";
 import { addUser, updateUser } from "@/lib/data";
 import { useAuth } from "@/hooks/use-auth";
 
-const formSchema = z.object({
-  uid: z.string().min(20, { message: "El UID de Firebase es requerido y debe ser válido." }),
+const baseSchema = z.object({
   displayName: z.string().min(3, "El nombre debe tener al menos 3 caracteres."),
   email: z.string().email("Correo electrónico inválido."),
   role: z.enum(["admin", "editor", "lector"], { required_error: "Debe seleccionar un rol."}),
   servicioId: z.string().optional(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+const createSchema = baseSchema.extend({
+    password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres."),
+}).refine((data) => data.password, {
+    message: "Las contraseñas no coinciden",
+    path: ["confirmPassword"],
+});
+
+type CreateFormValues = z.infer<typeof createSchema>;
+type EditFormValues = z.infer<typeof baseSchema>;
 
 interface UserFormProps {
   user?: UserProfile;
@@ -55,31 +63,36 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
 
   const isEditing = !!user;
 
-  const form = useForm<FormValues>({
+  const formSchema = isEditing ? baseSchema : createSchema;
+
+  const form = useForm<EditFormValues | CreateFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      uid: user?.uid || "",
+    defaultValues: isEditing ? {
       displayName: user?.displayName || "",
       email: user?.email || "",
       role: user?.role || "lector",
       servicioId: user?.servicioId || "",
+    } : {
+      displayName: "",
+      email: "",
+      role: "lector",
+      servicioId: "",
+      password: ""
     },
   });
 
-  async function onSubmit(values: FormValues) {
+  async function onSubmit(values: EditFormValues | CreateFormValues) {
     if (!currentUser) return;
     setIsSubmitting(true);
 
     try {
       if (isEditing && user) {
-        // For updates, we don't update the UID, so we can omit it.
-        const { uid, ...updateData } = values;
-        await updateUser(user.uid, updateData);
+        await updateUser(user.uid, values);
         toast({ title: "Usuario actualizado", description: `Se han guardado los cambios para ${values.displayName}.` });
       } else {
-        const { uid, ...profileData } = values;
-        await addUser(uid, { 
-            ...profileData,
+        const createValues = values as CreateFormValues;
+        await addUser({ 
+            ...createValues,
             hospitalId: currentUser.hospitalId,
             isActive: true,
         });
@@ -90,11 +103,11 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
         onSave();
       } else {
         router.push("/admin/usuarios");
-        // No need for router.refresh() if parent page re-fetches
+        router.refresh();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast({ variant: "destructive", title: "Error", description: "No se pudo guardar el usuario." });
+      toast({ variant: "destructive", title: "Error", description: error.message || "No se pudo guardar el usuario." });
     } finally {
       setIsSubmitting(false);
     }
@@ -128,20 +141,21 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
             />
         </div>
 
-        <FormField
-            control={form.control}
-            name="uid"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Firebase Auth UID</FormLabel>
-                <FormControl><Input placeholder="UID del usuario desde Firebase Console" {...field} disabled={isEditing} /></FormControl>
-                <FormDescription>
-                    Crea el usuario en Firebase Authentication primero y pega el UID aquí.
-                </FormDescription>
-                <FormMessage />
-                </FormItem>
-            )}
+        {!isEditing && (
+            <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Contraseña</FormLabel>
+                        <FormControl><Input type="password" {...field} /></FormControl>
+                        <FormDescription>La contraseña debe tener al menos 6 caracteres.</FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                )}
             />
+        )}
+
 
         <div className="grid gap-4 md:grid-cols-2">
             <FormField
@@ -192,3 +206,4 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
     </Form>
   );
 }
+
