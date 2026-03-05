@@ -46,6 +46,11 @@ export default async function DocumentoDetailPage({
     catalogs[catalog as keyof typeof catalogs]
       // @ts-ignore
       .find((item: any) => item.id === id)?.nombre || "N/A";
+  
+  const getServicioNames = (servicioIds: string[] | undefined) => {
+    if (!servicioIds || servicioIds.length === 0) return "No especificado";
+    return servicioIds.map(id => getCatalogName("servicios", id)).join(", ");
+  };
 
   const renderPDF = (url: string) => {
     // In a real app, `url` would be a secure download URL from Firebase Storage
@@ -85,7 +90,7 @@ export default async function DocumentoDetailPage({
     { icon: ShieldCheck, label: "Estado", value: getCatalogName("estadosAcreditacionDoc", document.estadoDocId) },
     { icon: ClipboardList, label: "Tipo", value: getCatalogName("tiposDocumento", document.tipoDocumentoId) },
     { icon: User, label: "Responsable", value: `${document.responsableNombre} (${document.responsableEmail})` },
-    { icon: Building, label: "Servicio", value: getCatalogName("servicios", document.servicioId) || 'No especificado' },
+    { icon: Building, label: "Servicios", value: getServicioNames(document.servicioIds) },
     { icon: Calendar, label: "Fecha Documento", value: format(document.fechaDocumento, "d 'de' MMMM, yyyy", { locale: es }) },
     { icon: Calendar, label: "Vigencia", value: document.fechaVigenciaDesde ? `${format(document.fechaVigenciaDesde, "dd/MM/yy")} - ${document.fechaVigenciaHasta ? format(document.fechaVigenciaHasta, "dd/MM/yy") : 'Indefinida'}` : 'No aplica' },
     { icon: Binary, label: "Tamaño", value: `${(document.fileSize / 1024).toFixed(2)} KB` },
@@ -163,4 +168,5 @@ export default async function DocumentoDetailPage({
   );
 }
 
+    
     

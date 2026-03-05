@@ -24,10 +24,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save } from "lucide-react";
+import { ChevronsUpDown, Loader2, Save } from "lucide-react";
 import { addCatalogItem, updateCatalogItem } from "@/lib/data";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Checkbox } from "../ui/checkbox";
+import { ScrollArea } from "../ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 const catalogTypeOptions = [
     { value: "ambitos", label: "Ámbito" },
@@ -42,7 +46,7 @@ type CatalogType = typeof catalogTypeOptions[number]['value'];
 const formSchema = z.discriminatedUnion("catalogType", [
     z.object({ catalogType: z.literal("ambitos"), nombre: z.string().min(2, "Mínimo 2 caracteres"), orden: z.coerce.number().min(1, "Debe ser > 0") }),
     z.object({ catalogType: z.literal("caracteristicas"), nombre: z.string().min(2, "Mínimo 2 caracteres"), orden: z.coerce.number().min(1, "Debe ser > 0"), ambitoId: z.string({ required_error: "Requerido."}), codigo: z.string().min(1, "Requerido"), umbralCumplimiento: z.string().optional() }),
-    z.object({ catalogType: z.literal("elementosMedibles"), nombre: z.string().min(2, "Mínimo 2 caracteres"), orden: z.coerce.number().min(1, "Debe ser > 0"), codigo: z.string().min(1, "Requerido"), caracteristicaId: z.string({ required_error: "Requerido."}), servicioId: z.string().optional() }),
+    z.object({ catalogType: z.literal("elementosMedibles"), nombre: z.string().min(2, "Mínimo 2 caracteres"), orden: z.coerce.number().min(1, "Debe ser > 0"), codigo: z.string().min(1, "Requerido"), caracteristicaId: z.string({ required_error: "Requerido."}), servicioIds: z.array(z.string()).optional() }),
     z.object({ catalogType: z.literal("tiposDocumento"), nombre: z.string().min(2, "Mínimo 2 caracteres") }),
     z.object({ catalogType: z.literal("servicios"), nombre: z.string().min(2, "Mínimo 2 caracteres") }),
     z.object({ catalogType: z.literal("estadosAcreditacionDoc"), nombre: z.string().min(2, "Mínimo 2 caracteres") }),
@@ -76,6 +80,7 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
                 defaultValues.ambitoId = caracteristica.ambitoId;
             }
          }
+         defaultValues.servicioIds = item.data.servicioIds || [];
       }
       return defaultValues;
     }
@@ -88,7 +93,7 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
       ambitoId: undefined,
       caracteristicaId: undefined,
       umbralCumplimiento: "",
-      servicioId: undefined
+      servicioIds: []
     };
   }, [item, isEditing, catalogs]);
 
@@ -180,7 +185,57 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
         {catalogType === 'elementosMedibles' && (
             <>
                 <FormField control={form.control} name="caracteristicaId" render={({ field }) => (<FormItem><FormLabel>Característica</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!ambitoIdForFilter}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione una característica" /></SelectTrigger></FormControl><SelectContent>{filteredCaracteristicas.map(i => <SelectItem key={i.id} value={i.id}>{i.codigo} - {i.nombre}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="servicioId" render={({ field }) => (<FormItem><FormLabel>Servicio Asignado (Opcional)</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un servicio" /></SelectTrigger></FormControl><SelectContent>{catalogs.servicios.map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                
+                <FormField
+                  control={form.control}
+                  name="servicioIds"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Servicios Asignados (Opcional)</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
+                            >
+                              <span className="truncate">
+                                {field.value && field.value.length > 0
+                                  ? `${field.value.length} seleccionado(s)`
+                                  : "Seleccione servicios"}
+                              </span>
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                          <ScrollArea className="h-48">
+                            <div className="p-2 space-y-1">
+                              {catalogs.servicios.map((servicio) => (
+                                <FormItem key={servicio.id} className="flex flex-row items-center space-x-3 space-y-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value?.includes(servicio.id)}
+                                      onCheckedChange={(checked) => {
+                                        const currentValues = field.value || [];
+                                        return checked
+                                          ? field.onChange([...currentValues, servicio.id])
+                                          : field.onChange(currentValues.filter((id) => id !== servicio.id));
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormLabel className="font-normal">{servicio.nombre}</FormLabel>
+                                </FormItem>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
             </>
         )}
 

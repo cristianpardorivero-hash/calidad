@@ -58,7 +58,7 @@ export async function getDocuments(
       docsRef,
       where("hospitalId", "==", hospitalId),
       where("isDeleted", "==", false),
-      where("servicioId", "==", user.servicioId)
+      where("servicioIds", "array-contains", user.servicioId)
     );
   } else {
     q = query(
@@ -406,4 +406,5 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     }
 }
 
+    
     

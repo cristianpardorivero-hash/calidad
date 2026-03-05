@@ -44,7 +44,7 @@ export interface ElementoMedible {
   caracteristicaId: string;
   codigo: string;
   nombre: string;
-  servicioId?: string;
+  servicioIds?: string[];
   orden: number;
 }
 
@@ -86,7 +86,7 @@ export interface Documento {
   caracteristicaId: string;
   elementoMedibleId: string;
   // Contexto institucional
-  servicioId?: string;
+  servicioIds?: string[];
   responsableNombre: string;
   responsableEmail: string;
   // Fechas
@@ -135,4 +135,5 @@ export interface AuditLog {
   details: Record<string, any>;
 }
 
+    
     

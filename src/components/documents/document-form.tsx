@@ -30,7 +30,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Loader2, Sparkles, UploadCloud } from "lucide-react";
+import { CalendarIcon, ChevronsUpDown, Loader2, Sparkles, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -44,6 +44,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Progress } from "../ui/progress";
 import { suggestDocumentMetadata } from "@/ai/flows/ai-metadata-suggester";
 import { Label } from "../ui/label";
+import { Checkbox } from "../ui/checkbox";
+import { ScrollArea } from "../ui/scroll-area";
 
 
 const formSchema = z.object({
@@ -55,7 +57,7 @@ const formSchema = z.object({
   ambitoId: z.string({ required_error: "Debe seleccionar un ámbito." }),
   caracteristicaId: z.string({ required_error: "Debe seleccionar una característica." }),
   elementoMedibleId: z.string({ required_error: "Debe seleccionar un elemento medible." }),
-  servicioId: z.string().optional(),
+  servicioIds: z.array(z.string()).optional().default([]),
   responsableNombre: z.string().min(2, "El nombre del responsable es requerido.").default(""),
   responsableEmail: z.string().email("Correo electrónico inválido.").default(""),
   fechaDocumento: z.date({ required_error: "La fecha del documento es requerida." }),
@@ -88,6 +90,7 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
       responsableNombre: "",
       responsableEmail: "",
       tags: "",
+      servicioIds: [],
     },
   });
 
@@ -397,12 +400,52 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
         <Card>
           <CardHeader><CardTitle>C) Contexto institucional</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <FormField control={form.control} name="servicioId" render={({ field }) => (
+            <FormField
+              control={form.control}
+              name="servicioIds"
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Servicio/Unidad (Opcional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ''}><FormControl><SelectTrigger><SelectValue placeholder="Selecciona un servicio" /></SelectTrigger></FormControl>
-                    <SelectContent>{catalogs.servicios.map((s) => (<SelectItem key={s.id} value={s.id}>{s.nombre}</SelectItem>))}</SelectContent>
-                  </Select>
+                  <FormLabel>Servicios/Unidades (Opcional)</FormLabel>
+                   <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
+                        >
+                          <span className="truncate">
+                            {field.value && field.value.length > 0
+                              ? `${field.value.length} seleccionado(s)`
+                              : "Seleccione servicios"}
+                          </span>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                      <ScrollArea className="h-48">
+                        <div className="p-2 space-y-1">
+                          {catalogs.servicios.map((servicio) => (
+                            <FormItem key={servicio.id} className="flex flex-row items-center space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(servicio.id)}
+                                  onCheckedChange={(checked) => {
+                                    const currentValues = field.value || [];
+                                    return checked
+                                      ? field.onChange([...currentValues, servicio.id])
+                                      : field.onChange(currentValues.filter((id) => id !== servicio.id));
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className="font-normal">{servicio.nombre}</FormLabel>
+                            </FormItem>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}

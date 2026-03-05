@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -92,7 +93,7 @@ export function DocumentsTable({
       if (elementoMedibleId && doc.elementoMedibleId !== elementoMedibleId) return false;
       if (tipoDocumentoId && doc.tipoDocumentoId !== tipoDocumentoId) return false;
       if (estadoDocId && doc.estadoDocId !== estadoDocId) return false;
-      if (servicioId && doc.servicioId !== servicioId) return false;
+      if (servicioId && (!doc.servicioIds || !doc.servicioIds.includes(servicioId))) return false;
 
       if (from && doc.fechaDocumento < from) return false;
       if (to && doc.fechaDocumento > to) return false;
