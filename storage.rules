@@ -10,16 +10,20 @@ service firebase.storage {
 
     function getUserData() {
       // Path to the user's profile document in Firestore
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return get(/databases/(default)/documents/users/$(request.auth.uid)).data;
     }
     
     function userDocExists() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      return exists(/databases/(default)/documents/users/$(request.auth.uid));
     }
 
-    // Checks if the user's profile exists and is active
+    /**
+     * Checks if the user's profile exists and is active.
+     * It treats users as active if 'isActive' is not explicitly set to false,
+     * which makes it robust for older user documents that may lack this field.
+     */
     function isActive() {
-      return isSignedIn() && userDocExists() && getUserData().isActive == true;
+      return isSignedIn() && userDocExists() && getUserData().isActive != false;
     }
 
     // Gets the user's role from their Firestore document
