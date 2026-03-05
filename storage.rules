@@ -3,16 +3,16 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
+    // Match the path for document uploads
     match /documentos/{hospitalId}/{allPaths=**} {
       
-      // Allow reads if the user is authenticated and belongs to the correct hospital.
-      // Use exists() for safety before calling get().
+      // Allow reads if the user is a member of the hospital.
+      // Use exists() to ensure the user document is there before trying to read from it.
       allow read: if request.auth != null &&
                      exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
                      get(/databases/(default)/documents/users/$(request.auth.uid)).data.hospitalId == hospitalId;
       
       // Allow creates (uploads) for admins or editors of the correct hospital.
-      // Use exists() to ensure the user document is there before trying to read from it.
       allow create: if request.auth != null &&
                        exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
                        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'editor'] &&
