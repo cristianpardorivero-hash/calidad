@@ -53,10 +53,10 @@ let mockDocuments: Documento[] = Array.from({ length: 28 }, (_, i) => {
 });
 
 let mockUsers: UserProfile[] = [
-    { uid: '1a2b3c', displayName: 'Director HC', email: 'director@hospital.cl', role: 'admin', hospitalId: 'hcurepto', servicioId: 'srv-dir', isActive: true, createdAt: new Date() as any, updatedAt: new Date() as any },
-    { uid: '4d5e6f', displayName: 'Editor Contenidos', email: 'editor@hospital.cl', role: 'editor', hospitalId: 'hcurepto', servicioId: 'srv-med', isActive: true, createdAt: new Date() as any, updatedAt: new Date() as any },
-    { uid: '7g8h9i', displayName: 'Lector Calidad', email: 'lector@hospital.cl', role: 'lector', hospitalId: 'hcurepto', servicioId: 'srv-cal', isActive: true, createdAt: new Date() as any, updatedAt: new Date() as any },
-    { uid: 'j1k2l3', displayName: 'Usuario Inactivo', email: 'inactivo@hospital.cl', role: 'lector', hospitalId: 'hcurepto', servicioId: 'srv-urg', isActive: false, createdAt: new Date() as any, updatedAt: new Date() as any },
+    { uid: '1a2b3c', displayName: 'Director HC', email: 'director@hospital.cl', role: 'admin', hospitalId: 'hcurepto', servicioId: 'srv-dir', isActive: true, createdAt: new Date(), updatedAt: new Date() },
+    { uid: '4d5e6f', displayName: 'Editor Contenidos', email: 'editor@hospital.cl', role: 'editor', hospitalId: 'hcurepto', servicioId: 'srv-med', isActive: true, createdAt: new Date(), updatedAt: new Date() },
+    { uid: '7g8h9i', displayName: 'Lector Calidad', email: 'lector@hospital.cl', role: 'lector', hospitalId: 'hcurepto', servicioId: 'srv-cal', isActive: true, createdAt: new Date(), updatedAt: new Date() },
+    { uid: 'j1k2l3', displayName: 'Usuario Inactivo', email: 'inactivo@hospital.cl', role: 'lector', hospitalId: 'hcurepto', servicioId: 'srv-urg', isActive: false, createdAt: new Date(), updatedAt: new Date() },
 ];
 
 export async function getCatalogs(hospitalId: string): Promise<Catalogs> {
@@ -112,8 +112,38 @@ export async function getDashboardKPIs(hospitalId: string) {
 }
 
 export async function getUsers(hospitalId: string): Promise<UserProfile[]> {
-    return Promise.resolve(mockUsers.filter(u => u.hospitalId === hospitalId));
+    return Promise.resolve(mockUsers.filter(u => u.hospitalId === hospitalId && !u.isDeleted));
 }
+
+export async function addUser(user: Omit<UserProfile, 'uid' | 'createdAt' | 'updatedAt' | 'isDeleted'>): Promise<UserProfile> {
+    const newUser: UserProfile = {
+        ...user,
+        uid: `user_${Date.now()}`,
+        isActive: user.isActive ?? true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        isDeleted: false,
+    };
+    mockUsers.unshift(newUser);
+    return Promise.resolve(newUser);
+}
+
+export async function updateUser(uid: string, updates: Partial<Omit<UserProfile, 'uid' | 'hospitalId' | 'createdAt'>>): Promise<UserProfile> {
+    let updatedUser: UserProfile | undefined;
+    mockUsers = mockUsers.map(u => {
+        if (u.uid === uid) {
+            updatedUser = { ...u, ...updates, updatedAt: new Date() };
+            return updatedUser;
+        }
+        return u;
+    });
+
+    if (!updatedUser) {
+        throw new Error("User not found");
+    }
+    return Promise.resolve(updatedUser);
+}
+
 
 export async function addDocument(doc: Omit<Documento, 'id' | 'createdAt' | 'updatedAt'>) {
     const newDoc: Documento = {

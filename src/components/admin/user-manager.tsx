@@ -1,6 +1,7 @@
 "use client";
 
-import type { UserProfile } from "@/lib/types";
+import type { Catalogs, UserProfile } from "@/lib/types";
+import React, { useState } from "react";
 import {
   Table,
   TableBody,
@@ -14,18 +15,53 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import {
   MoreHorizontal,
   ToggleLeft,
   ToggleRight,
-  Shield,
+  Edit,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { 
+    AlertDialog, 
+    AlertDialogAction, 
+    AlertDialogCancel, 
+    AlertDialogContent, 
+    AlertDialogDescription, 
+    AlertDialogFooter, 
+    AlertDialogHeader, 
+    AlertDialogTitle 
+} from "@/components/ui/alert-dialog";
+import { 
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle
+} from "@/components/ui/dialog";
+import { UserForm } from "./user-form";
+import { updateUser } from "@/lib/data";
+import { useToast } from "@/hooks/use-toast";
 
-export function UserManager({ users }: { users: UserProfile[] }) {
+interface UserManagerProps {
+    initialUsers: UserProfile[];
+    catalogs: Catalogs;
+    onUsersChange: () => void;
+}
+
+export function UserManager({ initialUsers, catalogs, onUsersChange }: UserManagerProps) {
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
+  const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
+  const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
+
+  const { toast } = useToast();
+
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -40,69 +76,148 @@ export function UserManager({ users }: { users: UserProfile[] }) {
     return 'outline';
   }
 
+  const handleToggleActive = async (user: UserProfile) => {
+    setLoadingStates(prev => ({...prev, [user.uid]: true}));
+    try {
+        await updateUser(user.uid, { isActive: !user.isActive });
+        toast({
+            title: `Usuario ${user.isActive ? 'desactivado' : 'activado'}`,
+            description: `${user.displayName} ha sido ${user.isActive ? 'desactivado' : 'activado'}.`
+        });
+        onUsersChange(); // Re-fetch users
+    } catch(e) {
+        toast({ variant: 'destructive', title: "Error", description: "No se pudo actualizar el estado del usuario."});
+    } finally {
+        setLoadingStates(prev => ({...prev, [user.uid]: false}));
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!userToDelete) return;
+    setLoadingStates(prev => ({...prev, [userToDelete.uid]: true}));
+    try {
+        await updateUser(userToDelete.uid, { isDeleted: true, isActive: false });
+        toast({
+            title: "Usuario eliminado",
+            description: `${userToDelete.displayName} ha sido eliminado.`
+        });
+        onUsersChange(); // Re-fetch users
+    } catch (e) {
+        toast({ variant: 'destructive', title: "Error", description: "No se pudo eliminar el usuario."});
+    } finally {
+        setLoadingStates(prev => ({...prev, [userToDelete.uid]: false}));
+        setUserToDelete(null);
+    }
+  }
+
   return (
-    <div className="rounded-lg border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Usuario</TableHead>
-            <TableHead>Rol</TableHead>
-            <TableHead className="hidden md:table-cell">Estado</TableHead>
-            <TableHead>
-              <span className="sr-only">Acciones</span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {users.map((user) => (
-            <TableRow key={user.uid}>
-              <TableCell>
-                <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarImage src={`https://picsum.photos/seed/${user.uid}/100/100`} />
-                    <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{user.displayName}</p>
-                    <p className="text-sm text-muted-foreground">{user.email}</p>
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge variant={getRoleBadgeVariant(user.role)} className="capitalize">{user.role}</Badge>
-              </TableCell>
-              <TableCell className="hidden md:table-cell">
-                <Badge variant={user.isActive ? "secondary" : "destructive"}>
-                  {user.isActive ? "Activo" : "Inactivo"}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="ghost">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem>
-                      <Shield className="mr-2 h-4 w-4" /> Cambiar Rol
-                    </DropdownMenuItem>
-                    {user.isActive ? (
-                      <DropdownMenuItem className="text-destructive">
-                        <ToggleLeft className="mr-2 h-4 w-4" /> Desactivar
-                      </DropdownMenuItem>
-                    ) : (
-                      <DropdownMenuItem className="text-green-600">
-                        <ToggleRight className="mr-2 h-4 w-4" /> Activar
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
+    <>
+      <div className="rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Usuario</TableHead>
+              <TableHead>Rol</TableHead>
+              <TableHead className="hidden md:table-cell">Estado</TableHead>
+              <TableHead>
+                <span className="sr-only">Acciones</span>
+              </TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+          </TableHeader>
+          <TableBody>
+            {initialUsers.map((user) => (
+              <TableRow key={user.uid}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarImage src={`https://picsum.photos/seed/${user.uid}/100/100`} />
+                      <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{user.displayName}</p>
+                      <p className="text-sm text-muted-foreground">{user.email}</p>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={getRoleBadgeVariant(user.role)} className="capitalize">{user.role}</Badge>
+                </TableCell>
+                <TableCell className="hidden md:table-cell">
+                  <Badge variant={user.isActive ? "secondary" : "destructive"}>
+                    {user.isActive ? "Activo" : "Inactivo"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  {loadingStates[user.uid] ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="icon" variant="ghost">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => setUserToEdit(user)}>
+                            <Edit className="mr-2 h-4 w-4" /> Editar Usuario
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleToggleActive(user)}>
+                          {user.isActive ? (
+                            <><ToggleLeft className="mr-2 h-4 w-4" /> Desactivar</>
+                          ) : (
+                            <><ToggleRight className="mr-2 h-4 w-4" /> Activar</>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={() => setUserToDelete(user)}>
+                            <Trash2 className="mr-2 h-4 w-4"/> Eliminar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Edit User Dialog */}
+      <Dialog open={!!userToEdit} onOpenChange={(open) => !open && setUserToEdit(null)}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar Usuario</DialogTitle>
+            <DialogDescription>
+              Modifica los detalles del usuario y guarda los cambios.
+            </DialogDescription>
+          </DialogHeader>
+          {userToEdit && (
+            <UserForm 
+                user={userToEdit} 
+                catalogs={catalogs} 
+                onSave={() => {
+                    setUserToEdit(null);
+                    onUsersChange();
+                }}
+                onCancel={() => setUserToEdit(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete User Confirmation */}
+      <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>¿Estás seguro de que deseas eliminar a este usuario?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                      Esta acción marcará al usuario como eliminado y no podrá acceder al sistema. Esta acción no se puede deshacer.
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

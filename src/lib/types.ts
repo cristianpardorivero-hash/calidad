@@ -10,8 +10,10 @@ export interface UserProfile {
   hospitalId: string;
   servicioId?: string;
   isActive: boolean;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted?: boolean;
+  deletedAt?: Date;
 }
 
 export interface Hospital {

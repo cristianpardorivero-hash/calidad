@@ -1,7 +1,6 @@
 "use client";
 
 import type { UserProfile } from "@/lib/types";
-import { Timestamp } from "firebase/firestore";
 import { createContext, useState, useEffect, ReactNode } from "react";
 
 interface AuthContextType {
@@ -24,8 +23,8 @@ const getMockUser = (email: string): UserProfile | undefined => {
     if (!user) return undefined;
     return {
         ...user,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
     }
 }
 
