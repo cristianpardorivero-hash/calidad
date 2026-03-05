@@ -11,11 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import type { Catalogs, Documento } from "@/lib/types";
 
-export default function DocumentosPage({
-  searchParams,
-}: {
-  searchParams?: { [key: string]: string | string[] | undefined };
-}) {
+export default function DocumentosPage() {
   const { user } = useAuth();
   const [documents, setDocuments] = useState<Documento[]>([]);
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
@@ -71,7 +67,6 @@ export default function DocumentosPage({
       <DocumentsFilters catalogs={catalogs} />
       <DocumentsTable
         documents={documents}
-        searchParams={searchParams}
         catalogs={catalogs}
       />
     </div>

@@ -38,19 +38,19 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { useSearchParams } from "next/navigation";
 
 const ITEMS_PER_PAGE = 10;
 
 export function DocumentsTable({
   documents,
   catalogs,
-  searchParams,
 }: {
   documents: Documento[];
   catalogs: Catalogs;
-  searchParams?: { [key: string]: string | string[] | undefined };
 }) {
-  const currentPage = Number(searchParams?.page) || 1;
+  const searchParams = useSearchParams();
+  const currentPage = Number(searchParams.get("page")) || 1;
 
   const getCatalogName = (
     catalog: keyof Catalogs,
@@ -62,22 +62,22 @@ export function DocumentsTable({
   };
 
   const filteredDocuments = React.useMemo(() => {
+    const query = searchParams.get("query");
+    const ambitoId = searchParams.get("ambitoId");
+    const caracteristicaId = searchParams.get("caracteristicaId");
+    const puntoVerificacionId = searchParams.get("puntoVerificacionId");
+    const elementoMedibleId = searchParams.get("elementoMedibleId");
+    const tipoDocumentoId = searchParams.get("tipoDocumentoId");
+    const estadoDocId = searchParams.get("estadoDocId");
+    const servicioId = searchParams.get("servicioId");
+    const fromParam = searchParams.get("from");
+    const toParam = searchParams.get("to");
+
     return documents.filter((doc) => {
-      const {
-        query,
-        ambitoId,
-        caracteristicaId,
-        puntoVerificacionId,
-        elementoMedibleId,
-        tipoDocumentoId,
-        estadoDocId,
-        servicioId,
-      } = searchParams || {};
+      const from = fromParam ? new Date(fromParam) : null;
+      const to = toParam ? new Date(toParam) : null;
 
-      const from = searchParams?.from ? new Date(searchParams.from as string) : null;
-      const to = searchParams?.to ? new Date(searchParams.to as string) : null;
-
-      if (query && typeof query === 'string') {
+      if (query) {
         const lowerQuery = query.toLowerCase();
         if (
           !doc.titulo.toLowerCase().includes(lowerQuery) &&
@@ -101,13 +101,19 @@ export function DocumentsTable({
 
       return true;
     });
-  }, [documents, searchParams, catalogs]);
+  }, [documents, searchParams]);
 
   const totalPages = Math.ceil(filteredDocuments.length / ITEMS_PER_PAGE);
   const paginatedDocuments = filteredDocuments.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
+
+  const createPageURL = (pageNumber: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('page', String(pageNumber));
+    return `?${params.toString()}`;
+  };
 
   const renderPagination = () => {
     const pageNumbers = [];
@@ -145,7 +151,7 @@ export function DocumentsTable({
         </PaginationItem>
       ) : (
         <PaginationItem key={page}>
-          <PaginationLink href={`?page=${page}`} isActive={currentPage === page}>
+          <PaginationLink href={createPageURL(page)} isActive={currentPage === page}>
             {page}
           </PaginationLink>
         </PaginationItem>
@@ -243,11 +249,11 @@ export function DocumentsTable({
         <Pagination className="mt-6">
           <PaginationContent>
             <PaginationItem>
-              <PaginationPrevious href={`?page=${currentPage - 1}`} disabled={currentPage === 1}/>
+              <PaginationPrevious href={createPageURL(currentPage - 1)} disabled={currentPage === 1}/>
             </PaginationItem>
             {renderPagination()}
             <PaginationItem>
-              <PaginationNext href={`?page=${currentPage + 1}`} disabled={currentPage === totalPages}/>
+              <PaginationNext href={createPageURL(currentPage + 1)} disabled={currentPage === totalPages}/>
             </PaginationItem>
           </PaginationContent>
         </Pagination>
