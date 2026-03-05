@@ -115,6 +115,7 @@ export async function createUserProfile(
   const userRef = doc(db, 'users', uid);
   const profileData = {
     ...data,
+    id: uid,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     isDeleted: false,
