@@ -1,3 +1,5 @@
+'use client';
+
 import {
   Card,
   CardContent,
@@ -19,7 +21,9 @@ import {
   ChartConfig,
 } from "@/components/ui/chart";
 import { DashboardChart } from "@/components/dashboard/dashboard-chart";
-
+import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const chartConfig = {
   docs: {
@@ -39,33 +43,75 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export default async function DashboardPage() {
-  // In a real app, you'd get the user from a server session
-  const hospitalId = "hcurepto"; // Mocked
-  const kpis = await getDashboardKPIs(hospitalId);
+type KpiData = {
+    totalDocs: number;
+    vigentes: number;
+    proximosAVencer: number;
+    docsPorAmbito: { name: string; value: number; }[];
+}
+
+export default function DashboardPage() {
+  const { user } = useAuth();
+  const [kpis, setKpis] = useState<KpiData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user?.hospitalId) {
+      setLoading(true);
+      getDashboardKPIs(user.hospitalId)
+        .then(data => {
+          setKpis(data);
+          setLoading(false);
+        })
+        .catch(error => {
+          console.error("Failed to fetch dashboard KPIs", error);
+          setLoading(false);
+        });
+    }
+  }, [user]);
+
+  const pageHeader = (
+    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground">
+          Resumen general del estado de tus documentos de acreditación.
+        </p>
+      </div>
+      <div className="flex gap-2">
+        <Button asChild variant="outline">
+          <Link href="/documentos">
+            <FolderOpen className="mr-2 h-4 w-4" /> Explorar
+          </Link>
+        </Button>
+        <Button asChild>
+          <Link href="/documentos/nuevo">
+            <PlusCircle className="mr-2 h-4 w-4" /> Subir Documento
+          </Link>
+        </Button>
+      </div>
+    </div>
+  );
+
+  if (loading || !kpis) {
+    return (
+        <div className="flex flex-col gap-8">
+            {pageHeader}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <Card className="h-[120px]"><CardHeader><Skeleton className="h-5 w-2/3" /></CardHeader><CardContent><Skeleton className="h-8 w-1/3" /></CardContent></Card>
+                <Card className="h-[120px]"><CardHeader><Skeleton className="h-5 w-2/3" /></CardHeader><CardContent><Skeleton className="h-8 w-1/3" /></CardContent></Card>
+                <Card className="h-[120px]"><CardHeader><Skeleton className="h-5 w-2/3" /></CardHeader><CardContent><Skeleton className="h-8 w-1/3" /></CardContent></Card>
+            </div>
+            <div className="grid grid-cols-1 gap-8">
+                <Card><CardHeader><Skeleton className="h-6 w-1/4" /><Skeleton className="h-4 w-2/4" /></CardHeader><CardContent><Skeleton className="h-64 w-full" /></CardContent></Card>
+            </div>
+        </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Resumen general del estado de tus documentos de acreditación.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
-            <Link href="/documentos">
-              <FolderOpen className="mr-2 h-4 w-4" /> Explorar
-            </Link>
-          </Button>
-          <Button asChild>
-            <Link href="/documentos/nuevo">
-              <PlusCircle className="mr-2 h-4 w-4" /> Subir Documento
-            </Link>
-          </Button>
-        </div>
-      </div>
+      {pageHeader}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
