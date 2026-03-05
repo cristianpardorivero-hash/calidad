@@ -34,9 +34,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setFirebaseUser(fbUser);
       if (fbUser) {
         setLoading(true);
-        const profile = await getUserProfile(fbUser.uid);
-        setUser(profile);
-        setLoading(false);
+        try {
+          const profile = await getUserProfile(fbUser.uid);
+          setUser(profile);
+        } catch(e) {
+          console.error("Error fetching user profile", e);
+          setUser(null);
+        } finally {
+          setLoading(false);
+        }
       } else {
         setUser(null);
         setLoading(false);
@@ -47,14 +53,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, pass: string) => {
-    setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, pass);
+      // onAuthStateChanged will handle setting user state and loading state
     } catch (error: any) {
       if (error.code === 'auth/invalid-credential') {
         try {
-          // If sign-in fails, try to create a new user. This is a shortcut for demo purposes.
-          // A real app would have a separate sign-up flow.
           const userCredential = await createUserWithEmailAndPassword(
             auth,
             email,
@@ -62,34 +66,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           );
           const { user: fbUser } = userCredential;
 
-          // Create a corresponding user profile in Firestore
           if (fbUser) {
             await createUserProfile(fbUser.uid, {
+              id: fbUser.uid,
               displayName: email.split('@')[0],
               email: email,
-              role: 'admin', // Default to admin for the first user
-              hospitalId: 'hcurepto', // This should come from a better source in a real app
+              role: 'admin', 
+              hospitalId: 'hcurepto',
               isActive: true,
             });
+             // onAuthStateChanged will handle setting the user state.
           }
         } catch (creationError: any) {
-          // If user creation also fails, then there's a real issue.
           console.error(
             'User creation failed after sign-in failed:',
             creationError
           );
-          setLoading(false);
           // Re-throw the CREATION error to be caught by the form
           throw creationError;
         }
       } else {
-        setLoading(false);
+        console.error('Sign-in error:', error);
         // If the error is something else (e.g., network error), re-throw it.
         throw error;
       }
     }
-    // onAuthStateChanged will handle setting the user state after either
-    // successful sign-in or successful creation.
   };
 
   const logout = async () => {
