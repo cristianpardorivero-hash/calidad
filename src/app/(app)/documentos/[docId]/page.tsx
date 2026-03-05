@@ -1,9 +1,10 @@
+'use client';
+
 import { getCatalogs, getDocumentById } from "@/lib/data";
-import { notFound } from "next/navigation";
+import { useParams } from "next/navigation";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -26,20 +27,88 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Separator } from "@/components/ui/separator";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import type { Catalogs, Documento } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default async function DocumentoDetailPage({
-  params,
-}: {
-  params: { docId: string };
-}) {
-  const [document, catalogs] = await Promise.all([
-    getDocumentById(params.docId),
-    getCatalogs("hcurepto"),
-  ]);
+export default function DocumentoDetailPage() {
+  const params = useParams();
+  const docId = params.docId as string;
+  const { user } = useAuth();
 
-  if (!document) {
-    notFound();
+  const [document, setDocument] = useState<Documento | null>(null);
+  const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+
+  useEffect(() => {
+    if (user && docId) {
+      const fetchData = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+          const [docData, catalogsData] = await Promise.all([
+            getDocumentById(docId),
+            getCatalogs(user.hospitalId),
+          ]);
+
+          if (!docData) {
+            setError("Documento no encontrado.");
+          } else {
+            setDocument(docData);
+          }
+          setCatalogs(catalogsData);
+
+        } catch (err) {
+          console.error(err);
+          setError("Error al cargar el documento.");
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchData();
+    } else if (!user) {
+      // still waiting for user auth state
+      setLoading(true);
+    }
+  }, [user, docId]);
+
+  if (loading) {
+    return (
+        <div className="mx-auto max-w-7xl space-y-8">
+            {/* Header Skeleton */}
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-2">
+                    <Skeleton className="h-9 w-80" />
+                    <Skeleton className="h-5 w-96" />
+                </div>
+                <div className="flex flex-shrink-0 gap-2">
+                    <Skeleton className="h-10 w-24" />
+                    <Skeleton className="h-10 w-28" />
+                </div>
+            </div>
+            {/* Main Content Skeleton */}
+            <div className="grid gap-8 lg:grid-cols-3">
+                <div className="lg:col-span-2">
+                    <Card className="h-full min-h-[600px]"><CardHeader><Skeleton className="h-6 w-1/3" /></CardHeader><CardContent className="p-6"><Skeleton className="h-[500px] w-full" /></CardContent></Card>
+                </div>
+                <div className="space-y-8">
+                    <Card><CardHeader><Skeleton className="h-6 w-1/4" /></CardHeader><CardContent className="space-y-4">{Array.from({length: 4}).map((_,i) => <Skeleton key={i} className="h-8 w-full" />)}</CardContent></Card>
+                    <Card><CardHeader><Skeleton className="h-6 w-2/4" /></CardHeader><CardContent className="space-y-2">{Array.from({length: 3}).map((_,i) => <Skeleton key={i} className="h-5 w-full" />)}</CardContent></Card>
+                </div>
+            </div>
+        </div>
+    );
+  }
+
+  if (error) {
+    return <div className="text-center text-destructive">{error}</div>;
+  }
+  
+  if (!document || !catalogs) {
+      return <div className="text-center">Documento no encontrado.</div>;
   }
 
   const getCatalogName = (catalog: any, id: any) =>
@@ -167,6 +236,3 @@ export default async function DocumentoDetailPage({
     </div>
   );
 }
-
-    
-    
