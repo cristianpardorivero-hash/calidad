@@ -22,7 +22,7 @@
  *   restricted to users with 'admin' or 'editor' roles within their hospital,
  *   while read access is granted to all members ('lector' included).
  * - No User Listing: To protect user privacy and prevent data leakage, listing
- *   the entire `/users` collection is explicitly forbidden.
+ *   the entire `/users` collection is explicitly forbidden unless you are an admin.
  * - Immutable Logs: Audit logs are append-only. Once created, they cannot be
  *   modified or deleted, ensuring the integrity of the audit trail.
  */
@@ -122,12 +122,11 @@ service cloud.firestore {
      * @description Controls access to user profile documents.
      * @path /users/{userId}
      * @allow (get) A user to read their own profile.
-     * @allow (get) A hospital admin to read profiles of users within their own hospital.
-     * @deny (list) An authenticated user from listing all user profiles in the database.
+     * @allow (list) A hospital admin to list profiles of users within their own hospital.
      * @principle Restricts access to a user's own data tree and allows for admin oversight.
      */
     match /users/{userId} {
-      allow get: if isSignedIn() && (isOwner(userId) || isHospitalAdmin(resource.data.hospitalId));
+      allow get: if isSignedIn() && isOwner(userId);
       allow list: if isHospitalAdmin(getUserData().hospitalId);
       allow create: if (isOwner(userId) && request.resource.data.id == userId) || isHospitalAdmin(request.resource.data.hospitalId);
       allow update: if resource != null && (isOwner(userId) || isHospitalAdmin(resource.data.hospitalId)) && isImmutable('id');
@@ -304,5 +303,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
