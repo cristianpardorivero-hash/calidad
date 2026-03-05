@@ -282,7 +282,7 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo de documento</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecciona un tipo" />
@@ -319,7 +319,7 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
               render={({ field }) => (
                 <FormItem className="md:col-span-2">
                   <FormLabel>Estado del documento</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecciona un estado" />
@@ -357,7 +357,7 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Ámbito</FormLabel>
-                  <Select onValueChange={(value) => { field.onChange(value); form.setValue("caracteristicaId", ""); form.setValue("puntoVerificacionId", ""); form.setValue("elementoMedibleId", "")}} defaultValue={field.value} value={field.value}>
+                  <Select onValueChange={(value) => { field.onChange(value); form.setValue("caracteristicaId", ""); form.setValue("puntoVerificacionId", ""); form.setValue("elementoMedibleId", "")}} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un ámbito" /></SelectTrigger></FormControl>
                     <SelectContent>{catalogs.ambitos.map((a) => (<SelectItem key={a.id} value={a.id}>{a.nombre}</SelectItem>))}</SelectContent>
                   </Select>
