@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Catalogs, UserProfile } from "@/lib/types";
@@ -12,6 +13,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import {
   Select,
@@ -29,6 +31,7 @@ import { addUser, updateUser } from "@/lib/data";
 import { useAuth } from "@/hooks/use-auth";
 
 const formSchema = z.object({
+  uid: z.string().min(20, { message: "El UID de Firebase es requerido y debe ser válido." }),
   displayName: z.string().min(3, "El nombre debe tener al menos 3 caracteres."),
   email: z.string().email("Correo electrónico inválido."),
   role: z.enum(["admin", "editor", "lector"], { required_error: "Debe seleccionar un rol."}),
@@ -55,6 +58,7 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      uid: user?.uid || "",
       displayName: user?.displayName || "",
       email: user?.email || "",
       role: user?.role || "lector",
@@ -68,11 +72,14 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
 
     try {
       if (isEditing && user) {
-        await updateUser(user.uid, { ...values });
+        // For updates, we don't update the UID, so we can omit it.
+        const { uid, ...updateData } = values;
+        await updateUser(user.uid, updateData);
         toast({ title: "Usuario actualizado", description: `Se han guardado los cambios para ${values.displayName}.` });
       } else {
-        await addUser({ 
-            ...values,
+        const { uid, ...profileData } = values;
+        await addUser(uid, { 
+            ...profileData,
             hospitalId: currentUser.hospitalId,
             isActive: true,
         });
@@ -114,12 +121,27 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
             render={({ field }) => (
                 <FormItem>
                 <FormLabel>Correo Electrónico</FormLabel>
-                <FormControl><Input type="email" placeholder="ej: j.perez@hospital.cl" {...field} disabled={isEditing} /></FormControl>
+                <FormControl><Input type="email" placeholder="ej: j.perez@hospital.cl" {...field} /></FormControl>
                 <FormMessage />
                 </FormItem>
             )}
             />
         </div>
+
+        <FormField
+            control={form.control}
+            name="uid"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Firebase Auth UID</FormLabel>
+                <FormControl><Input placeholder="UID del usuario desde Firebase Console" {...field} disabled={isEditing} /></FormControl>
+                <FormDescription>
+                    Crea el usuario en Firebase Authentication primero y pega el UID aquí.
+                </FormDescription>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
 
         <div className="grid gap-4 md:grid-cols-2">
             <FormField

@@ -217,17 +217,19 @@ export async function getUsers(hospitalId: string): Promise<UserProfile[]> {
   });
 }
 
-export async function addUser(user: Omit<UserProfile, 'uid' | 'createdAt' | 'updatedAt' | 'isDeleted'>): Promise<UserProfile> {
-    const userRef = collection(db, "users");
+export async function addUser(uid: string, user: Omit<UserProfile, 'uid' | 'createdAt' | 'updatedAt' | 'isDeleted'>): Promise<UserProfile> {
+    const userRef = doc(db, "users", uid);
     const dataToSave = {
         ...user,
+        uid: uid,
+        id: uid, // for consistency with security rules
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         isDeleted: false,
     };
     try {
-        const docRef = await addDoc(userRef, dataToSave);
-        const newUserSnap = await getDoc(docRef);
+        await setDoc(userRef, dataToSave);
+        const newUserSnap = await getDoc(userRef);
         const data = newUserSnap.data();
 
         return {
