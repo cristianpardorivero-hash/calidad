@@ -121,12 +121,12 @@ service cloud.firestore {
     /**
      * @description Controls access to user profile documents.
      * @path /users/{userId}
-     * @allow (get) A user to read their own profile.
+     * @allow (get) Any authenticated user, to allow cross-service rules (like Storage) to verify permissions.
      * @allow (list) A hospital admin to list profiles of users within their own hospital.
      * @principle Restricts access to a user's own data tree and allows for admin oversight.
      */
     match /users/{userId} {
-      allow get: if isSignedIn() && isOwner(userId);
+      allow get: if isSignedIn();
       allow list: if isHospitalAdmin(getUserData().hospitalId);
       allow create: if (isOwner(userId) && request.resource.data.id == userId) || isHospitalAdmin(request.resource.data.hospitalId);
       allow update: if resource != null && (isOwner(userId) || isHospitalAdmin(resource.data.hospitalId)) && isImmutable('id');
