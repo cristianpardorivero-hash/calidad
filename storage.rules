@@ -10,9 +10,7 @@ service firebase.storage {
 
     function getUserData() {
       // Path to the user's profile document in Firestore
-      let userDocPath = /databases/(default)/documents/users/$(request.auth.uid);
-      // Get the document data
-      return get(userDocPath).data;
+      return get(/databases/(default)/documents/users/$(request.auth.uid)).data;
     }
 
     // Checks if the user's profile exists and is active
