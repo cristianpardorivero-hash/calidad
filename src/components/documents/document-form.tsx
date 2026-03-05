@@ -266,6 +266,10 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
         const fileToUpload = values.file;
         const storagePath = `documentos/${user.hospitalId}/${Date.now()}-${fileToUpload.name}`;
         const storageRef = ref(storage, storagePath);
+        
+        console.log("DEBUG: Iniciando subida de archivo. Usuario:", { uid: user.uid, email: user.email, hospitalId: user.hospitalId, role: user.role });
+        console.log("DEBUG: Ruta de almacenamiento de destino:", storagePath);
+        
         const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
 
         uploadTask.on('state_changed',
@@ -274,17 +278,21 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
                 setUploadProgress(progress);
             },
             (error) => {
-                console.error("Upload failed", error);
+                console.error("DEBUG: Error específico de subida a Storage:", error.code, error.message, error);
                 toast({
                     variant: "destructive",
                     title: "Error de Subida",
-                    description: "No se pudo subir el archivo. Por favor, inténtalo de nuevo.",
+                    description: `No se pudo subir el archivo. (${error.code})`,
                 });
                 setIsSubmitting(false);
                 setUploadProgress(0);
             },
             () => {
+                console.log("DEBUG: Subida a Storage completada. Obteniendo URL de descarga...");
                 getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
+                    console.log("DEBUG: URL de descarga obtenida:", downloadURL);
+                    console.log("DEBUG: Intentando guardar metadatos en Firestore...");
+
                     const { fechaVigenciaDesde, fechaVigenciaHasta, file, ...restValues } = values;
                     const fileExt = fileToUpload.name.split(".").pop() as "pdf" | "docx" | "xlsx";
 
@@ -317,16 +325,16 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
                         router.push(`/documentos/${savedDoc.id}`);
 
                     } catch(e) {
+                        console.error("DEBUG: Error al guardar metadatos en Firestore DESPUÉS de subir el archivo:", e);
                         setIsSubmitting(false);
-                        console.error(e);
                         toast({
                             variant: "destructive",
-                            title: "Error al guardar",
-                            description: "No se pudo guardar la información del documento. Inténtalo de nuevo.",
+                            title: "Error al guardar en Base de Datos",
+                            description: "El archivo se subió, pero no se pudo guardar su información. Contacte a soporte.",
                         });
                     }
                 }).catch((error) => {
-                    console.error("Failed to get download URL", error);
+                    console.error("DEBUG: Error al obtener URL de descarga DESPUÉS de subir el archivo:", error);
                     toast({
                         variant: "destructive",
                         title: "Error de Subida",
@@ -709,7 +717,7 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
             <div className="space-y-2">
                 <Label>Subiendo documento...</Label>
                 <Progress value={uploadProgress} />
-                <p className="text-sm text-muted-foreground">{uploadProgress === 100 ? "Finalizando..." : `Progreso: ${uploadProgress}%`}</p>
+                <p className="text-sm text-muted-foreground">{Math.round(uploadProgress) === 100 ? "Finalizando..." : `Progreso: ${Math.round(uploadProgress)}%`}</p>
             </div>
         )}
 
