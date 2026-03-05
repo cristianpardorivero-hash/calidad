@@ -59,7 +59,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // onAuthStateChanged will handle the state update
     } catch (error: any) {
       console.error("Sign-in failed:", error);
-      throw new Error(`Error de inicio de sesión: Credenciales incorrectas o problema de red.`);
+      if (error.code === 'auth/invalid-credential') {
+        throw new Error('Credenciales incorrectas. Por favor, verifica tu correo y contraseña.');
+      }
+      if (error.code === 'auth/user-disabled') {
+        throw new Error('Esta cuenta de usuario ha sido desactivada.');
+      }
+      throw new Error('Error de inicio de sesión: Problema de red o error inesperado.');
     }
   };
 

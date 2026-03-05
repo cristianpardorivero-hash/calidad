@@ -28,8 +28,8 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 export function LoginForm() {
   const { login } = useAuth();
   const { toast } = useToast();
-  const [email, setEmail] = useState("cristianpardorivero@gmail.com");
-  const [password, setPassword] = useState("password");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
