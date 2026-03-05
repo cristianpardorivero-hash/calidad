@@ -9,14 +9,18 @@ service firebase.storage {
       allow read: if request.auth != null && 
                      get(/databases/(default)/documents/users/$(request.auth.uid)).data.hospitalId == hospitalId;
       
-      // Allow creates (uploads) for admins or editors of the correct hospital, with all checks inlined
-      allow create: if request.auth != null &&
-                       get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'editor'] &&
-                       get(/databases/(default)/documents/users/$(request.auth.uid)).data.hospitalId == hospitalId &&
-                       request.resource.size < 25 * 1024 * 1024 &&
-                       (request.resource.contentType == 'application/pdf' ||
-                        request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-                        request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      // Allow creates (uploads) for admins or editors of the correct hospital
+      allow create: if request.auth != null {
+        let userData = get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+        let isAllowedUser = userData.role in ['admin', 'editor'];
+        let isCorrectHospital = userData.hospitalId == hospitalId;
+        let isValidSize = request.resource.size < 25 * 1024 * 1024;
+        let isValidType = request.resource.contentType == 'application/pdf' ||
+                          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+        return isAllowedUser && isCorrectHospital && isValidSize && isValidType;
+      }
       
       // Disallow updates and deletes from the client for data integrity
       allow update, delete: if false;
