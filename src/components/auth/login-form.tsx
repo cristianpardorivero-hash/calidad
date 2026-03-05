@@ -46,7 +46,7 @@ export function LoginForm() {
         toast({
             variant: "destructive",
             title: "Error de inicio de sesión",
-            description: "Credenciales incorrectas. Por favor, inténtalo de nuevo."
+            description: error.message || "Ocurrió un error. Por favor, inténtalo de nuevo."
         })
     } finally {
         setIsLoading(false);
