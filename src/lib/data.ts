@@ -10,6 +10,7 @@ import {
   where,
   serverTimestamp,
   Timestamp,
+  setDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Catalogs, Documento, UserProfile } from "./types";
@@ -105,6 +106,28 @@ export async function getDocumentById(
     } as Documento;
   }
   return undefined;
+}
+
+export async function createUserProfile(
+  uid: string,
+  data: Omit<UserProfile, 'uid' | 'createdAt' | 'updatedAt' | 'isDeleted' | 'deletedAt'>
+): Promise<UserProfile> {
+  const userRef = doc(db, 'users', uid);
+  const profileData = {
+    ...data,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    isDeleted: false,
+  };
+  await setDoc(userRef, profileData);
+  const newUserSnap = await getDoc(userRef);
+  const newUserData = newUserSnap.data();
+  return {
+    ...newUserData,
+    uid,
+    createdAt: (newUserData?.createdAt as Timestamp).toDate(),
+    updatedAt: (newUserData?.updatedAt as Timestamp).toDate(),
+  } as UserProfile;
 }
 
 export async function getDashboardKPIs(hospitalId: string) {
