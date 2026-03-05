@@ -108,8 +108,6 @@ export default function DocumentoDetailPage() {
         }
       };
       fetchData();
-    } else if (!user && !firebaseUser) {
-      setLoading(true);
     }
 
     return () => {
