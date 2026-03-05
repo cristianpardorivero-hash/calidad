@@ -121,9 +121,7 @@ export async function createUserProfile(
     isDeleted: false,
   };
   
-  try {
-    await setDoc(userRef, profileData);
-  } catch (error) {
+  await setDoc(userRef, profileData).catch(error => {
     errorEmitter.emit(
       'permission-error',
       new FirestorePermissionError({
@@ -133,7 +131,7 @@ export async function createUserProfile(
       })
     );
     throw error;
-  }
+  });
 
   const newUserSnap = await getDoc(userRef);
   const newUserData = newUserSnap.data() as any;
@@ -150,17 +148,38 @@ export async function getDashboardKPIs(hospitalId: string) {
     const sixtyDaysFromNow = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
     const docsRef = collection(db, "documents");
 
-    const totalQuery = query(docsRef, where("hospitalId", "==", hospitalId), where("isDeleted", "==", false));
-    const vigentesQuery = query(docsRef, where("hospitalId", "==", hospitalId), where("isDeleted", "==", false), where("estadoDocId", "==", "est-vig"));
-    const proximosQuery = query(docsRef, where("hospitalId", "==", hospitalId), where("isDeleted", "==", false), where("fechaVigenciaHasta", ">", now), where("fechaVigenciaHasta", "<=", sixtyDaysFromNow));
+    const allDocsQuery = query(docsRef, where("hospitalId", "==", hospitalId), where("isDeleted", "==", false));
     
-    const [totalSnap, vigentesSnap, proximosSnap] = await Promise.all([
-        getDocs(totalQuery),
-        getDocs(vigentesQuery),
-        getDocs(proximosQuery),
-    ]);
+    const allDocsSnap = await getDocs(allDocsQuery);
 
-    const docs = totalSnap.docs.map(d => d.data() as Documento);
+    let vigentesCount = 0;
+    let proximosAVencerCount = 0;
+
+    const docs: Documento[] = allDocsSnap.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
+          fechaVigenciaDesde: (data.fechaVigenciaDesde as Timestamp)?.toDate(),
+          fechaVigenciaHasta: (data.fechaVigenciaHasta as Timestamp)?.toDate(),
+          createdAt: (data.createdAt as Timestamp)?.toDate(),
+          updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+        } as Documento;
+    });
+
+    for (const doc of docs) {
+        if (doc.estadoDocId === "est-vig") {
+            vigentesCount++;
+        }
+        if (doc.fechaVigenciaHasta) {
+            const fechaVigencia = doc.fechaVigenciaHasta;
+            if (fechaVigencia > now && fechaVigencia <= sixtyDaysFromNow) {
+                proximosAVencerCount++;
+            }
+        }
+    }
+
     const ambitosCatalog = (await getCatalogs(hospitalId)).ambitos;
 
     const docsPorAmbito = docs.reduce((acc, doc) => {
@@ -172,9 +191,9 @@ export async function getDashboardKPIs(hospitalId: string) {
     }, {} as Record<string, number>);
 
     return {
-        totalDocs: totalSnap.size,
-        vigentes: vigentesSnap.size,
-        proximosAVencer: proximosSnap.size,
+        totalDocs: allDocsSnap.size,
+        vigentes: vigentesCount,
+        proximosAVencer: proximosAVencerCount,
         docsPorAmbito: Object.entries(docsPorAmbito).map(([name, value]) => ({ name, value }))
     };
 }
@@ -358,15 +377,26 @@ export async function deleteCatalogItem(
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     const userDocRef = doc(db, 'users', uid);
-    const userDoc = await getDoc(userDocRef);
-    if (userDoc.exists()) {
-        const data = userDoc.data();
-        return {
-            ...data,
-            uid,
-            createdAt: (data.createdAt as Timestamp)?.toDate(),
-            updatedAt: (data.updatedAt as Timestamp)?.toDate(),
-        } as UserProfile;
+    try {
+      const userDoc = await getDoc(userDocRef);
+      if (userDoc.exists()) {
+          const data = userDoc.data();
+          return {
+              ...data,
+              uid,
+              createdAt: (data.createdAt as Timestamp)?.toDate(),
+              updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+          } as UserProfile;
+      }
+      return null;
+    } catch (error) {
+       errorEmitter.emit(
+        'permission-error',
+        new FirestorePermissionError({
+          path: userDocRef.path,
+          operation: 'get',
+        })
+      );
+      throw error;
     }
-    return null;
 }
