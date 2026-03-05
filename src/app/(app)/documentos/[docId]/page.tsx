@@ -23,7 +23,6 @@ import {
   Binary,
   GitBranch,
   Info,
-  ClipboardCheck,
   Link as LinkIcon,
   Eye,
 } from "lucide-react";
@@ -43,7 +42,7 @@ export default function DocumentoDetailPage() {
 
   const [document, setDocument] = useState<Documento | null>(null);
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
-  const [linkedPautas, setLinkedPautas] = useState<Documento[]>([]);
+  const [linkedDocuments, setLinkedDocuments] = useState<Documento[]>([]);
   const [mainDocument, setMainDocument] = useState<Documento | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +53,7 @@ export default function DocumentoDetailPage() {
       const fetchData = async () => {
         setLoading(true);
         setError(null);
-        setLinkedPautas([]);
+        setLinkedDocuments([]);
         setMainDocument(null);
         try {
           const [docData, catalogsData] = await Promise.all([
@@ -72,12 +71,12 @@ export default function DocumentoDetailPage() {
           setCatalogs(catalogsData);
 
           // Now fetch linked documents based on the docData
-          const [linkedPautasData, mainDocData] = await Promise.all([
+          const [linkedDocumentsData, mainDocData] = await Promise.all([
             getLinkedDocuments(docId, user.hospitalId),
             docData.linkedDocumentId ? getDocumentById(docData.linkedDocumentId) : Promise.resolve(null)
           ]);
           
-          setLinkedPautas(linkedPautasData);
+          setLinkedDocuments(linkedDocumentsData);
           setMainDocument(mainDocData || null);
 
         } catch (err) {
@@ -237,29 +236,29 @@ export default function DocumentoDetailPage() {
             </CardContent>
           </Card>
 
-          {linkedPautas.length > 0 && (
+          {linkedDocuments.length > 0 && (
             <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5"/> Pautas de Cotejo Vinculadas</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="flex items-center gap-2"><LinkIcon className="h-5 w-5"/> Documentos Vinculados</CardTitle></CardHeader>
               <CardContent className="space-y-2">
-              {linkedPautas.map(pauta => (
-                  <div key={pauta.id} className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
+              {linkedDocuments.map(linkedDoc => (
+                  <div key={linkedDoc.id} className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
                       <div className="flex items-center gap-3">
                           <FileText className="h-5 w-5 text-muted-foreground"/>
                           <div className="flex flex-col">
-                              <Link href={`/documentos/${pauta.id}`} className="font-medium hover:underline text-sm">
-                                  {pauta.titulo}
+                              <Link href={`/documentos/${linkedDoc.id}`} className="font-medium hover:underline text-sm">
+                                  {linkedDoc.titulo}
                               </Link>
-                              <span className="text-xs text-muted-foreground">v{pauta.version}</span>
+                              <span className="text-xs text-muted-foreground">v{linkedDoc.version}</span>
                           </div>
                       </div>
                       <div className="flex items-center">
                           <Button variant="ghost" size="icon" asChild>
-                              <Link href={`/documentos/${pauta.id}`} title="Ver documento">
+                              <Link href={`/documentos/${linkedDoc.id}`} title="Ver documento">
                                   <Eye className="h-4 w-4" />
                               </Link>
                           </Button>
                           <Button variant="ghost" size="icon" asChild>
-                              <a href={pauta.downloadUrl} download={pauta.fileName} title="Descargar archivo">
+                              <a href={linkedDoc.downloadUrl} download={linkedDoc.fileName} title="Descargar archivo">
                                   <Download className="h-4 w-4" />
                               </a>
                           </Button>
