@@ -110,6 +110,31 @@ export async function getDocumentById(
   return undefined;
 }
 
+export async function getLinkedDocuments(docId: string, hospitalId: string): Promise<Documento[]> {
+    const docsRef = collection(db, "documents");
+    const q = query(
+        docsRef,
+        where("hospitalId", "==", hospitalId),
+        where("isDeleted", "==", false),
+        where("linkedDocumentId", "==", docId)
+    );
+
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+        id: doc.id,
+        ...data,
+        // Convert Firestore Timestamps to JS Dates
+        fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
+        fechaVigenciaDesde: (data.fechaVigenciaDesde as Timestamp)?.toDate(),
+        fechaVigenciaHasta: (data.fechaVigenciaHasta as Timestamp)?.toDate(),
+        createdAt: (data.createdAt as Timestamp)?.toDate(),
+        updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+        } as Documento;
+    });
+}
+
 export async function createUserProfile(
   uid: string,
   data: Omit<UserProfile, 'uid' | 'createdAt' | 'updatedAt' | 'isDeleted' | 'deletedAt'>
@@ -308,7 +333,10 @@ export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | 
     updatedAt: serverTimestamp(),
   };
 
-  // Conditionally add date fields only if they exist
+  if (docData.fechaDocumento) {
+    dataToSave.fechaDocumento = Timestamp.fromDate(docData.fechaDocumento);
+  }
+  
   if (docData.fechaVigenciaDesde) {
     dataToSave.fechaVigenciaDesde = Timestamp.fromDate(docData.fechaVigenciaDesde);
   }

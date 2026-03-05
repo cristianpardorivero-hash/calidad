@@ -1,6 +1,6 @@
 'use client';
 
-import { getCatalogs, getDocumentById } from "@/lib/data";
+import { getCatalogs, getDocumentById, getLinkedDocuments } from "@/lib/data";
 import { useParams } from "next/navigation";
 import {
   Card,
@@ -23,6 +23,8 @@ import {
   Binary,
   GitBranch,
   Info,
+  ClipboardCheck,
+  Link as LinkIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -31,6 +33,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import type { Catalogs, Documento } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
 
 export default function DocumentoDetailPage() {
   const params = useParams();
@@ -39,6 +42,8 @@ export default function DocumentoDetailPage() {
 
   const [document, setDocument] = useState<Documento | null>(null);
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
+  const [linkedPautas, setLinkedPautas] = useState<Documento[]>([]);
+  const [mainDocument, setMainDocument] = useState<Documento | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,18 +53,26 @@ export default function DocumentoDetailPage() {
       const fetchData = async () => {
         setLoading(true);
         setError(null);
+        setLinkedPautas([]);
+        setMainDocument(null);
         try {
-          const [docData, catalogsData] = await Promise.all([
+          const [docData, catalogsData, linkedPautasData] = await Promise.all([
             getDocumentById(docId),
             getCatalogs(user.hospitalId),
+            getLinkedDocuments(docId, user.hospitalId),
           ]);
 
           if (!docData) {
             setError("Documento no encontrado.");
           } else {
             setDocument(docData);
+            if (docData.linkedDocumentId) {
+              const mainDocData = await getDocumentById(docData.linkedDocumentId);
+              setMainDocument(mainDocData || null);
+            }
           }
           setCatalogs(catalogsData);
+          setLinkedPautas(linkedPautasData);
 
         } catch (err) {
           console.error(err);
@@ -217,6 +230,56 @@ export default function DocumentoDetailPage() {
                 <p><strong>Elem. Medible:</strong> {getCatalogName("elementosMedibles", document.elementoMedibleId)}</p>
             </CardContent>
           </Card>
+
+          {linkedPautas.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5"/> Pautas de Cotejo Vinculadas</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+              {linkedPautas.map(pauta => (
+                  <div key={pauta.id} className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
+                      <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-muted-foreground"/>
+                          <div className="flex flex-col">
+                              <Link href={`/documentos/${pauta.id}`} className="font-medium hover:underline text-sm">
+                                  {pauta.titulo}
+                              </Link>
+                              <span className="text-xs text-muted-foreground">v{pauta.version}</span>
+                          </div>
+                      </div>
+                      <Button variant="ghost" size="icon" asChild>
+                          <a href={pauta.downloadUrl} download={pauta.fileName}>
+                              <Download className="h-4 w-4" />
+                          </a>
+                      </Button>
+                  </div>
+              ))}
+              </CardContent>
+          </Card>
+          )}
+
+          {mainDocument && (
+              <Card>
+                  <CardHeader><CardTitle className="flex items-center gap-2"><LinkIcon className="h-5 w-5"/> Vinculado al Documento</CardTitle></CardHeader>
+                  <CardContent>
+                  <div className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
+                      <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-muted-foreground"/>
+                          <div className="flex flex-col">
+                              <Link href={`/documentos/${mainDocument.id}`} className="font-medium hover:underline text-sm">
+                                  {mainDocument.titulo}
+                              </Link>
+                              <span className="text-xs text-muted-foreground">v{mainDocument.version}</span>
+                          </div>
+                      </div>
+                      <Button variant="ghost" size="icon" asChild>
+                          <a href={mainDocument.downloadUrl} download={mainDocument.fileName}>
+                              <Download className="h-4 w-4" />
+                          </a>
+                      </Button>
+                  </div>
+                  </CardContent>
+              </Card>
+          )}
           
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><Tags className="h-5 w-5"/> Etiquetas</CardTitle></CardHeader>
