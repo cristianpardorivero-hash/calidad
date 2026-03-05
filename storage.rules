@@ -5,6 +5,7 @@ service firebase.storage {
 
     // Helper function to get user data from Firestore
     function getUserData() {
+      // Use the (default) database
       return get(/databases/(default)/documents/users/$(request.auth.uid)).data;
     }
 
