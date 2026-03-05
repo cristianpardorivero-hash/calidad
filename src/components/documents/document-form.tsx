@@ -282,7 +282,7 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo de documento</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ''}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecciona un tipo" />
@@ -319,7 +319,7 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
               render={({ field }) => (
                 <FormItem className="md:col-span-2">
                   <FormLabel>Estado del documento</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ''}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecciona un estado" />
@@ -357,7 +357,7 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Ámbito</FormLabel>
-                  <Select onValueChange={(value) => { field.onChange(value); form.setValue("caracteristicaId", undefined); form.setValue("puntoVerificacionId", undefined); form.setValue("elementoMedibleId", undefined)}} value={field.value}>
+                  <Select onValueChange={(value) => { field.onChange(value); form.setValue("caracteristicaId", undefined); form.setValue("puntoVerificacionId", undefined); form.setValue("elementoMedibleId", undefined)}} value={field.value || ''}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un ámbito" /></SelectTrigger></FormControl>
                     <SelectContent>{catalogs.ambitos.map((a) => (<SelectItem key={a.id} value={a.id}>{a.nombre}</SelectItem>))}</SelectContent>
                   </Select>
@@ -371,7 +371,7 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Característica</FormLabel>
-                  <Select onValueChange={(value) => { field.onChange(value); form.setValue("puntoVerificacionId", undefined); form.setValue("elementoMedibleId", undefined)}} value={field.value} disabled={!ambitoId}>
+                  <Select onValueChange={(value) => { field.onChange(value); form.setValue("puntoVerificacionId", undefined); form.setValue("elementoMedibleId", undefined)}} value={field.value || ''} disabled={!ambitoId}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Selecciona una característica" /></SelectTrigger></FormControl>
                     <SelectContent>{filteredCaracteristicas.map((c) => (<SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>))}</SelectContent>
                   </Select>
@@ -385,7 +385,7 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Punto de verificación</FormLabel>
-                  <Select onValueChange={(value) => { field.onChange(value); form.setValue("elementoMedibleId", undefined)}} value={field.value} disabled={!caracteristicaId}>
+                  <Select onValueChange={(value) => { field.onChange(value); form.setValue("elementoMedibleId", undefined)}} value={field.value || ''} disabled={!caracteristicaId}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un punto" /></SelectTrigger></FormControl>
                     <SelectContent>{filteredPuntos.map((p) => (<SelectItem key={p.id} value={p.id}>{p.codigo} - {p.nombre}</SelectItem>))}</SelectContent>
                   </Select>
@@ -399,7 +399,7 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Elemento medible</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={!puntoVerificacionId}>
+                  <Select onValueChange={field.onChange} value={field.value || ''} disabled={!puntoVerificacionId}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un elemento" /></SelectTrigger></FormControl>
                     <SelectContent>{filteredElementos.map((e) => (<SelectItem key={e.id} value={e.id}>{e.codigo} - {e.nombre}</SelectItem>))}</SelectContent>
                   </Select>
@@ -417,7 +417,7 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
             <FormField control={form.control} name="servicioId" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Servicio/Unidad (Opcional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecciona un servicio" /></SelectTrigger></FormControl>
+                  <Select onValueChange={field.onChange} value={field.value || ''}><FormControl><SelectTrigger><SelectValue placeholder="Selecciona un servicio" /></SelectTrigger></FormControl>
                     <SelectContent>{catalogs.servicios.map((s) => (<SelectItem key={s.id} value={s.id}>{s.nombre}</SelectItem>))}</SelectContent>
                   </Select>
                   <FormMessage />
@@ -559,5 +559,7 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
     </Form>
   );
 }
+
+    
 
     
