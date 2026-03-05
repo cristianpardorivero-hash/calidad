@@ -1,5 +1,3 @@
-import type { Timestamp } from "firebase/firestore";
-
 export type UserRole = "admin" | "editor" | "lector";
 
 export interface UserProfile {
@@ -21,8 +19,8 @@ export interface Hospital {
   nombre: string;
   codigo?: string;
   servicioSalud?: string;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // Catalog Item Types
@@ -140,6 +138,6 @@ export interface AuditLog {
   actorEmail: string;
   action: AuditAction;
   docId?: string;
-  timestamp: Timestamp;
+  timestamp: Date;
   details: Record<string, any>;
 }

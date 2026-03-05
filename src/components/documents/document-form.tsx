@@ -43,7 +43,8 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "../ui/progress";
 import { suggestDocumentMetadata } from "@/ai/flows/ai-metadata-suggester";
-import { Label } from "@/components/ui/label";
+import { Label } from "../ui/label";
+
 
 const formSchema = z.object({
   titulo: z.string().min(5, "El título debe tener al menos 5 caracteres.").default(""),
@@ -71,7 +72,7 @@ const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
 const ALLOWED_EXTENSIONS = ["pdf", "docx", "xlsx"];
 
 export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
-  const { user } = useAuth();
+  const { user, firebaseUser } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -164,7 +165,7 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
   };
 
   async function onSubmit(values: FormValues) {
-    if (!user) {
+    if (!user || !firebaseUser) {
       toast({
         variant: "destructive",
         title: "No autenticado",
@@ -187,25 +188,36 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
     }, 200);
 
     const fileExt = values.file.name.split(".").pop() as "pdf" | "docx" | "xlsx";
-    const newDoc: Omit<Documento, 'id'|'createdAt'|'updatedAt'> = {
+    // This is a simplified version. In a real app, you would upload the file to Firebase Storage
+    // and then save the document metadata with the storage path and download URL.
+    const storagePath = `documentos/${user.hospitalId}/${values.ambitoId}/${Date.now()}/${values.file.name}`;
+
+
+    const newDocData: Omit<Documento, 'id'|'createdAt'|'updatedAt'|'downloadUrl'> = {
         ...values,
         hospitalId: user.hospitalId,
         fileName: values.file.name,
         fileExt: fileExt,
         fileSize: values.file.size,
         mimeType: values.file.type,
-        storagePath: `documentos/${user.hospitalId}/${values.ambitoId}/${values.caracteristicaId}/${values.puntoVerificacionId}/${values.elementoMedibleId}/${Date.now()}/${values.file.name}`,
-        downloadUrl: "#", // Should be generated after upload
+        storagePath: storagePath, 
         tags: values.tags?.split(",").map(t => t.trim()).filter(Boolean),
-        createdByUid: user.uid,
-        createdByEmail: user.email,
+        createdByUid: firebaseUser.uid,
+        createdByEmail: firebaseUser.email || 'N/A',
         isDeleted: false,
         searchKeywords: [values.titulo, values.responsableNombre, ...(values.tags?.split(",").map(t => t.trim()).filter(Boolean) || [])],
     };
 
     try {
-        await new Promise(res => setTimeout(res, 4000)); // Simulate network latency
-        const savedDoc = await addDocument(newDoc);
+        // In real app, first upload to storage, get URL, then save document.
+        // For now, we simulate success.
+        // const downloadUrl = await uploadFileAndGetURL(values.file, storagePath);
+        // const finalDoc = {...newDocData, downloadUrl };
+        const finalDoc = {...newDocData, downloadUrl: '#' };
+
+        // @ts-ignore
+        const savedDoc = await addDocument(finalDoc);
+        
         setUploadProgress(100);
         clearInterval(progressInterval);
         
@@ -220,6 +232,7 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
         setIsSubmitting(false);
         setUploadProgress(0);
         clearInterval(progressInterval);
+        console.error(e);
         toast({
             variant: "destructive",
             title: "Error al subir",
@@ -511,7 +524,7 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
                 <FormItem>
                   <FormLabel>Tags (Opcional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="IAAS, consentimiento, urgencia..." {...field} />
+                    <Input placeholder="IAAS, consentimiento, urgencia..." {...field} value={field.value ?? ""} />
                   </FormControl>
                   <FormDescription>
                     Separa las etiquetas con comas.

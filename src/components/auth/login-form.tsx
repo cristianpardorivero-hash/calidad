@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg viewBox="0 0 48 48" {...props}>
@@ -28,15 +29,28 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 export function LoginForm() {
   const router = useRouter();
   const { login } = useAuth();
+  const { toast } = useToast();
+  const [email, setEmail] = useState("director@hospital.cl");
+  const [password, setPassword] = useState("password");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    await login("demo@user.com", "password"); // Mock login
-    router.push("/dashboard");
-    setIsLoading(false);
+    try {
+      await login(email, password); 
+      router.push("/dashboard");
+    } catch (error: any) {
+        console.error(error);
+        toast({
+            variant: "destructive",
+            title: "Error de inicio de sesión",
+            description: "Credenciales incorrectas. Por favor, inténtalo de nuevo."
+        })
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   return (
@@ -51,11 +65,11 @@ export function LoginForm() {
         <form id="login-form" onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
             <Label htmlFor="email">Correo electrónico</Label>
-            <Input id="email" type="email" placeholder="m@example.com" required defaultValue="director@hospital.cl" />
+            <Input id="email" type="email" placeholder="m@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="space-y-2">
             <Label htmlFor="password">Contraseña</Label>
-            <Input id="password" type="password" required defaultValue="password" />
+            <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
         </form>
         <div className="relative">
