@@ -3,23 +3,16 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Helper function to get user data from Firestore
-    function getUserData() {
-      // Use the (default) database
-      return get(/databases/(default)/documents/users/$(request.auth.uid)).data;
-    }
-
-    // Match the path for document uploads
     match /documentos/{hospitalId}/{allPaths=**} {
       
       // Allow reads if the user is a member of the hospital
-      allow read: if request.auth != null &&
-                     getUserData().hospitalId == hospitalId;
+      allow read: if request.auth != null && 
+                     get(/databases/(default)/documents/users/$(request.auth.uid)).data.hospitalId == hospitalId;
       
-      // Allow creates (uploads) for admins or editors of the correct hospital
+      // Allow creates (uploads) for admins or editors of the correct hospital, with all checks inlined
       allow create: if request.auth != null &&
-                       getUserData().role in ['admin', 'editor'] &&
-                       getUserData().hospitalId == hospitalId &&
+                       get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'editor'] &&
+                       get(/databases/(default)/documents/users/$(request.auth.uid)).data.hospitalId == hospitalId &&
                        request.resource.size < 25 * 1024 * 1024 &&
                        (request.resource.contentType == 'application/pdf' ||
                         request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
