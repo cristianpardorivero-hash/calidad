@@ -29,7 +29,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, ChevronsUpDown, Loader2, Sparkles, UploadCloud } from "lucide-react";
+import { CalendarIcon, ChevronsUpDown, Loader2, Save, Sparkles, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -37,7 +37,7 @@ import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { useAuth } from "@/hooks/use-auth";
-import { addDocument } from "@/lib/data";
+import { addDocument, updateDocument } from "@/lib/data";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "../ui/progress";
@@ -46,8 +46,13 @@ import { Label } from "../ui/label";
 import { Checkbox } from "../ui/checkbox";
 import { ScrollArea } from "../ui/scroll-area";
 
+type FormValues = z.infer<typeof formSchema>;
 
-const formSchema = z.object({
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
+const ALLOWED_EXTENSIONS = ["pdf", "docx", "xlsx"];
+
+// We need a dynamic schema based on whether we are editing or creating
+const getFormSchema = (isEditing: boolean) => z.object({
   titulo: z.string().min(5, "El título debe tener al menos 5 caracteres.").default(""),
   descripcion: z.string().optional().default(""),
   tipoDocumentoId: z.string({ required_error: "Debe seleccionar un tipo." }),
@@ -62,17 +67,18 @@ const formSchema = z.object({
   fechaDocumento: z.date({ required_error: "La fecha del documento es requerida." }),
   fechaVigenciaDesde: z.date().optional(),
   fechaVigenciaHasta: z.date().optional(),
-  file: z.any().refine((file) => file, "El archivo es requerido."),
+  file: z.any().refine((file) => isEditing ? true : !!file, "El archivo es requerido.").optional(),
   tags: z.string().optional().default(""),
   linkedDocumentId: z.string().optional(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type DocumentFormProps = {
+  catalogs: Catalogs;
+  documents: Documento[];
+  document?: Documento;
+};
 
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
-const ALLOWED_EXTENSIONS = ["pdf", "docx", "xlsx"];
-
-export function DocumentForm({ catalogs, documents }: { catalogs: Catalogs, documents: Documento[] }) {
+export function DocumentForm({ catalogs, documents, document }: DocumentFormProps) {
   const { user, firebaseUser } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -81,9 +87,17 @@ export function DocumentForm({ catalogs, documents }: { catalogs: Catalogs, docu
   const [uploadProgress, setUploadProgress] = useState(0);
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
 
+  const isEditing = !!document;
+  const formSchema = getFormSchema(isEditing);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    defaultValues: isEditing && document ? {
+        ...document,
+        tags: document.tags?.join(", ") || "",
+        servicioIds: document.servicioIds || [],
+        file: null, // Don't prepopulate file input
+    } : {
       version: "1.0",
       titulo: "",
       descripcion: "",
@@ -92,6 +106,7 @@ export function DocumentForm({ catalogs, documents }: { catalogs: Catalogs, docu
       tags: "",
       servicioIds: [],
       linkedDocumentId: "",
+      file: null,
     },
   });
 
@@ -140,8 +155,13 @@ export function DocumentForm({ catalogs, documents }: { catalogs: Catalogs, docu
         filtered = filtered.filter(doc => doc.elementoMedibleId === elementoMedibleId);
     }
 
+    // When editing a document, don't allow it to be linked to itself
+    if (isEditing && document) {
+        filtered = filtered.filter(doc => doc.id !== document.id);
+    }
+
     return filtered;
-  }, [documents, ambitoId, caracteristicaId, elementoMedibleId, linkableDocTypeIds, hasClassification]);
+  }, [documents, ambitoId, caracteristicaId, elementoMedibleId, linkableDocTypeIds, hasClassification, isEditing, document]);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -201,70 +221,103 @@ export function DocumentForm({ catalogs, documents }: { catalogs: Catalogs, docu
       toast({
         variant: "destructive",
         title: "No autenticado",
-        description: "Debes iniciar sesión para subir un documento.",
+        description: "Debes iniciar sesión para guardar un documento.",
       });
       return;
     }
     setIsSubmitting(true);
-    setUploadProgress(0);
-
-    const progressInterval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 95) {
-          clearInterval(progressInterval);
-          return prev;
-        }
-        return prev + 5;
-      });
-    }, 200);
-
-    const fileExt = values.file.name.split(".").pop() as "pdf" | "docx" | "xlsx";
-    const storagePath = `documentos/${user.hospitalId}/${values.ambitoId}/${Date.now()}/${values.file.name}`;
     
-    const { fechaVigenciaDesde, fechaVigenciaHasta, file, ...restValues } = values;
-
-    const docData: Omit<Documento, 'id'|'createdAt'|'updatedAt'|'downloadUrl'> = {
-        ...restValues,
-        hospitalId: user.hospitalId,
-        fileName: values.file.name,
-        fileExt: fileExt,
-        fileSize: values.file.size,
-        mimeType: values.file.type,
-        storagePath: storagePath, 
-        tags: values.tags?.split(",").map(t => t.trim()).filter(Boolean),
-        createdByUid: firebaseUser.uid,
-        createdByEmail: firebaseUser.email || 'N/A',
-        isDeleted: false,
-        searchKeywords: [values.titulo, values.responsableNombre, ...(values.tags?.split(",").map(t => t.trim()).filter(Boolean) || [])],
-        ...(fechaVigenciaDesde && { fechaVigenciaDesde }),
-        ...(fechaVigenciaHasta && { fechaVigenciaHasta }),
-    };
-
-    try {
-        const finalDoc = {...docData, downloadUrl: '#' };
-
-        const savedDoc = await addDocument(finalDoc);
-        
-        setUploadProgress(100);
-        clearInterval(progressInterval);
-        
-        toast({
-            title: "Documento subido con éxito",
-            description: `El documento "${savedDoc.titulo}" ha sido guardado.`,
-        });
-
-        router.push(`/documentos/${savedDoc.id}`);
-
-    } catch(e) {
-        setIsSubmitting(false);
+    if (isEditing && document) {
+        const { file, ...updateValues } = values; // file changes are not handled in edit mode
+        const dataToUpdate: Partial<Documento> = {
+            ...updateValues,
+            tags: updateValues.tags?.split(",").map(t => t.trim()).filter(Boolean),
+        };
+        try {
+            await updateDocument(document.id, dataToUpdate);
+            toast({
+                title: "Documento actualizado",
+                description: `El documento "${dataToUpdate.titulo}" ha sido guardado.`,
+            });
+            router.push(`/documentos/${document.id}`);
+            router.refresh(); // Refresh previous page to show updated data
+        } catch(e) {
+            console.error(e);
+            toast({
+                variant: "destructive",
+                title: "Error al actualizar",
+                description: "No se pudo guardar el documento. Inténtalo de nuevo.",
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+    } else {
+        // CREATE LOGIC
+        if (!values.file) {
+            form.setError("file", { message: "El archivo es requerido." });
+            setIsSubmitting(false);
+            return;
+        }
         setUploadProgress(0);
-        clearInterval(progressInterval);
-        console.error(e);
-        toast({
-            variant: "destructive",
-            title: "Error al subir",
-            description: "No se pudo guardar el documento. Inténtalo de nuevo.",
-        });
+
+        const progressInterval = setInterval(() => {
+          setUploadProgress((prev) => {
+            if (prev >= 95) {
+              clearInterval(progressInterval);
+              return prev;
+            }
+            return prev + 5;
+          });
+        }, 200);
+
+        const fileExt = values.file.name.split(".").pop() as "pdf" | "docx" | "xlsx";
+        const storagePath = `documentos/${user.hospitalId}/${values.ambitoId}/${Date.now()}/${values.file.name}`;
+        
+        const { fechaVigenciaDesde, fechaVigenciaHasta, file, ...restValues } = values;
+
+        const docData: Omit<Documento, 'id'|'createdAt'|'updatedAt'|'downloadUrl'> = {
+            ...restValues,
+            hospitalId: user.hospitalId,
+            fileName: values.file.name,
+            fileExt: fileExt,
+            fileSize: values.file.size,
+            mimeType: values.file.type,
+            storagePath: storagePath, 
+            tags: values.tags?.split(",").map(t => t.trim()).filter(Boolean),
+            createdByUid: firebaseUser.uid,
+            createdByEmail: firebaseUser.email || 'N/A',
+            isDeleted: false,
+            searchKeywords: [values.titulo, values.responsableNombre, ...(values.tags?.split(",").map(t => t.trim()).filter(Boolean) || [])],
+            ...(fechaVigenciaDesde && { fechaVigenciaDesde }),
+            ...(fechaVigenciaHasta && { fechaVigenciaHasta }),
+        };
+
+        try {
+            const finalDoc = {...docData, downloadUrl: '#' };
+
+            const savedDoc = await addDocument(finalDoc);
+            
+            setUploadProgress(100);
+            clearInterval(progressInterval);
+            
+            toast({
+                title: "Documento subido con éxito",
+                description: `El documento "${savedDoc.titulo}" ha sido guardado.`,
+            });
+
+            router.push(`/documentos/${savedDoc.id}`);
+
+        } catch(e) {
+            setIsSubmitting(false);
+            setUploadProgress(0);
+            clearInterval(progressInterval);
+            console.error(e);
+            toast({
+                variant: "destructive",
+                title: "Error al subir",
+                description: "No se pudo guardar el documento. Inténtalo de nuevo.",
+            });
+        }
     }
   }
 
@@ -572,41 +625,43 @@ export function DocumentForm({ catalogs, documents }: { catalogs: Catalogs, docu
         </div>
 
 
-        <Card>
-            <CardHeader><CardTitle>E) Archivo</CardTitle></CardHeader>
-            <CardContent>
-                <FormField
-                control={form.control}
-                name="file"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Seleccionar archivo</FormLabel>
-                    <FormControl>
-                        <div className="relative flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-border bg-card p-8 hover:bg-muted/50">
-                            <UploadCloud className="mb-2 h-10 w-10 text-muted-foreground" />
-                            <div className="text-center">
-                                <p className="font-semibold">Click para subir o arrastra y suelta</p>
-                                <p className="text-xs text-muted-foreground">PDF, DOCX, XLSX (max. 25MB)</p>
+        {!isEditing && (
+            <Card>
+                <CardHeader><CardTitle>E) Archivo</CardTitle></CardHeader>
+                <CardContent>
+                    <FormField
+                    control={form.control}
+                    name="file"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Seleccionar archivo</FormLabel>
+                        <FormControl>
+                            <div className="relative flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-border bg-card p-8 hover:bg-muted/50">
+                                <UploadCloud className="mb-2 h-10 w-10 text-muted-foreground" />
+                                <div className="text-center">
+                                    <p className="font-semibold">Click para subir o arrastra y suelta</p>
+                                    <p className="text-xs text-muted-foreground">PDF, DOCX, XLSX (max. 25MB)</p>
+                                </div>
+                                <Input
+                                    type="file"
+                                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                                    onChange={handleFileChange}
+                                    accept=".pdf,.docx,.xlsx"
+                                />
                             </div>
-                            <Input
-                                type="file"
-                                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                                onChange={handleFileChange}
-                                accept=".pdf,.docx,.xlsx"
-                            />
-                        </div>
-                    </FormControl>
-                    {fileToUpload && (
-                        <div className="mt-4 text-sm text-muted-foreground">
-                            <strong>Archivo seleccionado:</strong> {fileToUpload.name} ({(fileToUpload.size / 1024 / 1024).toFixed(2)} MB)
-                        </div>
+                        </FormControl>
+                        {fileToUpload && (
+                            <div className="mt-4 text-sm text-muted-foreground">
+                                <strong>Archivo seleccionado:</strong> {fileToUpload.name} ({(fileToUpload.size / 1024 / 1024).toFixed(2)} MB)
+                            </div>
+                        )}
+                        <FormMessage />
+                        </FormItem>
                     )}
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-            </CardContent>
-        </Card>
+                    />
+                </CardContent>
+            </Card>
+        )}
         
         <Card>
             <CardHeader><CardTitle>F) Etiquetas</CardTitle></CardHeader>
@@ -632,7 +687,7 @@ export function DocumentForm({ catalogs, documents }: { catalogs: Catalogs, docu
 
         <Separator />
         
-        {isSubmitting && (
+        {isSubmitting && !isEditing && (
             <div className="space-y-2">
                 <Label>Subiendo documento...</Label>
                 <Progress value={uploadProgress} />
@@ -645,8 +700,14 @@ export function DocumentForm({ catalogs, documents }: { catalogs: Catalogs, docu
                 Cancelar
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
-                Subir Documento
+            {isSubmitting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+             ) : isEditing ? (
+                <Save className="mr-2 h-4 w-4" />
+             ) : (
+                <UploadCloud className="mr-2 h-4 w-4" />
+             )}
+                {isEditing ? "Guardar Cambios" : "Subir Documento"}
             </Button>
         </div>
       </form>

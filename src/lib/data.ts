@@ -463,5 +463,60 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     }
 }
 
-    
-    
+export async function updateDocument(docId: string, updates: Partial<Documento>): Promise<void> {
+  const docRef = doc(db, "documents", docId);
+  
+  const dataToUpdate: Record<string, any> = {
+    ...updates,
+    updatedAt: serverTimestamp(),
+  };
+
+  // Convert dates to Timestamps if they exist
+  if (updates.fechaDocumento instanceof Date) {
+    dataToUpdate.fechaDocumento = Timestamp.fromDate(updates.fechaDocumento);
+  }
+  if (updates.fechaVigenciaDesde instanceof Date) {
+    dataToUpdate.fechaVigenciaDesde = Timestamp.fromDate(updates.fechaVigenciaDesde);
+  } else if (updates.fechaVigenciaDesde === undefined) {
+    dataToUpdate.fechaVigenciaDesde = null;
+  }
+
+  if (updates.fechaVigenciaHasta instanceof Date) {
+    dataToUpdate.fechaVigenciaHasta = Timestamp.fromDate(updates.fechaVigenciaHasta);
+  } else if (updates.fechaVigenciaHasta === undefined) {
+    dataToUpdate.fechaVigenciaHasta = null;
+  }
+
+  // Re-generate search keywords from a mix of old and new data
+  const originalDocSnap = await getDoc(docRef);
+  const originalData = originalDocSnap.data();
+
+  if (originalData) {
+      const newTitle = updates.titulo ?? originalData.titulo;
+      const newResponsable = updates.responsableNombre ?? originalData.responsableNombre;
+      const newTags = updates.tags ?? originalData.tags;
+      dataToUpdate.searchKeywords = [newTitle, newResponsable, ...(newTags || [])].filter(Boolean).map(kw => String(kw).toLowerCase());
+  }
+
+  // Remove fields that should not be updated from client
+  const nonUpdateableFields = [
+    'id', 'createdAt', 'createdByUid', 'createdByEmail', 'hospitalId', 
+    'isDeleted', 'deletedAt', 'deletedByUid', 'fileName', 'fileExt', 
+    'mimeType', 'fileSize', 'storagePath', 'downloadUrl', 'checksum'
+  ];
+  nonUpdateableFields.forEach(field => delete dataToUpdate[field]);
+  
+  try {
+    await updateDoc(docRef, dataToUpdate);
+  } catch (error) {
+    errorEmitter.emit(
+      'permission-error',
+      new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'update',
+        requestResourceData: dataToUpdate,
+      })
+    );
+    throw error;
+  }
+}
