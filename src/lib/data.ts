@@ -121,7 +121,9 @@ export async function createUserProfile(
     isDeleted: false,
   };
   
-  await setDoc(userRef, profileData).catch(error => {
+  try {
+    await setDoc(userRef, profileData);
+  } catch (error) {
     errorEmitter.emit(
       'permission-error',
       new FirestorePermissionError({
@@ -131,7 +133,7 @@ export async function createUserProfile(
       })
     );
     throw error;
-  });
+  }
 
   const newUserSnap = await getDoc(userRef);
   const newUserData = newUserSnap.data() as any;
@@ -204,27 +206,28 @@ export async function addUser(user: Omit<UserProfile, 'uid' | 'createdAt' | 'upd
         updatedAt: serverTimestamp(),
         isDeleted: false,
     };
-    const docRef = await addDoc(userRef, dataToSave).catch(error => {
-      errorEmitter.emit(
-        'permission-error',
-        new FirestorePermissionError({
-          path: userRef.path,
-          operation: 'create',
-          requestResourceData: dataToSave,
-        })
-      );
-      throw error;
-    });
-    
-    const newUserSnap = await getDoc(docRef);
-    const data = newUserSnap.data();
+    try {
+        const docRef = await addDoc(userRef, dataToSave);
+        const newUserSnap = await getDoc(docRef);
+        const data = newUserSnap.data();
 
-    return {
-        ...data,
-        uid: newUserSnap.id,
-        createdAt: (data?.createdAt as Timestamp)?.toDate(),
-        updatedAt: (data?.updatedAt as Timestamp)?.toDate(),
-    } as UserProfile;
+        return {
+            ...data,
+            uid: newUserSnap.id,
+            createdAt: (data?.createdAt as Timestamp)?.toDate(),
+            updatedAt: (data?.updatedAt as Timestamp)?.toDate(),
+        } as UserProfile;
+    } catch (error) {
+        errorEmitter.emit(
+            'permission-error',
+            new FirestorePermissionError({
+              path: userRef.path,
+              operation: 'create',
+              requestResourceData: dataToSave,
+            })
+        );
+        throw error;
+    }
 }
 
 export async function updateUser(
@@ -233,7 +236,9 @@ export async function updateUser(
 ): Promise<UserProfile> {
   const userRef = doc(db, "users", uid);
   const dataToUpdate = { ...updates, updatedAt: serverTimestamp() };
-  await updateDoc(userRef, dataToUpdate).catch(error => {
+  try {
+    await updateDoc(userRef, dataToUpdate);
+  } catch (error) {
     errorEmitter.emit(
       'permission-error',
       new FirestorePermissionError({
@@ -243,7 +248,7 @@ export async function updateUser(
       })
     );
     throw error;
-  });
+  }
 
   const updatedDoc = await getDoc(userRef);
   const data = updatedDoc.data();
@@ -262,7 +267,20 @@ export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | 
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
-  const docRef = await addDoc(collRef, dataToSave).catch(error => {
+  try {
+    const docRef = await addDoc(collRef, dataToSave);
+    const newDocSnap = await getDoc(docRef);
+    const data = newDocSnap.data();
+    return {
+        id: newDocSnap.id,
+        ...data,
+        fechaDocumento: (data?.fechaDocumento as Timestamp)?.toDate(),
+        fechaVigenciaDesde: (data?.fechaVigenciaDesde as Timestamp)?.toDate(),
+        fechaVigenciaHasta: (data?.fechaVigenciaHasta as Timestamp)?.toDate(),
+        createdAt: (data?.createdAt as Timestamp)?.toDate(),
+        updatedAt: (data?.updatedAt as Timestamp)?.toDate(),
+    } as Documento;
+  } catch (error) {
     errorEmitter.emit(
       'permission-error',
       new FirestorePermissionError({
@@ -272,19 +290,7 @@ export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | 
       })
     );
     throw error;
-  });
-
-  const newDocSnap = await getDoc(docRef);
-  const data = newDocSnap.data();
-  return {
-    id: newDocSnap.id,
-    ...data,
-     fechaDocumento: (data?.fechaDocumento as Timestamp)?.toDate(),
-      fechaVigenciaDesde: (data?.fechaVigenciaDesde as Timestamp)?.toDate(),
-      fechaVigenciaHasta: (data?.fechaVigenciaHasta as Timestamp)?.toDate(),
-      createdAt: (data?.createdAt as Timestamp)?.toDate(),
-      updatedAt: (data?.updatedAt as Timestamp)?.toDate(),
-  } as Documento;
+  }
 }
 
 export async function addCatalogItem(
@@ -292,18 +298,20 @@ export async function addCatalogItem(
   itemData: any
 ): Promise<any> {
     const collRef = collection(db, "catalogs", "hcurepto", catalogName);
-    const docRef = await addDoc(collRef, itemData).catch(error => {
-      errorEmitter.emit(
-        'permission-error',
-        new FirestorePermissionError({
-          path: collRef.path,
-          operation: 'create',
-          requestResourceData: itemData,
-        })
-      );
-      throw error;
-    });
-    return { id: docRef.id, ...itemData };
+    try {
+        const docRef = await addDoc(collRef, itemData);
+        return { id: docRef.id, ...itemData };
+    } catch (error) {
+        errorEmitter.emit(
+            'permission-error',
+            new FirestorePermissionError({
+              path: collRef.path,
+              operation: 'create',
+              requestResourceData: itemData,
+            })
+        );
+        throw error;
+    }
 }
 
 export async function updateCatalogItem(
@@ -312,7 +320,10 @@ export async function updateCatalogItem(
   updates: any
 ): Promise<any> {
   const docRef = doc(db, "catalogs", "hcurepto", catalogName, itemId);
-  await updateDoc(docRef, updates).catch(error => {
+  try {
+    await updateDoc(docRef, updates);
+    return { id: itemId, ...updates };
+  } catch (error) {
     errorEmitter.emit(
       'permission-error',
       new FirestorePermissionError({
@@ -322,8 +333,7 @@ export async function updateCatalogItem(
       })
     );
     throw error;
-  });
-  return { id: itemId, ...updates };
+  }
 }
 
 export async function deleteCatalogItem(
@@ -331,7 +341,10 @@ export async function deleteCatalogItem(
   itemId: string
 ): Promise<{ id: string }> {
   const docRef = doc(db, "catalogs", "hcurepto", catalogName, itemId);
-  await deleteDoc(docRef).catch(error => {
+  try {
+    await deleteDoc(docRef);
+    return { id: itemId };
+  } catch (error) {
     errorEmitter.emit(
       'permission-error',
       new FirestorePermissionError({
@@ -340,8 +353,7 @@ export async function deleteCatalogItem(
       })
     );
     throw error;
-  });
-  return { id: itemId };
+  }
 }
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
