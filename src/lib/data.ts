@@ -1,3 +1,4 @@
+
 import {
   collection,
   doc,
@@ -14,10 +15,8 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Catalogs, Documento, UserProfile } from "./types";
-import { User } from "firebase/auth";
-
-const getCollection = <T>(...paths: string[]) =>
-  collection(db, ...paths) as collection<T>;
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 export async function getCatalogs(hospitalId: string): Promise<Catalogs> {
   const catalogNames: (keyof Catalogs)[] = [
@@ -116,13 +115,26 @@ export async function createUserProfile(
   const profileData = {
     ...data,
     id: uid,
+    uid: uid,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     isDeleted: false,
   };
-  await setDoc(userRef, profileData);
+  
+  await setDoc(userRef, profileData).catch(error => {
+    errorEmitter.emit(
+      'permission-error',
+      new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'create',
+        requestResourceData: profileData,
+      })
+    );
+    throw error;
+  });
+
   const newUserSnap = await getDoc(userRef);
-  const newUserData = newUserSnap.data();
+  const newUserData = newUserSnap.data() as any;
   return {
     ...newUserData,
     uid,
@@ -184,17 +196,24 @@ export async function getUsers(hospitalId: string): Promise<UserProfile[]> {
   });
 }
 
-// NOTE: Creating user accounts should be done via a backend function (Firebase Function)
-// for security. This client-side version is for demonstration.
 export async function addUser(user: Omit<UserProfile, 'uid' | 'createdAt' | 'updatedAt' | 'isDeleted'>): Promise<UserProfile> {
-    // This is insecure client-side. In a real app, use a Firebase Function.
-    // We also can't create the auth user from here. This just creates the Firestore record.
     const userRef = collection(db, "users");
-    const docRef = await addDoc(userRef, {
+    const dataToSave = {
         ...user,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         isDeleted: false,
+    };
+    const docRef = await addDoc(userRef, dataToSave).catch(error => {
+      errorEmitter.emit(
+        'permission-error',
+        new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'create',
+          requestResourceData: dataToSave,
+        })
+      );
+      throw error;
     });
     
     const newUserSnap = await getDoc(docRef);
@@ -208,13 +227,24 @@ export async function addUser(user: Omit<UserProfile, 'uid' | 'createdAt' | 'upd
     } as UserProfile;
 }
 
-
 export async function updateUser(
   uid: string,
   updates: Partial<Omit<UserProfile, "uid" | "hospitalId" | "createdAt">>
 ): Promise<UserProfile> {
   const userRef = doc(db, "users", uid);
-  await updateDoc(userRef, { ...updates, updatedAt: serverTimestamp() });
+  const dataToUpdate = { ...updates, updatedAt: serverTimestamp() };
+  await updateDoc(userRef, dataToUpdate).catch(error => {
+    errorEmitter.emit(
+      'permission-error',
+      new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'update',
+        requestResourceData: dataToUpdate,
+      })
+    );
+    throw error;
+  });
+
   const updatedDoc = await getDoc(userRef);
   const data = updatedDoc.data();
   return { 
@@ -226,11 +256,24 @@ export async function updateUser(
 }
 
 export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | "updatedAt">): Promise<Documento> {
-  const docRef = await addDoc(collection(db, "documents"), {
+  const collRef = collection(db, "documents");
+  const dataToSave = {
     ...docData,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
+  };
+  const docRef = await addDoc(collRef, dataToSave).catch(error => {
+    errorEmitter.emit(
+      'permission-error',
+      new FirestorePermissionError({
+        path: collRef.path,
+        operation: 'create',
+        requestResourceData: dataToSave,
+      })
+    );
+    throw error;
   });
+
   const newDocSnap = await getDoc(docRef);
   const data = newDocSnap.data();
   return {
@@ -244,16 +287,24 @@ export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | 
   } as Documento;
 }
 
-
 export async function addCatalogItem(
   catalogName: keyof Catalogs,
   itemData: any
 ): Promise<any> {
     const collRef = collection(db, "catalogs", "hcurepto", catalogName);
-    const docRef = await addDoc(collRef, itemData);
+    const docRef = await addDoc(collRef, itemData).catch(error => {
+      errorEmitter.emit(
+        'permission-error',
+        new FirestorePermissionError({
+          path: collRef.path,
+          operation: 'create',
+          requestResourceData: itemData,
+        })
+      );
+      throw error;
+    });
     return { id: docRef.id, ...itemData };
 }
-
 
 export async function updateCatalogItem(
   catalogName: keyof Catalogs,
@@ -261,7 +312,17 @@ export async function updateCatalogItem(
   updates: any
 ): Promise<any> {
   const docRef = doc(db, "catalogs", "hcurepto", catalogName, itemId);
-  await updateDoc(docRef, updates);
+  await updateDoc(docRef, updates).catch(error => {
+    errorEmitter.emit(
+      'permission-error',
+      new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'update',
+        requestResourceData: updates,
+      })
+    );
+    throw error;
+  });
   return { id: itemId, ...updates };
 }
 
@@ -269,7 +330,17 @@ export async function deleteCatalogItem(
   catalogName: keyof Catalogs,
   itemId: string
 ): Promise<{ id: string }> {
-  await deleteDoc(doc(db, "catalogs", "hcurepto", catalogName, itemId));
+  const docRef = doc(db, "catalogs", "hcurepto", catalogName, itemId);
+  await deleteDoc(docRef).catch(error => {
+    errorEmitter.emit(
+      'permission-error',
+      new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'delete',
+      })
+    );
+    throw error;
+  });
   return { id: itemId };
 }
 
