@@ -4,7 +4,7 @@ import { UserManager } from "@/components/admin/user-manager";
 import { getCatalogs, getUsers } from "@/lib/data";
 import { PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { UserProfile, Catalogs } from "@/lib/types";
@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 export default function AdminUsersPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,10 +45,8 @@ export default function AdminUsersPage() {
             Crea, edita y gestiona los usuarios de tu hospital.
             </p>
         </div>
-        <Button asChild>
-            <Link href="/admin/usuarios/nuevo">
-                <PlusCircle className="mr-2 h-4 w-4"/> Añadir Usuario
-            </Link>
+        <Button onClick={() => router.push('/admin/usuarios/nuevo')}>
+            <PlusCircle className="mr-2 h-4 w-4"/> Añadir Usuario
         </Button>
       </div>
   );
