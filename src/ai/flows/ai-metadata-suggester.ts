@@ -12,9 +12,8 @@ import {z} from 'genkit';
 
 const CatalogsSchema = z.object({
   ambitos: z.array(z.object({ id: z.string(), nombre: z.string(), orden: z.number() })).describe('List of accreditation ambitos.'),
-  caracteristicas: z.array(z.object({ id: z.string(), ambitoId: z.string(), nombre: z.string(), orden: z.number() })).describe('List of accreditation caracteristicas.'),
-  puntosVerificacion: z.array(z.object({ id: z.string(), codigo: z.string(), nombre: z.string(), orden: z.number() })).describe('List of accreditation puntos de verificacion.'),
-  elementosMedibles: z.array(z.object({ id: z.string(), puntoVerificacionId: z.string(), codigo: z.string(), nombre: z.string(), orden: z.number() })).describe('List of accreditation elementos medibles.'),
+  caracteristicas: z.array(z.object({ id: z.string(), ambitoId: z.string(), nombre: z.string(), orden: z.number(), codigo: z.string() })).describe('List of accreditation caracteristicas.'),
+  elementosMedibles: z.array(z.object({ id: z.string(), caracteristicaId: z.string(), codigo: z.string(), nombre: z.string(), orden: z.number() })).describe('List of accreditation elementos medibles.'),
   tiposDocumento: z.array(z.object({ id: z.string(), nombre: z.string() })).describe('List of available document types.'),
   servicios: z.array(z.object({ id: z.string(), nombre: z.string() })).describe('List of hospital services.'),
   estadosAcreditacionDoc: z.array(z.object({ id: z.string(), nombre: z.string() })).describe('List of document accreditation states.'),
@@ -32,7 +31,6 @@ const SuggestDocumentMetadataOutputSchema = z.object({
   suggestedTags: z.array(z.string()).describe('A list of suggested tags for the document. These should be short, relevant keywords.'),
   suggestedAmbitoId: z.string().describe('The suggested ID for the accreditation ambito from the provided catalogs. Must be a valid ID from catalogs.ambitos.'),
   suggestedCaracteristicaId: z.string().describe('The suggested ID for the accreditation caracteristica from the provided catalogs. Must be a valid ID from catalogs.caracteristicas.'),
-  suggestedPuntoVerificacionId: z.string().describe('The suggested ID for the accreditation punto de verificacion from the provided catalogs. Must be a valid ID from catalogs.puntosVerificacion.'),
   suggestedElementoMedibleId: z.string().describe('The suggested ID for the accreditation elemento medible from the provided catalogs. Must be a valid ID from catalogs.elementosMedibles.'),
 });
 export type SuggestDocumentMetadataOutput = z.infer<typeof SuggestDocumentMetadataOutputSchema>;
@@ -46,17 +44,16 @@ const prompt = ai.definePrompt({
   input: {schema: SuggestDocumentMetadataInputSchema},
   output: {schema: SuggestDocumentMetadataOutputSchema},
   prompt: `You are an AI assistant specialized in classifying hospital accreditation documents for a Chilean hospital.
-Your task is to suggest document metadata based on the provided document title and description, using the given catalog data.
+Your task is to suggest document metadata based on the provided document title and description, using the given catalog data. The hierarchy is: Ambito -> Caracteristica -> Elemento Medible.
 
 Always select the 'id' field from the catalog entries for your suggestions.
-If a suitable match is not found for an accreditation category (ambito, caracteristica, puntoVerificacion, elementoMedible), choose the most general valid ID from the highest applicable level (e.g., if no specific elemento medible matches, try to find a punto de verificacion, or caracteristica, or ambito, and select a default valid ID from that level). Always ensure the selected ID exists in the provided catalog lists.
+If a suitable match is not found for an accreditation category (ambito, caracteristica, elementoMedible), choose the most general valid ID from the highest applicable level (e.g., if no specific elemento medible matches, try to find a caracteristica, or ambito, and select a default valid ID from that level). Always ensure the selected ID exists in the provided catalog lists.
 For 'suggestedTipoDocumentoId', choose the most appropriate ID from the 'tiposDocumento' list.
 For 'suggestedTags', generate relevant keywords based on the content. Aim for 3-5 concise tags.
 
 Catalog data:
 Ambitos: {{{JSON.stringify catalogs.ambitos}}}
 Caracteristicas: {{{JSON.stringify catalogs.caracteristicas}}}
-Puntos de Verificación: {{{JSON.stringify catalogs.puntosVerificacion}}}
 Elementos Medibles: {{{JSON.stringify catalogs.elementosMedibles}}}
 Tipos de Documento: {{{JSON.stringify catalogs.tiposDocumento}}}
 
@@ -77,3 +74,5 @@ const suggestDocumentMetadataFlow = ai.defineFlow(
     return output!;
   }
 );
+
+    

@@ -33,22 +33,18 @@ export interface Ambito {
 export interface Caracteristica {
   id: string;
   ambitoId: string;
-  nombre:string;
-  orden: number;
-}
-
-export interface PuntoVerificacion {
-  id: string;
   codigo: string;
-  nombre: string;
+  nombre:string;
+  umbralCumplimiento?: string;
   orden: number;
 }
 
 export interface ElementoMedible {
   id: string;
-  puntoVerificacionId: string;
+  caracteristicaId: string;
   codigo: string;
   nombre: string;
+  servicioId?: string;
   orden: number;
 }
 
@@ -70,7 +66,6 @@ export interface EstadoAcreditacionDoc {
 export interface Catalogs {
   ambitos: Ambito[];
   caracteristicas: Caracteristica[];
-  puntosVerificacion: PuntoVerificacion[];
   elementosMedibles: ElementoMedible[];
   tiposDocumento: TipoDocumento[];
   servicios: Servicio[];
@@ -89,7 +84,6 @@ export interface Documento {
   // Clasificación Acreditación
   ambitoId: string;
   caracteristicaId: string;
-  puntoVerificacionId: string;
   elementoMedibleId: string;
   // Contexto institucional
   servicioId?: string;
@@ -140,3 +134,5 @@ export interface AuditLog {
   timestamp: Date;
   details: Record<string, any>;
 }
+
+    

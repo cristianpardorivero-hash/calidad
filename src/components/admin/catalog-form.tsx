@@ -32,7 +32,6 @@ import { useAuth } from "@/hooks/use-auth";
 const catalogTypeOptions = [
     { value: "ambitos", label: "Ámbito" },
     { value: "caracteristicas", label: "Característica" },
-    { value: "puntosVerificacion", label: "Punto de Verificación" },
     { value: "elementosMedibles", label: "Elemento Medible" },
     { value: "tiposDocumento", label: "Tipo de Documento" },
     { value: "servicios", label: "Servicio" },
@@ -42,9 +41,8 @@ type CatalogType = typeof catalogTypeOptions[number]['value'];
 
 const formSchema = z.discriminatedUnion("catalogType", [
     z.object({ catalogType: z.literal("ambitos"), nombre: z.string().min(2, "Mínimo 2 caracteres"), orden: z.coerce.number().min(1, "Debe ser > 0") }),
-    z.object({ catalogType: z.literal("caracteristicas"), nombre: z.string().min(2, "Mínimo 2 caracteres"), orden: z.coerce.number().min(1, "Debe ser > 0"), ambitoId: z.string({ required_error: "Requerido."}) }),
-    z.object({ catalogType: z.literal("puntosVerificacion"), nombre: z.string().min(2, "Mínimo 2 caracteres"), orden: z.coerce.number().min(1, "Debe ser > 0"), codigo: z.string().min(1, "Requerido") }),
-    z.object({ catalogType: z.literal("elementosMedibles"), nombre: z.string().min(2, "Mínimo 2 caracteres"), orden: z.coerce.number().min(1, "Debe ser > 0"), codigo: z.string().min(1, "Requerido"), puntoVerificacionId: z.string({ required_error: "Requerido."}) }),
+    z.object({ catalogType: z.literal("caracteristicas"), nombre: z.string().min(2, "Mínimo 2 caracteres"), orden: z.coerce.number().min(1, "Debe ser > 0"), ambitoId: z.string({ required_error: "Requerido."}), codigo: z.string().min(1, "Requerido"), umbralCumplimiento: z.string().optional() }),
+    z.object({ catalogType: z.literal("elementosMedibles"), nombre: z.string().min(2, "Mínimo 2 caracteres"), orden: z.coerce.number().min(1, "Debe ser > 0"), codigo: z.string().min(1, "Requerido"), caracteristicaId: z.string({ required_error: "Requerido."}), servicioId: z.string().optional() }),
     z.object({ catalogType: z.literal("tiposDocumento"), nombre: z.string().min(2, "Mínimo 2 caracteres") }),
     z.object({ catalogType: z.literal("servicios"), nombre: z.string().min(2, "Mínimo 2 caracteres") }),
     z.object({ catalogType: z.literal("estadosAcreditacionDoc"), nombre: z.string().min(2, "Mínimo 2 caracteres") }),
@@ -70,19 +68,14 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
   const initialValues = useMemo(() => {
     if (isEditing && item) {
       let defaultValues: any = { catalogType: item.type, ...item.data };
-      // Pre-fill parent selects for cascading dropdowns to work on edit
       if (item.type === "elementosMedibles") {
-        const punto = catalogs.puntosVerificacion.find(
-          (p) => p.id === item.data.puntoVerificacionId
-        );
-        // No more parent pre-filling as PuntoVerificacion is now independent
-      } else if (item.type === "caracteristicas") {
-        const caracteristica = catalogs.caracteristicas.find(
-          (c) => c.id === item.data.caracteristicaId
-        );
-        if (caracteristica) {
-          defaultValues.ambitoId = caracteristica.ambitoId;
-        }
+         const elemento = catalogs.elementosMedibles.find(e => e.id === item.data.id);
+         if (elemento) {
+            const caracteristica = catalogs.caracteristicas.find(c => c.id === elemento.caracteristicaId);
+            if (caracteristica) {
+                defaultValues.ambitoId = caracteristica.ambitoId;
+            }
+         }
       }
       return defaultValues;
     }
@@ -94,7 +87,8 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
       orden: undefined,
       ambitoId: undefined,
       caracteristicaId: undefined,
-      puntoVerificacionId: undefined,
+      umbralCumplimiento: "",
+      servicioId: undefined
     };
   }, [item, isEditing, catalogs]);
 
@@ -110,19 +104,11 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
 
   const catalogType = form.watch("catalogType");
   const ambitoIdForFilter = form.watch("ambitoId" as any);
-  const caracteristicaIdForFilter = form.watch("caracteristicaId" as any);
 
   const filteredCaracteristicas = useMemo(() => {
     if (!ambitoIdForFilter) return catalogs.caracteristicas;
     return catalogs.caracteristicas.filter((c) => c.ambitoId === ambitoIdForFilter);
   }, [ambitoIdForFilter, catalogs.caracteristicas]);
-
-  const filteredPuntos = useMemo(() => {
-    if (!caracteristicaIdForFilter) return catalogs.puntosVerificacion;
-    // Puntos de verificacion are independent now. No filtering by caracteristica
-    return catalogs.puntosVerificacion;
-  }, [caracteristicaIdForFilter, catalogs.puntosVerificacion]);
-
 
   async function onSubmit(values: FormValues) {
     if (!authUser) {
@@ -132,6 +118,11 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
     setIsSubmitting(true);
     try {
       const { catalogType, ...data } = values;
+      // remove temporary filter values
+      if ('ambitoId' in data && (catalogType !== 'caracteristicas' && catalogType !== 'elementosMedibles')) {
+        delete (data as any).ambitoId;
+      }
+      
       if (isEditing && item) {
           await updateCatalogItem(authUser.hospitalId, catalogType as keyof Catalogs, item.data.id, data);
           toast({ title: "Ítem actualizado", description: "El ítem de catálogo ha sido guardado." });
@@ -178,23 +169,18 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
         
         {catalogType && <FormField control={form.control} name="nombre" render={({ field }) => (<FormItem><FormLabel>Nombre</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />}
 
-        {(catalogType === 'puntosVerificacion' || catalogType === 'elementosMedibles') && <FormField control={form.control} name="codigo" render={({ field }) => (<FormItem><FormLabel>Código</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />}
-
-        {(catalogType === 'ambitos' || catalogType === 'caracteristicas' || catalogType === 'puntosVerificacion' || catalogType === 'elementosMedibles') && <FormField control={form.control} name="orden" render={({ field }) => (<FormItem><FormLabel>Orden</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />}
-
-        {catalogType === 'caracteristicas' && <FormField control={form.control} name="ambitoId" render={({ field }) => (<FormItem><FormLabel>Ámbito</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un ámbito" /></SelectTrigger></FormControl><SelectContent>{catalogs.ambitos.map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
+        {(catalogType === 'caracteristicas' || catalogType === 'elementosMedibles') && <FormField control={form.control} name="codigo" render={({ field }) => (<FormItem><FormLabel>Código</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />}
         
-        {catalogType === 'puntosVerificacion' && (
-            <>
-                {/* No parent selection needed anymore */}
-            </>
-        )}
+        {catalogType === 'caracteristicas' && <FormField control={form.control} name="umbralCumplimiento" render={({ field }) => (<FormItem><FormLabel>Umbral de Cumplimiento (Opcional)</FormLabel><FormControl><Input placeholder="Ej: >= 66%" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />}
 
+        {(catalogType === 'ambitos' || catalogType === 'caracteristicas' || catalogType === 'elementosMedibles') && <FormField control={form.control} name="orden" render={({ field }) => (<FormItem><FormLabel>Orden</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />}
+
+        {(catalogType === 'caracteristicas' || catalogType === 'elementosMedibles') && <FormField control={form.control} name="ambitoId" render={({ field }) => (<FormItem><FormLabel>Ámbito</FormLabel><Select onValueChange={v => { field.onChange(v); if(catalogType === 'elementosMedibles') { form.setValue("caracteristicaId" as any, undefined); }}} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un ámbito" /></SelectTrigger></FormControl><SelectContent>{catalogs.ambitos.map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
+        
         {catalogType === 'elementosMedibles' && (
             <>
-                <FormField control={form.control} name={"ambitoId" as any} render={({ field }) => (<FormItem><FormLabel>Filtrar por Ámbito (Opcional)</FormLabel><Select onValueChange={v => { field.onChange(v); form.setValue("caracteristicaId" as any, undefined); form.setValue("puntoVerificacionId" as any, undefined); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un ámbito para filtrar" /></SelectTrigger></FormControl><SelectContent>{catalogs.ambitos.map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent></Select></FormItem>)} />
-                <FormField control={form.control} name={"caracteristicaId" as any} render={({ field }) => (<FormItem><FormLabel>Filtrar por Característica (Opcional)</FormLabel><Select onValueChange={v => { field.onChange(v); form.setValue("puntoVerificacionId" as any, undefined);}} disabled={!ambitoIdForFilter} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione una característica para filtrar" /></SelectTrigger></FormControl><SelectContent>{filteredCaracteristicas.map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent></Select></FormItem>)} />
-                <FormField control={form.control} name="puntoVerificacionId" render={({ field }) => (<FormItem><FormLabel>Punto de Verificación</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un punto de verificación" /></SelectTrigger></FormControl><SelectContent>{catalogs.puntosVerificacion.map(i => <SelectItem key={i.id} value={i.id}>{i.codigo} - {i.nombre}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="caracteristicaId" render={({ field }) => (<FormItem><FormLabel>Característica</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!ambitoIdForFilter}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione una característica" /></SelectTrigger></FormControl><SelectContent>{filteredCaracteristicas.map(i => <SelectItem key={i.id} value={i.id}>{i.codigo} - {i.nombre}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="servicioId" render={({ field }) => (<FormItem><FormLabel>Servicio Asignado (Opcional)</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un servicio" /></SelectTrigger></FormControl><SelectContent>{catalogs.servicios.map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
             </>
         )}
 
@@ -211,3 +197,5 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
     </Form>
   );
 }
+
+    

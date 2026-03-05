@@ -187,20 +187,6 @@ service cloud.firestore {
     }
 
     /**
-     * @description Controls access to hospital-specific 'Punto de Verificación' (Verification Point) items.
-     * @path /catalogs/{hospitalId}/puntosVerificacion/{puntoVerificacionId}
-     * @allow (read) Any user who belongs to the hospital specified in the path.
-     * @deny (write) A 'lector' (reader) role from modifying catalog items.
-     * @principle Inherits permissions from the parent hospital path, enforcing tenant isolation.
-     */
-    match /catalogs/{hospitalId}/puntosVerificacion/{puntoVerificacionId} {
-      allow get, list: if isHospitalMember(hospitalId);
-      allow create: if isHospitalEditor(hospitalId) && hasMatchingHospitalIdInPath(hospitalId);
-      allow update: if resource != null && isHospitalEditor(hospitalId) && isImmutable('hospitalId');
-      allow delete: if resource != null && isHospitalEditor(hospitalId);
-    }
-
-    /**
      * @description Controls access to hospital-specific 'Elemento Medible' (Measurable Element) items.
      * @path /catalogs/{hospitalId}/elementosMedibles/{elementoMedibleId}
      * @allow (read) Any user who belongs to the hospital specified in the path.
@@ -318,3 +304,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

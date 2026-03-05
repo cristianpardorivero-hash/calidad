@@ -111,9 +111,8 @@ export function CatalogManager({ catalogs, onCatalogsChange }: { catalogs: Catal
   
   const catalogTabs = [
     { value: "ambitos", label: "Ámbitos", data: catalogs.ambitos, headers: [{key: 'nombre', label: 'Nombre'}, {key: 'orden', label: 'Orden'}] },
-    { value: "caracteristicas", label: "Características", data: catalogs.caracteristicas, headers: [{key: 'nombre', label: 'Nombre'}, {key: 'ambitoId', label: 'ID Ámbito'}, {key: 'orden', label: 'Orden'}] },
-    { value: "puntosVerificacion", label: "Puntos de Verificación", data: catalogs.puntosVerificacion, headers: [{key: 'codigo', label: 'Código'}, {key: 'nombre', label: 'Nombre'}, {key: 'orden', label: 'Orden'}] },
-    { value: "elementosMedibles", label: "Elementos Medibles", data: catalogs.elementosMedibles, headers: [{key: 'codigo', label: 'Código'}, {key: 'nombre', label: 'Nombre'}, {key: 'puntoVerificacionId', label: 'ID Punto'}] },
+    { value: "caracteristicas", label: "Características", data: catalogs.caracteristicas, headers: [{key: 'codigo', label: 'Código'}, {key: 'nombre', label: 'Nombre'}, {key: 'ambitoId', label: 'ID Ámbito'}, {key: 'orden', label: 'Orden'}] },
+    { value: "elementosMedibles", label: "Elementos Medibles", data: catalogs.elementosMedibles, headers: [{key: 'codigo', label: 'Código'}, {key: 'nombre', label: 'Nombre'}, {key: 'caracteristicaId', label: 'ID Característica'}] },
     { value: "tiposDocumento", label: "Tipos de Documento", data: catalogs.tiposDocumento, headers: [{key: 'nombre', label: 'Nombre'}] },
     { value: "servicios", label: "Servicios", data: catalogs.servicios, headers: [{key: 'nombre', label: 'Nombre'}] },
     { value: "estadosAcreditacionDoc", label: "Estados de Documento", data: catalogs.estadosAcreditacionDoc, headers: [{key: 'nombre', label: 'Nombre'}] },
@@ -150,7 +149,7 @@ export function CatalogManager({ catalogs, onCatalogsChange }: { catalogs: Catal
   return (
     <>
         <Tabs defaultValue="ambitos" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 h-auto">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto">
                 {catalogTabs.map(tab => (
                     <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
                 ))}
@@ -210,3 +209,5 @@ export function CatalogManager({ catalogs, onCatalogsChange }: { catalogs: Catal
     </>
   );
 }
+
+    

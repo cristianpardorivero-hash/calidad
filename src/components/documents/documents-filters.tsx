@@ -30,7 +30,6 @@ export function DocumentsFilters({ catalogs }: { catalogs: Catalogs }) {
     query: searchParams.get("query") || "",
     ambitoId: searchParams.get("ambitoId") || "",
     caracteristicaId: searchParams.get("caracteristicaId") || "",
-    puntoVerificacionId: searchParams.get("puntoVerificacionId") || "",
     elementoMedibleId: searchParams.get("elementoMedibleId") || "",
     tipoDocumentoId: searchParams.get("tipoDocumentoId") || "",
     estadoDocId: searchParams.get("estadoDocId") || "",
@@ -57,12 +56,8 @@ export function DocumentsFilters({ catalogs }: { catalogs: Catalogs }) {
     // Reset dependent filters if a parent is changed
     if (key === 'ambitoId') {
         newFilters.caracteristicaId = '';
-        newFilters.puntoVerificacionId = '';
         newFilters.elementoMedibleId = '';
     } else if (key === 'caracteristicaId') {
-        newFilters.puntoVerificacionId = '';
-        newFilters.elementoMedibleId = '';
-    } else if (key === 'puntoVerificacionId') {
         newFilters.elementoMedibleId = '';
     }
     setFilters(newFilters);
@@ -71,7 +66,7 @@ export function DocumentsFilters({ catalogs }: { catalogs: Catalogs }) {
   
   const handleResetFilters = () => {
     const clearedFilters = {
-        query: '', ambitoId: '', caracteristicaId: '', puntoVerificacionId: '',
+        query: '', ambitoId: '', caracteristicaId: '',
         elementoMedibleId: '', tipoDocumentoId: '', estadoDocId: '', servicioId: ''
     };
     setFilters(clearedFilters);
@@ -101,7 +96,7 @@ export function DocumentsFilters({ catalogs }: { catalogs: Catalogs }) {
       </div>
 
       <CollapsibleContent className="mt-4 space-y-4 pt-4 border-t">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Select value={filters.ambitoId} onValueChange={(v) => handleFilterChange('ambitoId', v)}>
             <SelectTrigger><SelectValue placeholder="Ámbito" /></SelectTrigger>
             <SelectContent>{catalogs.ambitos.map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent>
@@ -110,13 +105,9 @@ export function DocumentsFilters({ catalogs }: { catalogs: Catalogs }) {
             <SelectTrigger><SelectValue placeholder="Característica" /></SelectTrigger>
             <SelectContent>{catalogs.caracteristicas.filter(c => c.ambitoId === filters.ambitoId).map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent>
           </Select>
-          <Select value={filters.puntoVerificacionId} onValueChange={(v) => handleFilterChange('puntoVerificacionId', v)} disabled={!filters.caracteristicaId}>
-            <SelectTrigger><SelectValue placeholder="Punto de Verificación" /></SelectTrigger>
-            <SelectContent>{catalogs.puntosVerificacion.filter(p => p.caracteristicaId === filters.caracteristicaId).map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent>
-          </Select>
-          <Select value={filters.elementoMedibleId} onValueChange={(v) => handleFilterChange('elementoMedibleId', v)} disabled={!filters.puntoVerificacionId}>
+          <Select value={filters.elementoMedibleId} onValueChange={(v) => handleFilterChange('elementoMedibleId', v)} disabled={!filters.caracteristicaId}>
             <SelectTrigger><SelectValue placeholder="Elemento Medible" /></SelectTrigger>
-            <SelectContent>{catalogs.elementosMedibles.filter(e => e.puntoVerificacionId === filters.puntoVerificacionId).map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent>
+            <SelectContent>{catalogs.elementosMedibles.filter(e => e.caracteristicaId === filters.caracteristicaId).map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={filters.tipoDocumentoId} onValueChange={(v) => handleFilterChange('tipoDocumentoId', v)}>
             <SelectTrigger><SelectValue placeholder="Tipo de Documento" /></SelectTrigger>
@@ -144,3 +135,5 @@ export function DocumentsFilters({ catalogs }: { catalogs: Catalogs }) {
     </Collapsible>
   );
 }
+
+    

@@ -141,9 +141,18 @@
           "type": "string",
           "description": "Reference to the Hospital this Caracteristica belongs to. (Relationship: Hospital 1:N Caracteristica)"
         },
+        "codigo": {
+          "type": "string",
+          "description": "The unique code for this 'Característica', e.g., 'DP-1.3'."
+        },
         "nombre": {
           "type": "string",
           "description": "The name of the 'Característica'."
+        },
+        "umbralCumplimiento": {
+          "type": "string",
+          "description": "The compliance threshold for this characteristic, e.g., '>= 66%'.",
+          "examples": [ ">= 66%", "100%" ]
         },
         "orden": {
           "type": "number",
@@ -154,40 +163,6 @@
         "id",
         "ambitoId",
         "hospitalId",
-        "nombre",
-        "orden"
-      ]
-    },
-    "PuntoVerificacion": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "PuntoVerificacion",
-      "type": "object",
-      "description": "Represents a 'Punto de Verificación' (Verification Point), an item in the accreditation classification system, configurable per hospital.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the PuntoVerificacion entity."
-        },
-        "hospitalId": {
-          "type": "string",
-          "description": "Reference to the Hospital this PuntoVerificacion belongs to. (Relationship: Hospital 1:N PuntoVerificacion)"
-        },
-        "codigo": {
-          "type": "string",
-          "description": "The unique code for this 'Punto de Verificación'."
-        },
-        "nombre": {
-          "type": "string",
-          "description": "The name of the 'Punto de Verificación'."
-        },
-        "orden": {
-          "type": "number",
-          "description": "The display order of this 'Punto de Verificación' within its Caracteristica."
-        }
-      },
-      "required": [
-        "id",
-        "hospitalId",
         "codigo",
         "nombre",
         "orden"
@@ -197,15 +172,15 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ElementoMedible",
       "type": "object",
-      "description": "Represents an 'Elemento Medible' (Measurable Element), the most granular sub-category under a 'Punto de Verificación' in the hierarchical accreditation classification system, configurable per hospital.",
+      "description": "Represents an 'Elemento Medible' (Measurable Element), the most granular sub-category under a 'Caracteristica' in the hierarchical accreditation classification system, configurable per hospital.",
       "properties": {
         "id": {
           "type": "string",
           "description": "Unique identifier for the ElementoMedible entity."
         },
-        "puntoVerificacionId": {
+        "caracteristicaId": {
           "type": "string",
-          "description": "Reference to the PuntoVerificacion this ElementoMedible belongs to. (Relationship: PuntoVerificacion 1:N ElementoMedible)"
+          "description": "Reference to the Caracteristica this ElementoMedible belongs to. (Relationship: Caracteristica 1:N ElementoMedible)"
         },
         "hospitalId": {
           "type": "string",
@@ -219,14 +194,18 @@
           "type": "string",
           "description": "The name of the 'Elemento Medible'."
         },
+        "servicioId": {
+          "type": "string",
+          "description": "Reference to the Servicio (Service/Unit) this ElementoMedible is typically associated with."
+        },
         "orden": {
           "type": "number",
-          "description": "The display order of this 'Elemento Medible' within its PuntoVerificacion."
+          "description": "The display order of this 'Elemento Medible' within its Caracteristica."
         }
       },
       "required": [
         "id",
-        "puntoVerificacionId",
+        "caracteristicaId",
         "hospitalId",
         "codigo",
         "nombre",
@@ -350,10 +329,6 @@
           "type": "string",
           "description": "Reference to the Caracteristica (Characteristic) for accreditation classification. (Relationship: Caracteristica 1:N Document)"
         },
-        "puntoVerificacionId": {
-          "type": "string",
-          "description": "Reference to the PuntoVerificacion (Verification Point) for accreditation classification. (Relationship: PuntoVerificacion 1:N Document)"
-        },
         "elementoMedibleId": {
           "type": "string",
           "description": "Reference to the ElementoMedible (Measurable Element) for accreditation classification. (Relationship: ElementoMedible 1:N Document)"
@@ -471,7 +446,6 @@
         "estadoDocId",
         "ambitoId",
         "caracteristicaId",
-        "puntoVerificacionId",
         "elementoMedibleId",
         "responsableNombre",
         "responsableEmail",
@@ -683,33 +657,13 @@
         }
       },
       {
-        "path": "/catalogs/{hospitalId}/puntosVerificacion/{puntoVerificacionId}",
-        "definition": {
-          "entityName": "PuntoVerificacion",
-          "schema": {
-            "$ref": "#/backend/entities/PuntoVerificacion"
-          },
-          "description": "Stores configurable accreditation 'Punto de Verificación' (Verification Point) items specific to a hospital. Each document includes denormalized 'hospitalId' for authorization independence.",
-          "params": [
-            {
-              "name": "hospitalId",
-              "description": "Unique identifier for the Hospital this PuntoVerificacion belongs to."
-            },
-            {
-              "name": "puntoVerificacionId",
-              "description": "Unique identifier for the PuntoVerificacion entity."
-            }
-          ]
-        }
-      },
-      {
         "path": "/catalogs/{hospitalId}/elementosMedibles/{elementoMedibleId}",
         "definition": {
           "entityName": "ElementoMedible",
           "schema": {
             "$ref": "#/backend/entities/ElementoMedible"
           },
-          "description": "Stores configurable accreditation 'Elemento Medible' (Measurable Element) items specific to a hospital. Each document includes denormalized 'hospitalId' for authorization independence.",
+          "description": "Stores configurable accreditation 'Elemento Medible' (Measurable Element) items specific to a hospital. Each document includes denormalized 'hospitalId' and 'caracteristicaId' for authorization independence.",
           "params": [
             {
               "name": "hospitalId",
@@ -834,3 +788,4 @@
     "reasoning": "The Firestore structure is designed to support a secure, scalable, and debuggable document management system for hospital accreditation, strictly adhering to the core design principles. The primary strategy revolves around denormalizing authorization context and segregating data to simplify security rules and ensure query efficiency.\n\n1.  Users (`/users/{userId}`):\n    *   **Authorization Independence:** Each user document (`users/{uid}`) directly stores the user's `role` and `hospitalId`. Firestore security rules will perform a single `get()` operation on the requesting user's document (`users/$(request.auth.uid)`) to establish their permissions and assigned hospital context. This is a foundational and accepted pattern for role-based access control (DBAC) and avoids complex, chained `get()` calls in other document types.\n\n2.  Hospitals (`/hospitals/{hospitalId}`):\n    *   **Authorization Independence:** Access to a specific hospital document is governed by matching the `hospitalId` in the path with the `hospitalId` retrieved from the authenticated user's profile. This makes rules straightforward: `allow read: if isReader() && hid == hospitalId();`.\n\n3.  Catalog Entities (e.g., `/catalogs/{hospitalId}/ambitos/{ambitoId}`):\n    *   **CRITICAL DEVIATION EXPLANATION:** The user's request explicitly described a single document `catalogs/{hospitalId}` containing arrays of `ambitos`, `caracteristicas`, etc. However, to strictly adhere to the `firestorePaths` output schema (which requires each path to map to a *single* `entityName` derivable from a *single* `$ref` in `#/backend/entities/<EntityName>`) AND to maximize scalability, debuggability, and Query Assurance Protocols (QAPs), this design **reinterprets the catalog structure**. Instead, each catalog type is now a subcollection under a hospital-specific parent document within the `catalogs` collection. For example, 'Ambito' entities are stored at `/catalogs/{hospitalId}/ambitos/{ambitoId}`.\n    *   **Authorization Independence:** Each individual catalog document (e.g., `ambitos/{ambitoId}`) implicitly inherits its `hospitalId` from its path. Crucially, the `hospitalId` is also explicitly denormalized within each catalog document's data (e.g., `Ambito.hospitalId`). This allows security rules to directly verify access by comparing `request.path[1]` or `resource.data.hospitalId` with the user's `hospitalId` without any `get()` calls to parent documents.\n    *   **QAPs Support:** This subcollection structure is highly beneficial for QAPs. It allows for efficient `list` operations, filtering, and pagination of specific catalog types (e.g., querying only 'Ambitos' for a given hospital) without having to fetch and parse a single, potentially large composite document containing all catalog arrays. Queries will naturally include `where(\"hospitalId\", \"==\", userHospitalId)`. This provides granular access and better performance for administrative screens managing individual catalog types.\n\n4.  Documents (`/documents/{documentId}`):\n    *   **Authorization Independence:** The `Document` entity is stored in a top-level collection. Every `Document` document includes a denormalized `hospitalId` field. This is **CRITICAL** for authorization independence; security rules can directly evaluate `resource.data.hospitalId == userHospitalId` without needing to perform `get()` operations on parent collections like `/hospitals` or any catalog documents. This ensures atomic operations and simplifies rule logic.\n    *   **QAPs Support:** The denormalized `hospitalId` is the cornerstone for secure `list` operations. Any client-side `list` query for documents **must** include `where(\"hospitalId\", \"==\", userHospitalId)`. Firebase security rules will enforce this, ensuring that users can only retrieve documents belonging to their assigned hospital. This enables robust filtering, searching (`searchKeywords` field with `array-contains` queries), and pagination, aligning with the application's requirements for a document explorer.\n\n5.  Document Versions (`/document_versions/{documentVersionId}`):\n    *   **Authorization Independence:** Similar to `Document`, each `DocumentVersion` document denormalizes `hospitalId`. This prevents any hierarchical authorization dependencies.\n    *   **QAPs Support:** `list` queries for document versions will similarly enforce `where(\"hospitalId\", \"==\", userHospitalId)` via security rules, guaranteeing secure access to historical data specific to a hospital.\n\n6.  Audit Logs (`/audit_logs/{auditLogId}`):\n    *   **Authorization Independence:** Each `AuditLog` document denormalizes `hospitalId` and `actorUid`. This allows security rules to verify that the log entry relates to the user's hospital and, for creation, that the `actorUid` matches `request.auth.uid`.\n    *   **QAPs Support:** Access to audit logs will be restricted by `hospitalId` (e.g., `where(\"hospitalId\", \"==\", userHospitalId)`) and, for reads, by role (e.g., `isAdmin()`), supporting secure and efficient retrieval of audit trails."
   }
 }
+    

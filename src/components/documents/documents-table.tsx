@@ -65,7 +65,6 @@ export function DocumentsTable({
     const query = searchParams.get("query");
     const ambitoId = searchParams.get("ambitoId");
     const caracteristicaId = searchParams.get("caracteristicaId");
-    const puntoVerificacionId = searchParams.get("puntoVerificacionId");
     const elementoMedibleId = searchParams.get("elementoMedibleId");
     const tipoDocumentoId = searchParams.get("tipoDocumentoId");
     const estadoDocId = searchParams.get("estadoDocId");
@@ -90,7 +89,6 @@ export function DocumentsTable({
 
       if (ambitoId && doc.ambitoId !== ambitoId) return false;
       if (caracteristicaId && doc.caracteristicaId !== caracteristicaId) return false;
-      if (puntoVerificacionId && doc.puntoVerificacionId !== puntoVerificacionId) return false;
       if (elementoMedibleId && doc.elementoMedibleId !== elementoMedibleId) return false;
       if (tipoDocumentoId && doc.tipoDocumentoId !== tipoDocumentoId) return false;
       if (estadoDocId && doc.estadoDocId !== estadoDocId) return false;
@@ -261,3 +259,5 @@ export function DocumentsTable({
     </>
   );
 }
+
+    

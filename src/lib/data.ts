@@ -22,7 +22,6 @@ export async function getCatalogs(hospitalId: string): Promise<Catalogs> {
   const catalogNames: (keyof Catalogs)[] = [
     "ambitos",
     "caracteristicas",
-    "puntosVerificacion",
     "elementosMedibles",
     "tiposDocumento",
     "servicios",
@@ -406,3 +405,5 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
       throw error;
     }
 }
+
+    

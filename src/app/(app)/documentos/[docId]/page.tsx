@@ -140,7 +140,6 @@ export default async function DocumentoDetailPage({
             <CardContent className="space-y-3 text-sm">
                 <p><strong>Ámbito:</strong> {getCatalogName("ambitos", document.ambitoId)}</p>
                 <p><strong>Característica:</strong> {getCatalogName("caracteristicas", document.caracteristicaId)}</p>
-                <p><strong>Punto Verif.:</strong> {getCatalogName("puntosVerificacion", document.puntoVerificacionId)}</p>
                 <p><strong>Elem. Medible:</strong> {getCatalogName("elementosMedibles", document.elementoMedibleId)}</p>
             </CardContent>
           </Card>
@@ -163,3 +162,5 @@ export default async function DocumentoDetailPage({
     </div>
   );
 }
+
+    
