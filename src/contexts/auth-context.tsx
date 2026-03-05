@@ -1,7 +1,7 @@
 'use client';
 
 import type { UserProfile } from '@/lib/types';
-import { createContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { auth } from '@/lib/firebase';
 import {
   User,
@@ -9,8 +9,9 @@ import {
   signInWithEmailAndPassword,
   signOut,
   createUserWithEmailAndPassword,
+  signInAnonymously,
 } from 'firebase/auth';
-import { getUserProfile, createUserProfile } from '@/lib/data';
+import { createUserProfile, getUserProfile } from '@/lib/data';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -29,66 +30,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchUserProfile = useCallback(async (fbUser: User) => {
+    let profile = await getUserProfile(fbUser.uid);
+    if (!profile) {
+      try {
+        // If the user is new (including anonymous), create a profile with admin role.
+        profile = await createUserProfile(fbUser.uid, {
+          displayName: fbUser.isAnonymous ? 'Visitante' : (fbUser.email?.split('@')[0] || "Nuevo Usuario"),
+          email: fbUser.isAnonymous ? `${fbUser.uid}@guest.com` : (fbUser.email || ""),
+          role: 'admin', // Grant admin role to anonymous visitor and first-time users
+          hospitalId: 'hcurepto', // Default hospital
+          isActive: true,
+        });
+      } catch (e) {
+        console.error("Failed to create user profile automatically", e);
+        setUser(null);
+        setFirebaseUser(null);
+        await signOut(auth); // Sign out to prevent inconsistent state
+        return;
+      }
+    }
+    setUser(profile);
+  }, []);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      setFirebaseUser(fbUser);
+      setLoading(true);
       if (fbUser) {
-        setLoading(true);
-        let profile = await getUserProfile(fbUser.uid);
-
-        // If the user exists in Auth but not in Firestore, create their profile.
-        // This handles the case of the very first user signing up.
-        if (!profile) {
-          try {
-             profile = await createUserProfile(fbUser.uid, {
-              displayName: fbUser.email?.split('@')[0] || "Nuevo Usuario",
-              email: fbUser.email || "",
-              role: 'admin', // First user is an admin
-              hospitalId: 'hcurepto',
-              isActive: true,
-            });
-          } catch (e) {
-            console.error("Failed to create user profile automatically", e);
-          }
-        }
-        
-        setUser(profile);
+        setFirebaseUser(fbUser);
+        await fetchUserProfile(fbUser);
         setLoading(false);
-
       } else {
-        setUser(null);
-        setLoading(false);
+        // If no user, sign in anonymously to provide admin guest access
+        signInAnonymously(auth).catch((error) => {
+            console.error("Anonymous sign-in failed", error);
+            // If anonymous sign-in fails, stop loading and clear user state.
+            setLoading(false);
+            setUser(null);
+            setFirebaseUser(null);
+        });
+        // onAuthStateChanged will be called again with the anonymous user,
+        // which will then handle setting loading to false.
       }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [fetchUserProfile]);
 
   const login = async (email: string, pass: string) => {
+    // This function allows a user to sign in over the anonymous session.
     try {
-      // Try to sign in first
       await signInWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will handle the rest
     } catch (error: any) {
-      // If user does not exist, create them
       if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
         try {
           await createUserWithEmailAndPassword(auth, email, pass);
-          // onAuthStateChanged will fire and handle creating the profile.
-        } catch (creationError) {
+        } catch (creationError: any) {
           console.error("Account creation failed:", creationError);
-          throw creationError; // Let the form handle the error
+          throw new Error(`Error al crear la cuenta: ${creationError.message}`);
         }
       } else {
         console.error("Sign-in failed:", error);
-        throw error; // Let the form handle the error
+        throw new Error(`Error de inicio de sesión: ${error.message}`);
       }
     }
   };
 
   const logout = async () => {
+    // When logging out, the onAuthStateChanged effect will automatically
+    // sign the user in anonymously again.
     await signOut(auth);
-    // onAuthStateChanged will handle clearing user and firebaseUser state.
   };
 
   const value = { user, firebaseUser, loading, login, logout };
