@@ -57,23 +57,28 @@ export default function DocumentoDetailPage() {
         setLinkedPautas([]);
         setMainDocument(null);
         try {
-          const [docData, catalogsData, linkedPautasData] = await Promise.all([
+          const [docData, catalogsData] = await Promise.all([
             getDocumentById(docId),
             getCatalogs(user.hospitalId),
-            getLinkedDocuments(docId, user.hospitalId),
           ]);
-
+          
           if (!docData) {
             setError("Documento no encontrado.");
-          } else {
-            setDocument(docData);
-            if (docData.linkedDocumentId) {
-              const mainDocData = await getDocumentById(docData.linkedDocumentId);
-              setMainDocument(mainDocData || null);
-            }
+            setLoading(false);
+            return;
           }
+
+          setDocument(docData);
           setCatalogs(catalogsData);
+
+          // Now fetch linked documents based on the docData
+          const [linkedPautasData, mainDocData] = await Promise.all([
+            getLinkedDocuments(docId, user.hospitalId),
+            docData.linkedDocumentId ? getDocumentById(docData.linkedDocumentId) : Promise.resolve(null)
+          ]);
+          
           setLinkedPautas(linkedPautasData);
+          setMainDocument(mainDocData || null);
 
         } catch (err) {
           console.error(err);
