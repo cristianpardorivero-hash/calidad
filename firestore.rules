@@ -129,7 +129,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isSignedIn() && (isOwner(userId) || isHospitalAdmin(resource.data.hospitalId));
       allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow create: if (isOwner(userId) && request.resource.data.id == userId) || isHospitalAdmin(request.resource.data.hospitalId);
       allow update: if resource != null && (isOwner(userId) || isHospitalAdmin(resource.data.hospitalId)) && isImmutable('id');
       allow delete: if resource != null && (isOwner(userId) || isHospitalAdmin(resource.data.hospitalId));
     }
