@@ -146,10 +146,9 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Servicio/Unidad (Opcional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || ''}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Seleccione un servicio" /></SelectTrigger></FormControl>
                         <SelectContent>
-                            <SelectItem value="">Ninguno</SelectItem>
                             {catalogs.servicios.map((s) => (<SelectItem key={s.id} value={s.id}>{s.nombre}</SelectItem>))}
                         </SelectContent>
                     </Select>
