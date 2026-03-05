@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { Catalogs, Documento } from "@/lib/types";
@@ -184,13 +185,12 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
     }, 200);
 
     const fileExt = values.file.name.split(".").pop() as "pdf" | "docx" | "xlsx";
-    // This is a simplified version. In a real app, you would upload the file to Firebase Storage
-    // and then save the document metadata with the storage path and download URL.
     const storagePath = `documentos/${user.hospitalId}/${values.ambitoId}/${Date.now()}/${values.file.name}`;
+    
+    const { fechaVigenciaDesde, fechaVigenciaHasta, file, ...restValues } = values;
 
-
-    const newDocData: Omit<Documento, 'id'|'createdAt'|'updatedAt'|'downloadUrl'> = {
-        ...values,
+    const docData: Omit<Documento, 'id'|'createdAt'|'updatedAt'|'downloadUrl'> = {
+        ...restValues,
         hospitalId: user.hospitalId,
         fileName: values.file.name,
         fileExt: fileExt,
@@ -202,16 +202,16 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
         createdByEmail: firebaseUser.email || 'N/A',
         isDeleted: false,
         searchKeywords: [values.titulo, values.responsableNombre, ...(values.tags?.split(",").map(t => t.trim()).filter(Boolean) || [])],
+        ...(fechaVigenciaDesde && { fechaVigenciaDesde }),
+        ...(fechaVigenciaHasta && { fechaVigenciaHasta }),
     };
 
     try {
         // In real app, first upload to storage, get URL, then save document.
         // For now, we simulate success.
         // const downloadUrl = await uploadFileAndGetURL(values.file, storagePath);
-        // const finalDoc = {...newDocData, downloadUrl };
-        const finalDoc = {...newDocData, downloadUrl: '#' };
+        const finalDoc = {...docData, downloadUrl: '#' };
 
-        // @ts-ignore
         const savedDoc = await addDocument(finalDoc);
         
         setUploadProgress(100);
@@ -585,5 +585,3 @@ export function DocumentForm({ catalogs }: { catalogs: Catalogs }) {
     </Form>
   );
 }
-
-    
