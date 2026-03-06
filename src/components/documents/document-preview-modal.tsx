@@ -40,8 +40,9 @@ export function DocumentPreviewModal({
 
   useEffect(() => {
     if (!isOpen || !documento) return;
-    
-    const isPreviewable = PREVIEWABLE_EXTENSIONS.includes(documento.fileExt?.toLowerCase());
+
+    const ext = documento.fileExt?.toLowerCase() || "";
+    const isPreviewable = PREVIEWABLE_EXTENSIONS.includes(ext);
 
     if (!isPreviewable) {
       setLoading(false);
@@ -58,7 +59,6 @@ export function DocumentPreviewModal({
 
     const fetchFileUrl = async () => {
       try {
-        // We must fetch a fresh URL because the tokens expire.
         const storageRef = ref(storage, documento.storagePath);
         const url = await getDownloadURL(storageRef);
 
@@ -92,10 +92,8 @@ export function DocumentPreviewModal({
   }, [isOpen, documento]);
 
   const handleDownload = () => {
-    if (!documento) return;
-    // Use the original downloadUrl from the document object as it is the most reliable source
-    const urlToDownload = documento.downloadUrl;
-    if (!urlToDownload) return;
+    const urlToDownload = fileUrl || documento?.downloadUrl;
+    if (!documento || !urlToDownload) return;
 
     const link = document.createElement("a");
     link.href = urlToDownload;
@@ -124,7 +122,7 @@ export function DocumentPreviewModal({
       );
     }
 
-    if (documento && !PREVIEWABLE_EXTENSIONS.includes(documento.fileExt?.toLowerCase())) {
+    if (documento && !PREVIEWABLE_EXTENSIONS.includes(documento.fileExt?.toLowerCase() || "")) {
       return (
         <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-lg h-[70vh]">
           <FileText className="h-16 w-16 text-muted-foreground" />
@@ -137,13 +135,18 @@ export function DocumentPreviewModal({
       );
     }
 
-    if (fileUrl) {
-      const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+    if (fileUrl && documento) {
+      const ext = documento.fileExt?.toLowerCase();
+      const viewerUrl =
+        ext === "pdf"
+          ? fileUrl
+          : `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+
       return (
         <div className="h-[70vh] w-full rounded-md border overflow-hidden bg-white">
           <iframe
             src={viewerUrl}
-            title={documento?.titulo || "Vista previa"}
+            title={documento.titulo || "Vista previa"}
             className="w-full h-full"
             frameBorder="0"
           />
@@ -173,7 +176,7 @@ export function DocumentPreviewModal({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cerrar
             </Button>
-            <Button onClick={handleDownload} disabled={!documento}>
+            <Button onClick={handleDownload} disabled={!documento || (!fileUrl && !documento?.downloadUrl)}>
               <Download className="mr-2 h-4 w-4" />
               Descargar
             </Button>
