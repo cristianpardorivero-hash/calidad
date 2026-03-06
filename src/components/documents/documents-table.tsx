@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -26,6 +25,7 @@ import {
   Edit,
   Trash2,
   FileText,
+  Eye,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -40,6 +40,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { useSearchParams } from "next/navigation";
+import { DocumentPreviewModal } from "./document-preview-modal";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -52,6 +53,7 @@ export function DocumentsTable({
 }) {
   const searchParams = useSearchParams();
   const currentPage = Number(searchParams.get("page")) || 1;
+  const [docToPreview, setDocToPreview] = React.useState<Documento | null>(null);
 
   const getCatalogName = (
     catalog: keyof Catalogs,
@@ -225,8 +227,22 @@ export function DocumentsTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild><Link href={doc.downloadUrl} download><Download className="mr-2 h-4 w-4" />Descargar</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href={`/documentos/${doc.id}/editar`}><Edit className="mr-2 h-4 w-4" />Editar</Link></DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setDocToPreview(doc)}>
+                          <Eye className="mr-2 h-4 w-4" />
+                          Ver
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <a href={doc.downloadUrl} download={doc.fileName}>
+                            <Download className="mr-2 h-4 w-4" />
+                            Descargar
+                          </a>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/documentos/${doc.id}/editar`}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Editar
+                          </Link>
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" />Eliminar</DropdownMenuItem>
                       </DropdownMenuContent>
@@ -257,8 +273,15 @@ export function DocumentsTable({
           </PaginationContent>
         </Pagination>
       )}
+      <DocumentPreviewModal
+        documento={docToPreview}
+        isOpen={!!docToPreview}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setDocToPreview(null);
+          }
+        }}
+      />
     </>
   );
 }
-
-    

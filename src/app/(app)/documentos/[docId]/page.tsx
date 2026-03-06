@@ -238,7 +238,7 @@ export default function DocumentoDetailPage() {
         </div>
         <div className="flex flex-shrink-0 gap-2">
           <Button variant="outline" asChild><Link href={`/documentos/${document.id}/editar`}><Edit className="mr-2 h-4 w-4" /> Editar</Link></Button>
-          <Button asChild><a href={document.downloadUrl} download={document.fileName}><Download className="mr-2 h-4 w-4" /> Descargar</a></Button>
+          <Button asChild><a href={previewUrl || document.downloadUrl} download={document.fileName}><Download className="mr-2 h-4 w-4" /> Descargar</a></Button>
           <Button variant="destructive" className="hidden sm:inline-flex"><Trash2 className="mr-2 h-4 w-4" /> Eliminar</Button>
         </div>
       </div>
