@@ -29,7 +29,9 @@ export default function MisDocumentosPage() {
         getMyDocuments(userId, userEmail, hospitalId),
         getCatalogs(hospitalId)
       ]).then(([docsData, catalogsData]) => {
-          setDocuments(docsData);
+          // Client-side filter to ensure admins only see their own documents on this page.
+          const finalDocs = docsData.filter(doc => doc.createdByUid === userId || doc.responsableEmail === userEmail);
+          setDocuments(finalDocs);
           setCatalogs(catalogsData);
           setLoading(false);
         })
