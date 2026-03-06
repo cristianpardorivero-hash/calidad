@@ -6,7 +6,7 @@ export interface UserProfile {
   email: string;
   role: UserRole;
   hospitalId: string;
-  servicioId?: string;
+  servicioIds?: string[];
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

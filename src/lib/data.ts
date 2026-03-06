@@ -57,12 +57,12 @@ export async function getDocuments(
   const docsRef = collection(db, "documents");
   let q;
 
-  if (user.role === "lector" && user.servicioId) {
+  if (user.role === "lector" && user.servicioIds && user.servicioIds.length > 0) {
     q = query(
       docsRef,
       where("hospitalId", "==", hospitalId),
       where("isDeleted", "==", false),
-      where("servicioIds", "array-contains", user.servicioId)
+      where("servicioIds", "array-contains-any", user.servicioIds)
     );
   } else {
     q = query(

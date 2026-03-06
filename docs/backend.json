@@ -27,6 +27,13 @@
           "type": "string",
           "description": "Reference to the Hospital this user belongs to. (Relationship: Hospital 1:N User)"
         },
+        "servicioIds": {
+          "type": "array",
+          "description": "References to the Servicios (Services/Units) this user is assigned to.",
+          "items": {
+            "type": "string"
+          }
+        },
         "isActive": {
           "type": "boolean",
           "description": "Indicates whether the user account is active and can log in."

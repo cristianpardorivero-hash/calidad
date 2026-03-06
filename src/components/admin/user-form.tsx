@@ -49,7 +49,7 @@ const baseSchema = z.object({
   displayName: z.string().min(3, "El nombre debe tener al menos 3 caracteres."),
   email: z.string().email("Correo electrónico inválido."),
   role: z.enum(["admin", "editor", "lector"], { required_error: "Debe seleccionar un rol."}),
-  servicioId: z.string().optional(),
+  servicioIds: z.array(z.string()).optional(),
   allowedPages: z.array(z.string()).optional(),
 });
 
@@ -86,13 +86,13 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
       displayName: user?.displayName || "",
       email: user?.email || "",
       role: user?.role || "lector",
-      servicioId: user?.servicioId || "",
+      servicioIds: user?.servicioIds || [],
       allowedPages: user?.allowedPages || [],
     } : {
       displayName: "",
       email: "",
       role: "lector",
-      servicioId: "",
+      servicioIds: [],
       password: "",
       allowedPages: [],
     },
@@ -194,20 +194,69 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
                 )}
             />
             <FormField
-                control={form.control}
-                name="servicioId"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Servicio/Unidad (Opcional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ''}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Seleccione un servicio" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                            {catalogs.servicios.map((s) => (<SelectItem key={s.id} value={s.id}>{s.nombre}</SelectItem>))}
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    </FormItem>
-                )}
+              control={form.control}
+              name="servicioIds"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Servicios/Unidades (Opcional)</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={cn(
+                            "w-full justify-between",
+                            !field.value?.length && "text-muted-foreground"
+                          )}
+                        >
+                          <span className="truncate">
+                            {field.value && field.value.length > 0
+                              ? `${field.value.length} servicio(s) seleccionado(s)`
+                              : "Seleccionar servicios"}
+                          </span>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                      <ScrollArea className="h-48">
+                        <div className="space-y-1 p-2">
+                          {catalogs.servicios.map((servicio) => (
+                            <FormItem
+                              key={servicio.id}
+                              className="flex flex-row items-center space-x-3 space-y-0"
+                            >
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(servicio.id)}
+                                  onCheckedChange={(checked) => {
+                                    const currentValues = field.value || [];
+                                    return checked
+                                      ? field.onChange([
+                                          ...currentValues,
+                                          servicio.id,
+                                        ])
+                                      : field.onChange(
+                                          currentValues.filter(
+                                            (id) => id !== servicio.id
+                                          )
+                                        );
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className="font-normal">
+                                {servicio.nombre}
+                              </FormLabel>
+                            </FormItem>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
         </div>
         <div className="grid grid-cols-1">
