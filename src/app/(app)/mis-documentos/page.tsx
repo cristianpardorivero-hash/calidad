@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { DocumentsTable } from "@/components/documents/documents-table";
+import { MyDocumentCard } from "@/components/documents/my-document-card";
 import { getCatalogs } from "@/lib/data";
 import { PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,15 @@ import { useUser } from "@/hooks/use-user";
 import type { Catalogs, Documento } from "@/lib/types";
 import { collection, query, where, onSnapshot, Timestamp } from "firebase/firestore";
 import { db } from "@/firebase/client";
+import { useSearchParams } from "next/navigation";
+
 
 export default function MisDocumentosPage() {
   const { user } = useUser();
   const [documents, setDocuments] = useState<Documento[]>([]);
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
 
   const hospitalId = user?.hospitalId;
   const userRole = user?.role;
@@ -77,6 +80,42 @@ export default function MisDocumentosPage() {
   
   const canManage = user?.role === 'admin' || user?.role === 'editor';
 
+  const filteredDocuments = useMemo(() => {
+    const queryParam = searchParams.get("query");
+    const ambitoId = searchParams.get("ambitoId");
+    const caracteristicaId = searchParams.get("caracteristicaId");
+    const elementoMedibleId = searchParams.get("elementoMedibleId");
+    const tipoDocumentoId = searchParams.get("tipoDocumentoId");
+    const estadoDocId = searchParams.get("estadoDocId");
+    const servicioId = searchParams.get("servicioId");
+    const fromParam = searchParams.get("from");
+    const toParam = searchParams.get("to");
+
+    return documents.filter((doc) => {
+      const from = fromParam ? new Date(fromParam) : null;
+      const to = toParam ? new Date(toParam) : null;
+
+      if (queryParam) {
+        const lowerQuery = queryParam.toLowerCase();
+        if (!doc.searchKeywords?.some(keyword => keyword.toLowerCase().includes(lowerQuery))) {
+            return false;
+        }
+      }
+
+      if (ambitoId && doc.ambitoId !== ambitoId) return false;
+      if (caracteristicaId && doc.caracteristicaId !== caracteristicaId) return false;
+      if (elementoMedibleId && doc.elementoMedibleId !== elementoMedibleId) return false;
+      if (tipoDocumentoId && doc.tipoDocumentoId !== tipoDocumentoId) return false;
+      if (estadoDocId && doc.estadoDocId !== estadoDocId) return false;
+      if (servicioId && (!doc.servicioIds || !doc.servicioIds.includes(servicioId))) return false;
+
+      if (from && doc.fechaDocumento < from) return false;
+      if (to && doc.fechaDocumento > to) return false;
+
+      return true;
+    });
+  }, [documents, searchParams]);
+
   const pageHeader = (
     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
       <div>
@@ -102,7 +141,9 @@ export default function MisDocumentosPage() {
       <div className="space-y-8">
         {pageHeader}
         <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-[400px] w-full" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-80 w-full" />)}
+        </div>
       </div>
     );
   }
@@ -111,11 +152,18 @@ export default function MisDocumentosPage() {
     <div className="space-y-8">
       {pageHeader}
       <DocumentsFilters catalogs={catalogs} />
-      <DocumentsTable
-        documents={documents}
-        catalogs={catalogs}
-        user={user}
-      />
+      {filteredDocuments.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {filteredDocuments.map(doc => (
+                <MyDocumentCard key={doc.id} document={doc} catalogs={catalogs} />
+            ))}
+        </div>
+      ) : (
+        <div className="text-center py-24 bg-muted/50 rounded-lg">
+            <p className="text-lg font-semibold">No se encontraron documentos</p>
+            <p className="text-muted-foreground mt-1">Prueba a cambiar los filtros o a subir un nuevo documento.</p>
+        </div>
+      )}
     </div>
   );
 }
