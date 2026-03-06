@@ -34,7 +34,7 @@ export default function LoginPage() {
                     </h1>
                 </div>
                 <p className="mt-4 max-w-md text-center text-lg text-muted-foreground">
-                    La plataforma inteligente para la gestión de documentos de acreditación hospitalaria.
+                    La plataforma de gestion de documentos de calidad y seguridad del paciente del Hospital de Curepto
                 </p>
             </div>
             <div className="flex items-center justify-center bg-background p-4">
