@@ -7,13 +7,13 @@ import {
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/sidebar";
 import { AppHeader } from "@/components/layout/header";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading } = useUser();
   const router = useRouter();
 
   useEffect(() => {

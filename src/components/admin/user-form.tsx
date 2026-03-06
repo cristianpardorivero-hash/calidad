@@ -27,7 +27,7 @@ import { useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronsUpDown, Loader2, Save } from "lucide-react";
 import { addUser, updateUser } from "@/lib/data";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
 import { Checkbox } from "../ui/checkbox";
 import { ScrollArea } from "../ui/scroll-area";
@@ -70,7 +70,7 @@ interface UserFormProps {
 }
 
 export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser } = useUser();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);

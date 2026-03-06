@@ -2,14 +2,14 @@
 
 import { DocumentForm } from "@/components/documents/document-form";
 import { getCatalogs, getDocuments, getDocumentById } from "@/lib/data";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import { useEffect, useState, useMemo } from "react";
 import type { Catalogs, Documento } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useParams } from "next/navigation";
 
 export default function EditarDocumentoPage() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const params = useParams();
   const docId = params.docId as string;
   const hospitalId = user?.hospitalId;

@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/chart";
 import { DashboardChart } from "@/components/dashboard/dashboard-chart";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const chartConfig = {
@@ -51,7 +51,7 @@ type KpiData = {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [kpis, setKpis] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
   const hospitalId = user?.hospitalId;

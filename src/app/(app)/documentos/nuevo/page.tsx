@@ -2,13 +2,13 @@
 
 import { DocumentForm } from "@/components/documents/document-form";
 import { getCatalogs, getDocuments } from "@/lib/data";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import { useEffect, useState, useMemo } from "react";
 import type { Catalogs, Documento } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function NuevoDocumentoPage() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [documents, setDocuments] = useState<Documento[] | null>(null);
   const [loading, setLoading] = useState(true);

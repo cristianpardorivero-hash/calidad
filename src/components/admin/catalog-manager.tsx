@@ -41,7 +41,7 @@ import {
 import { CatalogForm } from "./catalog-form";
 import { deleteCatalogItem } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 
 
 type CatalogItem = { id: string, nombre: string, [key: string]: any };
@@ -113,7 +113,7 @@ export function CatalogManager({ catalogs }: { catalogs: Catalogs }) {
   const [itemToEdit, setItemToEdit] = useState<{ data: CatalogItem; type: string } | null>(null);
   const [itemToDelete, setItemToDelete] = useState<{ data: CatalogItem; type: string } | null>(null);
   const { toast } = useToast();
-  const { user: authUser } = useAuth();
+  const { user: authUser } = useUser();
   
   const catalogTabs = [
     { value: "ambitos", label: "Ámbitos", data: catalogs.ambitos, headers: [{key: 'nombre', label: 'Nombre'}, {key: 'orden', label: 'Orden'}] },

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import { getMyDocuments, getCatalogs } from "@/lib/data";
 import type { Documento, Catalogs } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +12,7 @@ import { FilePlus, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 export default function MisDocumentosPage() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [documents, setDocuments] = useState<Documento[]>([]);
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,7 +40,7 @@ export default function MisDocumentosPage() {
     } else if (!user) {
         setLoading(false);
     }
-  }, [userId, userEmail, hospitalId]);
+  }, [userId, userEmail, hospitalId, user]);
 
   const filteredDocuments = useMemo(() => {
     if (!documents || !catalogs) return [];

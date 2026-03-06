@@ -8,12 +8,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Catalogs } from "@/lib/types";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db } from "@/firebase/client";
 
 export default function AdminCatalogsPage() {
-    const { user } = useAuth();
+    const { user } = useUser();
     const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
     const [loading, setLoading] = useState(true);
 

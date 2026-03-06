@@ -9,12 +9,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { UserProfile, Catalogs } from "@/lib/types";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import { collection, query, where, onSnapshot, Timestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db } from "@/firebase/client";
 
 export default function AdminUsersPage() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const router = useRouter();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
@@ -59,7 +59,7 @@ export default function AdminUsersPage() {
     }
     
     return () => unsubscribe();
-  }, [hospitalId]);
+  }, [hospitalId, user]);
 
   const pageHeader = (
      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">

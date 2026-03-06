@@ -46,6 +46,7 @@ import { DocumentPreviewModal } from "./document-preview-modal";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { updateDocument } from "@/lib/data";
+import { useUser } from "@/hooks/use-user";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -59,6 +60,7 @@ export function DocumentsTable({
   user: UserProfile;
 }) {
   const searchParams = useSearchParams();
+  const { firebaseUser } = useUser();
   const currentPage = Number(searchParams.get("page")) || 1;
   const [docToPreview, setDocToPreview] = React.useState<Documento | null>(null);
   const [docToDelete, setDocToDelete] = React.useState<Documento | null>(null);
@@ -68,7 +70,7 @@ export function DocumentsTable({
   const canManage = user.role === 'admin' || user.role === 'editor';
 
   const handleDeleteConfirm = async () => {
-    if (!docToDelete || !user) return;
+    if (!docToDelete || !firebaseUser) return;
   
     const deletingDoc = docToDelete;
   
@@ -78,7 +80,7 @@ export function DocumentsTable({
       await updateDocument(deletingDoc.id, {
         isDeleted: true,
         deletedAt: new Date(),
-        deletedByUid: user.uid,
+        deletedByUid: firebaseUser.uid,
       });
   
       setDocToDelete(null);

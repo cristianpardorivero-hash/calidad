@@ -23,7 +23,7 @@ import {
   FileHeart,
 } from "lucide-react";
 import Link from "next/link";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 
 const menuItems = [
   {
@@ -81,7 +81,7 @@ const adminMenuItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user } = useUser();
 
   const userHasAccess = (itemRoles: string[], itemHref: string) => {
     if (!user) return false;

@@ -14,19 +14,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import { LogOut, Settings, User } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { signOut } from "firebase/auth";
+import { auth } from "@/firebase/client";
 
 export function AppHeader() {
   const { isMobile } = useSidebar();
-  const { user, logout } = useAuth();
+  const { user } = useUser();
   const router = useRouter();
 
-  const handleLogout = () => {
-    logout().then(() => {
-      router.push('/login');
-    });
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/login');
   }
 
   const getInitials = (name: string) => {

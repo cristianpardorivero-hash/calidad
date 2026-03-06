@@ -36,7 +36,7 @@ import { es } from "date-fns/locale";
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { Separator } from "../ui/separator";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import { addDocument, updateDocument, createNewVersionAndUpdateDocument } from "@/lib/data";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -44,7 +44,7 @@ import { Progress } from "../ui/progress";
 import { Label } from "../ui/label";
 import { Checkbox } from "../ui/checkbox";
 import { ScrollArea } from "../ui/scroll-area";
-import { auth, storage } from "@/lib/firebase";
+import { storage } from "@/firebase/client";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 
@@ -124,7 +124,7 @@ const Stepper = ({ currentStep }: { currentStep: number }) => (
 
 
 export function DocumentForm({ catalogs, documents, document, isNewVersion = false }: DocumentFormProps) {
-  const { user, firebaseUser } = useAuth();
+  const { user, firebaseUser } = useUser();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);

@@ -31,7 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import type { Catalogs, Documento, DocumentVersion } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
@@ -41,7 +41,7 @@ import { DocumentPreviewModal } from "@/components/documents/document-preview-mo
 export default function DocumentoDetailPage() {
   const params = useParams();
   const docId = params.docId as string;
-  const { user } = useAuth();
+  const { user } = useUser();
   const hospitalId = user?.hospitalId;
 
   const [document, setDocument] = useState<Documento | null>(null);

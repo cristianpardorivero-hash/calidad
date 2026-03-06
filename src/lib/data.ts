@@ -14,7 +14,7 @@ import {
   setDoc,
   orderBy,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db } from "@/firebase/client";
 import type { Catalogs, Documento, UserProfile, DocumentVersion, UserRole } from "./types";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
@@ -156,7 +156,7 @@ export async function getMyDocuments(userId: string, userEmail: string, hospital
   
   const [createdBySnapshot, responsibleForSnapshot] = await Promise.all([
       getDocs(createdByQuery),
-      getDocs(responsibleForQuery)
+      getDocs(responsibleForSnapshot)
   ]);
 
   const docsMap = new Map<string, Documento>();

@@ -11,13 +11,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/firebase/client";
 
 export function LoginForm() {
-  const { login } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,15 +27,22 @@ export function LoginForm() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await login(email, password);
-      // On success, the AuthContext state will change, and the
+      await signInWithEmailAndPassword(auth, email, password);
+      // On success, the useUser hook will update, and the
       // parent page component (`/login/page.tsx`) will handle the redirect.
     } catch (error: any) {
         console.error(error);
+        let errorMessage = 'Credenciales incorrectas o error de red.';
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            errorMessage = 'Credenciales incorrectas. Por favor, verifica tu correo y contraseña.';
+        } else if (error.code === 'auth/user-disabled') {
+            errorMessage = 'Esta cuenta de usuario ha sido desactivada.';
+        }
+        
         toast({
             variant: "destructive",
             title: "Error de inicio de sesión",
-            description: error.message || "Credenciales incorrectas o error de red.",
+            description: errorMessage,
         })
     } finally {
         setIsLoading(false);

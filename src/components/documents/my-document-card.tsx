@@ -15,7 +15,7 @@ import { Eye, Link as LinkIcon, FileText } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getLinkedDocuments } from "@/lib/data";
 import Link from "next/link";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import { DocumentPreviewModal } from "./document-preview-modal";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -28,7 +28,7 @@ interface MyDocumentCardProps {
 }
 
 export function MyDocumentCard({ document, catalogs }: MyDocumentCardProps) {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [linkedDocuments, setLinkedDocuments] = useState<Documento[]>([]);
   const [isLoadingLinks, setIsLoadingLinks] = useState(true);
   const [docForPreview, setDocForPreview] = useState<Documento | null>(null);

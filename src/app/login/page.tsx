@@ -2,12 +2,12 @@
 
 import { LoginForm } from "@/components/auth/login-form";
 import { File } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function LoginPage() {
-    const { user, loading: authLoading } = useAuth();
+    const { user, loading: authLoading } = useUser();
     const router = useRouter();
 
     useEffect(() => {

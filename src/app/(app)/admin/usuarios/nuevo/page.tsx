@@ -2,13 +2,13 @@
 
 import { UserForm } from "@/components/admin/user-form";
 import { getCatalogs } from "@/lib/data";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import { useEffect, useState } from "react";
 import type { Catalogs } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function NuevoUsuarioPage() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [loading, setLoading] = useState(true);
   const hospitalId = user?.hospitalId;

@@ -9,13 +9,13 @@ import Link from "next/link";
 import { DocumentsFilters } from "@/components/documents/documents-filters";
 import { useEffect, useState, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import type { Catalogs, Documento } from "@/lib/types";
 import { collection, query, where, onSnapshot, Timestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db } from "@/firebase/client";
 
 export default function DocumentosPage() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [documents, setDocuments] = useState<Documento[]>([]);
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [loading, setLoading] = useState(true);

@@ -49,6 +49,7 @@ import {
 import { UserForm } from "./user-form";
 import { updateUser } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/hooks/use-user";
 
 interface UserManagerProps {
     initialUsers: UserProfile[];
@@ -57,6 +58,7 @@ interface UserManagerProps {
 }
 
 export function UserManager({ initialUsers, catalogs, onUsersChange }: UserManagerProps) {
+  const { user: currentUser } = useUser();
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
   const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
@@ -94,7 +96,7 @@ export function UserManager({ initialUsers, catalogs, onUsersChange }: UserManag
   }
 
   const handleDelete = async () => {
-    if (!userToDelete) return;
+    if (!userToDelete || !currentUser) return;
 
     const deletingUser = userToDelete;
     setLoadingStates(prev => ({ ...prev, [deletingUser.uid]: true }));

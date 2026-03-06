@@ -27,7 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ChevronsUpDown, Loader2, Save } from "lucide-react";
 import { addCatalogItem, updateCatalogItem } from "@/lib/data";
 import { useEffect, useMemo, useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Checkbox } from "../ui/checkbox";
 import { ScrollArea } from "../ui/scroll-area";
@@ -66,7 +66,7 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user: authUser } = useAuth();
+  const { user: authUser } = useUser();
   const isEditing = !!item;
 
   const initialValues = useMemo(() => {
