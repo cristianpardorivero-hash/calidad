@@ -1,3 +1,4 @@
+
 "use client";
 
 import { UserManager } from "@/components/admin/user-manager";
@@ -23,13 +24,15 @@ export default function AdminUsersPage() {
     setRefreshTrigger(t => t + 1);
   }, []);
 
+  const hospitalId = user?.hospitalId;
+
   useEffect(() => {
     const fetchData = async () => {
-      if (user) {
+      if (hospitalId) {
           setLoading(true);
           const [fetchedUsers, fetchedCatalogs] = await Promise.all([
-              getUsers(user.hospitalId),
-              getCatalogs(user.hospitalId)
+              getUsers(hospitalId),
+              getCatalogs(hospitalId)
           ]);
           setUsers(fetchedUsers);
           setCatalogs(fetchedCatalogs);
@@ -37,7 +40,7 @@ export default function AdminUsersPage() {
       }
     };
     fetchData();
-  }, [user, refreshTrigger]);
+  }, [hospitalId, refreshTrigger]);
 
   const pageHeader = (
      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">

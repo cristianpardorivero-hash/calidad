@@ -15,7 +15,7 @@ import {
   orderBy,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Catalogs, Documento, UserProfile, DocumentVersion } from "./types";
+import type { Catalogs, Documento, UserProfile, DocumentVersion, UserRole } from "./types";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { initializeApp, deleteApp } from "firebase/app";
@@ -53,17 +53,18 @@ export async function getCatalogs(hospitalId: string): Promise<Catalogs> {
 
 export async function getDocuments(
   hospitalId: string,
-  user: UserProfile
+  userRole: UserRole,
+  userServicioIds?: string[]
 ): Promise<Documento[]> {
   const docsRef = collection(db, "documents");
   let q;
 
-  if (user.role === "lector" && user.servicioIds && user.servicioIds.length > 0) {
+  if (userRole === "lector" && userServicioIds && userServicioIds.length > 0) {
     q = query(
       docsRef,
       where("hospitalId", "==", hospitalId),
       where("isDeleted", "==", false),
-      where("servicioIds", "array-contains-any", user.servicioIds)
+      where("servicioIds", "array-contains-any", userServicioIds)
     );
   } else {
     q = query(

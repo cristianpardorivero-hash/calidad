@@ -1,3 +1,4 @@
+
 "use client";
 
 import { DocumentsTable } from "@/components/documents/documents-table";
@@ -22,13 +23,19 @@ export default function DocumentosPage() {
     setRefreshTrigger(t => t + 1);
   }, []);
 
+  const hospitalId = user?.hospitalId;
+  const userRole = user?.role;
+  // Stringify to create a stable dependency for the useEffect hook
+  const servicioIdsStr = JSON.stringify(user?.servicioIds); 
+
   useEffect(() => {
     const fetchData = async () => {
-      if (user) {
+      if (hospitalId && userRole) {
         setLoading(true);
+        const servicioIds = user?.servicioIds;
         const [fetchedDocs, fetchedCatalogs] = await Promise.all([
-          getDocuments(user.hospitalId, user),
-          getCatalogs(user.hospitalId),
+          getDocuments(hospitalId, userRole, servicioIds),
+          getCatalogs(hospitalId),
         ]);
         setDocuments(fetchedDocs);
         setCatalogs(fetchedCatalogs);
@@ -36,7 +43,7 @@ export default function DocumentosPage() {
       }
     };
     fetchData();
-  }, [user, refreshTrigger]);
+  }, [hospitalId, userRole, servicioIdsStr, refreshTrigger]);
   
   const canManage = user?.role === 'admin' || user?.role === 'editor';
 
