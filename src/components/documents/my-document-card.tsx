@@ -58,6 +58,16 @@ export function MyDocumentCard({ document, catalogs }: MyDocumentCardProps) {
     return { statusName: status?.nombre || 'Desconocido', statusVariant: variant };
   }, [document.estadoDocId, catalogs]);
 
+  const { ambitoName, caracteristicaName } = useMemo(() => {
+    if (!catalogs) return { ambitoName: '', caracteristicaName: '' };
+    const ambito = catalogs.ambitos.find(a => a.id === document.ambitoId);
+    const caracteristica = catalogs.caracteristicas.find(c => c.id === document.caracteristicaId);
+    return {
+        ambitoName: ambito?.nombre || 'N/A',
+        caracteristicaName: caracteristica?.nombre || 'N/A'
+    };
+  }, [document.ambitoId, document.caracteristicaId, catalogs]);
+
 
   return (
     <>
@@ -75,9 +85,16 @@ export function MyDocumentCard({ document, catalogs }: MyDocumentCardProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-grow space-y-3 text-sm">
-            <p className="text-muted-foreground line-clamp-3 h-[60px]">
-                {document.descripcion || "Este documento no tiene una descripción."}
-            </p>
+            <div className="h-[60px] space-y-1 text-muted-foreground">
+                <div className="flex gap-1">
+                    <strong>Ámbito:</strong>
+                    <p className="truncate">{ambitoName}</p>
+                </div>
+                <div className="flex gap-1">
+                    <strong>Característica:</strong>
+                    <p className="truncate">{caracteristicaName}</p>
+                </div>
+            </div>
             
             {isLoadingLinks ? (
                  <div className="space-y-2 pt-2">
