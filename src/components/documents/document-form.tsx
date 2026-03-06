@@ -439,7 +439,7 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
     <>
       <Stepper currentStep={step} />
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
           <div className="min-h-[450px]">
             {step === 1 && (
                 <Card>
@@ -537,7 +537,7 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               ) : (
-                <Button type="submit" disabled={isSubmitting}>
+                <Button type="button" onClick={form.handleSubmit(onSubmit)} disabled={isSubmitting}>
                   {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
                   Subir Documento
                 </Button>
