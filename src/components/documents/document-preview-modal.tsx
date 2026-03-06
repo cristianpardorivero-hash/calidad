@@ -9,13 +9,20 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Download, FileText, AlertTriangle } from "lucide-react";
+import { Download, FileText, AlertTriangle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { Documento } from "@/lib/types";
 import { storage } from "@/lib/firebase";
 import { ref, getBlob } from "firebase/storage";
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+import 'react-pdf/dist/esm/Page/TextLayer.css';
+
+
+// Set up the worker for react-pdf
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+
 
 interface DocumentPreviewModalProps {
   documento: Documento | null;
@@ -24,34 +31,34 @@ interface DocumentPreviewModalProps {
 }
 
 export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: DocumentPreviewModalProps) {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [fileBlob, setFileBlob] = useState<Blob | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [pageNumber, setPageNumber] = useState(1);
 
   useEffect(() => {
-    let objectUrl: string | null = null;
-
     if (isOpen && documento) {
-      // Only PDF files can be previewed
       if (documento.fileExt !== 'pdf') {
-        setPreviewUrl(null);
-        setError(null);
         setLoading(false);
+        setError(null);
+        setFileBlob(null);
         return;
       }
       
       setLoading(true);
       setError(null);
-      setPreviewUrl(null);
+      setFileBlob(null);
+      setNumPages(null);
+      setPageNumber(1);
 
       const fetchBlob = async () => {
         try {
           const storageRef = ref(storage, documento.storagePath);
           const blob = await getBlob(storageRef);
-          objectUrl = URL.createObjectURL(blob);
-          setPreviewUrl(objectUrl);
+          setFileBlob(blob);
         } catch (e: any) {
-          console.error("Error creating blob URL for preview:", e);
+          console.error("Error fetching blob for preview:", e);
           if (e.code === 'storage/object-not-found') {
             setError("El archivo no se encontró en el servidor.");
           } else if (e.code === 'storage/unauthorized') {
@@ -66,21 +73,41 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
 
       fetchBlob();
     }
-
-    return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
   }, [isOpen, documento]);
+
+  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
+    setNumPages(numPages);
+  }
+
+  const handleDownload = () => {
+    if (!documento) return;
+
+    const url = fileBlob ? URL.createObjectURL(fileBlob) : documento.downloadUrl;
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = documento.fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    if (fileBlob) {
+        URL.revokeObjectURL(url);
+    }
+  }
+
+  const goToPrevPage = () => setPageNumber(prev => Math.max(prev - 1, 1));
+  const goToNextPage = () => setPageNumber(prev => Math.min(prev + 1, numPages || 1));
 
   const renderContent = () => {
     if (loading) {
-      return <Skeleton className="h-[70vh] w-full" />;
+      return (
+        <div className="flex h-[70vh] w-full items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      )
     }
     if (error) {
       return (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="h-full">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Error de Previsualización</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
@@ -99,30 +126,29 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
             </div>
         )
     }
-    if (previewUrl) {
+    if (fileBlob) {
       return (
-        <object data={previewUrl} type="application/pdf" className="h-[70vh] w-full rounded-md border">
-          <p className="text-center text-muted-foreground p-4">
-            Parece que tu navegador no puede mostrar el PDF. Intenta descargarlo.
-          </p>
-        </object>
+        <div className="h-full w-full overflow-auto bg-muted/50 flex items-center justify-center rounded-md border">
+            <Document
+                file={fileBlob}
+                onLoadSuccess={onDocumentLoadSuccess}
+                onLoadError={(err) => setError(`Error al cargar el PDF: ${err.message}`)}
+                loading={<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />}
+                error={
+                    <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Error al renderizar el PDF</AlertTitle>
+                        <AlertDescription>No se pudo mostrar el documento.</AlertDescription>
+                    </Alert>
+                }
+            >
+                <Page pageNumber={pageNumber} />
+            </Document>
+        </div>
       );
     }
     return null;
   };
-
-  const handleDownload = () => {
-    if (!documento) return;
-
-    // Use the reliable blob URL if available
-    const url = previewUrl || documento.downloadUrl;
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = documento.fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -136,14 +162,31 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
         <div className="flex-1 min-h-0">
           {renderContent()}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cerrar
-          </Button>
-          <Button onClick={handleDownload} disabled={!documento?.downloadUrl}>
-              <Download className="mr-2 h-4 w-4" />
-              Descargar Archivo
-          </Button>
+        <DialogFooter className="flex-col sm:flex-row sm:justify-between items-center pt-4">
+            <div className="flex items-center gap-2">
+                {numPages && numPages > 1 && (
+                    <>
+                        <Button variant="outline" size="icon" onClick={goToPrevPage} disabled={pageNumber <= 1}>
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <p className="text-sm text-muted-foreground">
+                            Página {pageNumber} de {numPages}
+                        </p>
+                        <Button variant="outline" size="icon" onClick={goToNextPage} disabled={pageNumber >= numPages}>
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </>
+                )}
+            </div>
+            <div className="flex gap-2">
+                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    Cerrar
+                </Button>
+                <Button onClick={handleDownload} disabled={!documento}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Descargar Archivo
+                </Button>
+            </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
