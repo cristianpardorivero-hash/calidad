@@ -537,6 +537,10 @@ export async function updateDocument(docId: string, updates: Partial<Documento>)
   } else if (updates.fechaVigenciaHasta === undefined) {
     dataToUpdate.fechaVigenciaHasta = null;
   }
+  
+  if (updates.deletedAt instanceof Date) {
+    dataToUpdate.deletedAt = Timestamp.fromDate(updates.deletedAt);
+  }
 
   // Re-generate search keywords from a mix of old and new data
   const originalDocSnap = await getDoc(docRef);
@@ -552,8 +556,7 @@ export async function updateDocument(docId: string, updates: Partial<Documento>)
   // Remove fields that should not be updated from client
   const nonUpdateableFields = [
     'id', 'createdAt', 'createdByUid', 'createdByEmail', 'hospitalId', 
-    'isDeleted', 'deletedAt', 'deletedByUid', 'fileName', 'fileExt', 
-    'mimeType', 'fileSize', 'storagePath', 'downloadUrl', 'checksum'
+    'fileName', 'fileExt', 'mimeType', 'fileSize', 'storagePath', 'downloadUrl', 'checksum'
   ];
   nonUpdateableFields.forEach(field => delete dataToUpdate[field]);
   
@@ -571,4 +574,3 @@ export async function updateDocument(docId: string, updates: Partial<Documento>)
     throw error;
   }
 }
-

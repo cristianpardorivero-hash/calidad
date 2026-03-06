@@ -6,10 +6,10 @@ import { PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { DocumentsFilters } from "@/components/documents/documents-filters";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
-import type { Catalogs, Documento } from "@/lib/types";
+import type { Catalogs, Documento, UserProfile } from "@/lib/types";
 
 export default function DocumentosPage() {
   const { user } = useAuth();
@@ -17,21 +17,24 @@ export default function DocumentosPage() {
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     if (user) {
       setLoading(true);
-      const fetchData = async () => {
-        const [fetchedDocs, fetchedCatalogs] = await Promise.all([
-          getDocuments(user.hospitalId, user),
-          getCatalogs(user.hospitalId),
-        ]);
-        setDocuments(fetchedDocs);
-        setCatalogs(fetchedCatalogs);
-        setLoading(false);
-      };
-      fetchData();
+      const [fetchedDocs, fetchedCatalogs] = await Promise.all([
+        getDocuments(user.hospitalId, user),
+        getCatalogs(user.hospitalId),
+      ]);
+      setDocuments(fetchedDocs);
+      setCatalogs(fetchedCatalogs);
+      setLoading(false);
     }
   }, [user]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+  
+  const canManage = user?.role === 'admin' || user?.role === 'editor';
 
   const pageHeader = (
     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -43,15 +46,17 @@ export default function DocumentosPage() {
           Busca, filtra y gestiona todos los documentos de acreditación.
         </p>
       </div>
-      <Button asChild>
-        <Link href="/documentos/nuevo">
-          <PlusCircle className="mr-2 h-4 w-4" /> Subir Documento
-        </Link>
-      </Button>
+      {canManage && (
+        <Button asChild>
+          <Link href="/documentos/nuevo">
+            <PlusCircle className="mr-2 h-4 w-4" /> Subir Documento
+          </Link>
+        </Button>
+      )}
     </div>
   );
 
-  if (loading || !catalogs) {
+  if (loading || !catalogs || !user) {
     return (
       <div className="space-y-8">
         {pageHeader}
@@ -68,6 +73,8 @@ export default function DocumentosPage() {
       <DocumentsTable
         documents={documents}
         catalogs={catalogs}
+        user={user}
+        onDocumentsChange={fetchData}
       />
     </div>
   );

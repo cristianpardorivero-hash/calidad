@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { Catalogs, Documento } from "@/lib/types";
+import type { Catalogs, Documento, UserProfile } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -26,6 +26,7 @@ import {
   Trash2,
   FileText,
   Eye,
+  Loader2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -41,19 +42,55 @@ import {
 } from "@/components/ui/pagination";
 import { useSearchParams } from "next/navigation";
 import { DocumentPreviewModal } from "./document-preview-modal";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { updateDocument } from "@/lib/data";
 
 const ITEMS_PER_PAGE = 10;
 
 export function DocumentsTable({
   documents,
   catalogs,
+  user,
+  onDocumentsChange,
 }: {
   documents: Documento[];
   catalogs: Catalogs;
+  user: UserProfile;
+  onDocumentsChange: () => void;
 }) {
   const searchParams = useSearchParams();
   const currentPage = Number(searchParams.get("page")) || 1;
   const [docToPreview, setDocToPreview] = React.useState<Documento | null>(null);
+  const [docToDelete, setDocToDelete] = React.useState<Documento | null>(null);
+  const [loadingStates, setLoadingStates] = React.useState<Record<string, boolean>>({});
+  const { toast } = useToast();
+
+  const canManage = user.role === 'admin' || user.role === 'editor';
+
+  const handleDeleteConfirm = async () => {
+    if (!docToDelete || !user) return;
+
+    setLoadingStates(prev => ({...prev, [docToDelete.id]: true}));
+    try {
+      await updateDocument(docToDelete.id, { 
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedByUid: user.uid,
+       });
+      toast({
+        title: "Documento Eliminado",
+        description: `El documento "${docToDelete.titulo}" ha sido eliminado.`,
+      });
+      onDocumentsChange();
+    } catch (e) {
+      console.error(e);
+      toast({ variant: 'destructive', title: "Error", description: "No se pudo eliminar el documento."});
+    } finally {
+        setLoadingStates(prev => ({...prev, [docToDelete.id]: false}));
+        setDocToDelete(null);
+    }
+  }
 
   const getCatalogName = (
     catalog: keyof Catalogs,
@@ -219,34 +256,48 @@ export function DocumentsTable({
                     })}
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => setDocToPreview(doc)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Ver
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <a href={doc.downloadUrl} download={doc.fileName}>
-                            <Download className="mr-2 h-4 w-4" />
-                            Descargar
-                          </a>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/documentos/${doc.id}/editar`}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" />Eliminar</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {loadingStates[doc.id] ? (
+                      <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                    ) : (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onSelect={() => setDocToPreview(doc)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Ver
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <a href={doc.downloadUrl} download={doc.fileName}>
+                              <Download className="mr-2 h-4 w-4" />
+                              Descargar
+                            </a>
+                          </DropdownMenuItem>
+                          {canManage && (
+                            <>
+                              <DropdownMenuItem asChild>
+                                <Link href={`/documentos/${doc.id}/editar`}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Editar
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                onSelect={() => setDocToDelete(doc)}
+                              >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Eliminar
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -282,6 +333,22 @@ export function DocumentsTable({
           }
         }}
       />
+      <AlertDialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>¿Estás seguro de que deseas eliminar este documento?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Esta acción marcará al documento como eliminado y no podrá ser accedido. No se borrará permanentemente y podrá ser recuperado por un administrador.
+                    <br/><br/>
+                    Documento: <strong>"{docToDelete?.titulo}"</strong>
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
