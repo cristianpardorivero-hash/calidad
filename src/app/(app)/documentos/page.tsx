@@ -25,15 +25,12 @@ export default function DocumentosPage() {
 
   const hospitalId = user?.hospitalId;
   const userRole = user?.role;
-  // Create a stable primitive dependency from the array for the useEffect hook
-  const servicioIdsDependency = user?.servicioIds?.join(',') ?? '';
+  const servicioIds = user?.servicioIds;
 
   useEffect(() => {
     const fetchData = async () => {
       if (hospitalId && userRole) {
         setLoading(true);
-        // Use the original array for the function call, not the dependency string
-        const servicioIds = user?.servicioIds;
         const [fetchedDocs, fetchedCatalogs] = await Promise.all([
           getDocuments(hospitalId, userRole, servicioIds),
           getCatalogs(hospitalId),
@@ -44,8 +41,8 @@ export default function DocumentosPage() {
       }
     };
     fetchData();
-  // Depend on the stable primitive, not the array reference itself.
-  }, [hospitalId, userRole, servicioIdsDependency, refreshTrigger]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hospitalId, userRole, refreshTrigger]);
   
   const canManage = user?.role === 'admin' || user?.role === 'editor';
 

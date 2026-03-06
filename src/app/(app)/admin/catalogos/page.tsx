@@ -1,3 +1,4 @@
+
 "use client";
 
 import { CatalogManager } from "@/components/admin/catalog-manager";
@@ -33,6 +34,7 @@ export default function AdminCatalogsPage() {
             }
         };
         fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [hospitalId, refreshTrigger]);
 
     const pageHeader = (

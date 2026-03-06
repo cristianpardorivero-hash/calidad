@@ -40,6 +40,7 @@ export default function AdminUsersPage() {
       }
     };
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hospitalId, refreshTrigger]);
 
   const pageHeader = (
