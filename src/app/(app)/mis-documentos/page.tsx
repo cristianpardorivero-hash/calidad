@@ -101,7 +101,7 @@ export default function MisDocumentosPage() {
       {filteredDocuments.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredDocuments.map(doc => (
-            <MyDocumentCard key={doc.id} document={doc} />
+            <MyDocumentCard key={doc.id} document={doc} catalogs={catalogs!} />
           ))}
         </div>
       ) : (
