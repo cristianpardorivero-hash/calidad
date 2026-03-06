@@ -493,7 +493,18 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Elemento medible</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ''} disabled={!caracteristicaId}>
+                    <Select
+                        onValueChange={(value) => {
+                            field.onChange(value);
+                            const selectedElemento = catalogs.elementosMedibles.find(e => e.id === value);
+                            if (selectedElemento && selectedElemento.servicioIds) {
+                                form.setValue("servicioIds", selectedElemento.servicioIds, { shouldValidate: true });
+                            } else {
+                                form.setValue("servicioIds", [], { shouldValidate: true });
+                            }
+                        }}
+                        value={field.value || ''}
+                        disabled={!caracteristicaId}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un elemento" /></SelectTrigger></FormControl>
                         <SelectContent>{filteredElementos.map((e) => (<SelectItem key={e.id} value={e.id}>{e.codigo} - {e.nombre}</SelectItem>))}</SelectContent>
                     </Select>
