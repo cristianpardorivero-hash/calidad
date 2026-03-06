@@ -10,16 +10,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Download, FileText, AlertTriangle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Download, FileText, AlertTriangle, ChevronLeft, ChevronRight, Loader2, ZoomIn, ZoomOut } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { Documento } from "@/lib/types";
 import { storage } from "@/lib/firebase";
 import { ref, getBlob } from "firebase/storage";
-import { Document, Page } from 'react-pdf';
+import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
-import 'react-pdf/dist/esm/pdf.worker.entry';
 
+// Configure the worker as provided by the user
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 interface DocumentPreviewModalProps {
   documento: Documento | null;
@@ -31,8 +32,11 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
   const [fileBlob, setFileBlob] = useState<Blob | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [numPages, setNumPages] = useState<number | null>(null);
-  const [pageNumber, setPageNumber] = useState(1);
+  
+  // States from user's snippet for navigation and zoom
+  const [numPages, setNumPages] = useState<number>(0);
+  const [pageNumber, setPageNumber] = useState<number>(1);
+  const [scale, setScale] = useState<number>(1.2);
 
   useEffect(() => {
     if (isOpen && documento) {
@@ -46,8 +50,9 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
       setLoading(true);
       setError(null);
       setFileBlob(null);
-      setNumPages(null);
+      setNumPages(0);
       setPageNumber(1);
+      setScale(1.2);
 
       const fetchBlob = async () => {
         try {
@@ -78,7 +83,6 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
 
   const handleDownload = () => {
     if (!documento) return;
-
     const url = fileBlob ? URL.createObjectURL(fileBlob) : documento.downloadUrl;
     const link = document.createElement('a');
     link.href = url;
@@ -93,6 +97,8 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
 
   const goToPrevPage = () => setPageNumber(prev => Math.max(prev - 1, 1));
   const goToNextPage = () => setPageNumber(prev => Math.min(prev + 1, numPages || 1));
+  const zoomOut = () => setScale(s => Math.max(0.6, s - 0.2));
+  const zoomIn = () => setScale(s => Math.min(2.5, s + 0.2));
 
   const renderContent = () => {
     if (loading) {
@@ -125,7 +131,7 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
     }
     if (fileBlob) {
       return (
-        <div className="h-full w-full overflow-auto bg-muted/50 flex items-center justify-center rounded-md border">
+        <div className="h-full w-full overflow-auto bg-muted/50 flex items-center justify-center rounded-md border p-4">
             <Document
                 file={fileBlob}
                 onLoadSuccess={onDocumentLoadSuccess}
@@ -139,7 +145,7 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
                     </Alert>
                 }
             >
-                <Page pageNumber={pageNumber} />
+                <Page pageNumber={pageNumber} scale={scale} />
             </Document>
         </div>
       );
@@ -160,20 +166,29 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
           {renderContent()}
         </div>
         <DialogFooter className="flex-col sm:flex-row sm:justify-between items-center pt-4">
-            <div className="flex items-center gap-2">
-                {numPages && numPages > 1 && (
+            <div className="flex items-center gap-2 flex-wrap">
+                {numPages > 1 && (
                     <>
-                        <Button variant="outline" size="icon" onClick={goToPrevPage} disabled={pageNumber <= 1}>
-                            <ChevronLeft className="h-4 w-4" />
+                        <Button variant="outline" onClick={goToPrevPage} disabled={pageNumber <= 1}>
+                            <ChevronLeft className="mr-2 h-4 w-4" />
+                            Anterior
                         </Button>
                         <p className="text-sm text-muted-foreground">
                             Página {pageNumber} de {numPages}
                         </p>
-                        <Button variant="outline" size="icon" onClick={goToNextPage} disabled={pageNumber >= numPages}>
-                            <ChevronRight className="h-4 w-4" />
+                        <Button variant="outline" onClick={goToNextPage} disabled={pageNumber >= numPages}>
+                            Siguiente
+                            <ChevronRight className="ml-2 h-4 w-4" />
                         </Button>
                     </>
                 )}
+                 <Button variant="outline" size="icon" onClick={zoomOut} disabled={scale <= 0.6}>
+                    <ZoomOut className="h-4 w-4" />
+                </Button>
+                <span className="text-sm text-muted-foreground w-12 text-center">{Math.round(scale * 100)}%</span>
+                <Button variant="outline" size="icon" onClick={zoomIn} disabled={scale >= 2.5}>
+                    <ZoomIn className="h-4 w-4" />
+                </Button>
             </div>
             <div className="flex gap-2">
                 <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -181,7 +196,7 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
                 </Button>
                 <Button onClick={handleDownload} disabled={!documento}>
                     <Download className="mr-2 h-4 w-4" />
-                    Descargar Archivo
+                    Descargar
                 </Button>
             </div>
         </DialogFooter>
