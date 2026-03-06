@@ -5,7 +5,7 @@ import { getCatalogs } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Catalogs } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth";
@@ -16,20 +16,20 @@ export default function AdminCatalogsPage() {
     const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
     const [loading, setLoading] = useState(true);
     
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         if (user) {
             setLoading(true);
             const fetchedCatalogs = await getCatalogs(user.hospitalId);
             setCatalogs(fetchedCatalogs);
             setLoading(false);
         }
-    }
+    }, [user])
 
     useEffect(() => {
         if (user) {
             fetchData();
         }
-    }, [user]);
+    }, [user, fetchData]);
 
     const pageHeader = (
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">

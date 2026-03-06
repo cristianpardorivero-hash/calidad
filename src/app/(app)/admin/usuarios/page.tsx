@@ -5,7 +5,7 @@ import { getCatalogs, getUsers } from "@/lib/data";
 import { PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { UserProfile, Catalogs } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth";
@@ -18,7 +18,7 @@ export default function AdminUsersPage() {
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (user) {
         setLoading(true);
         const [fetchedUsers, fetchedCatalogs] = await Promise.all([
@@ -29,13 +29,13 @@ export default function AdminUsersPage() {
         setCatalogs(fetchedCatalogs);
         setLoading(false);
     }
-  }
+  }, [user]);
 
   useEffect(() => {
     if (user) {
       fetchData();
     }
-  }, [user]);
+  }, [user, fetchData]);
 
   const pageHeader = (
      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
