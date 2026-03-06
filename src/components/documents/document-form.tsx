@@ -123,14 +123,14 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
 
   const fechaDocumento = form.watch("fechaDocumento");
   React.useEffect(() => {
-    // Automatically set validity dates when creating a new document
-    if (fechaDocumento && !isEditing) {
+    // Automatically set validity dates when creating a new document or a new version
+    if (fechaDocumento && (!isEditing || isNewVersion)) {
       form.setValue("fechaVigenciaDesde", fechaDocumento, { shouldValidate: true });
       const newVigenciaHasta = new Date(fechaDocumento.getTime());
       newVigenciaHasta.setFullYear(newVigenciaHasta.getFullYear() + 5);
       form.setValue("fechaVigenciaHasta", newVigenciaHasta, { shouldValidate: true });
     }
-  }, [fechaDocumento, isEditing, form]);
+  }, [fechaDocumento, isEditing, isNewVersion, form]);
 
   const tipoDocumentoId = form.watch("tipoDocumentoId");
   const ambitoId = form.watch("ambitoId");
