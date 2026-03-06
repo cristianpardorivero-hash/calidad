@@ -58,6 +58,8 @@ export default function MisDocumentosPage() {
     });
   }, [documents, searchQuery, catalogs]);
 
+  const canManage = user?.role === 'admin' || user?.role === 'editor';
+
   const pageHeader = (
     <div className="mb-8">
       <h1 className="text-3xl font-bold tracking-tight">Mis Documentos</h1>
@@ -113,7 +115,7 @@ export default function MisDocumentosPage() {
                     : "No has creado ningún documento ni has sido asignado como responsable de uno."
                 }
             </p>
-            {!searchQuery && (
+            {!searchQuery && canManage && (
                 <Button asChild className="mt-4">
                     <Link href="/documentos/nuevo">
                         <FilePlus className="mr-2 h-4 w-4" />
