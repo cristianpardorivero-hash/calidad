@@ -17,7 +17,7 @@ import { getLinkedDocuments } from "@/lib/data";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { DocumentPreviewModal } from "./document-preview-modal";
-import { formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Skeleton } from "../ui/skeleton";
 import { Separator } from "../ui/separator";
@@ -71,7 +71,7 @@ export function MyDocumentCard({ document, catalogs }: MyDocumentCardProps) {
             {document.titulo}
           </CardTitle>
           <CardDescription className="text-xs pt-1">
-            Actualizado {formatDistanceToNow(document.updatedAt, { addSuffix: true, locale: es })}
+            {format(document.fechaDocumento, "d 'de' MMMM, yyyy", { locale: es })}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-grow space-y-3 text-sm">
