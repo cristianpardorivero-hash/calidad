@@ -135,11 +135,20 @@ export function DocumentPreviewModal({
     if (fileUrl) {
       return (
         <div className="h-[70vh] w-full rounded-md border overflow-hidden bg-white">
-          <iframe
-            src={fileUrl}
-            title={documento?.titulo || "Vista previa PDF"}
+          <object
+            data={fileUrl}
+            type="application/pdf"
             className="w-full h-full"
-          />
+          >
+            <div className="flex h-full items-center justify-center bg-muted p-6 text-center">
+              <div>
+                <p className="font-semibold text-foreground">El navegador no pudo mostrar el PDF.</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Intenta descargarlo para abrirlo en tu dispositivo.
+                </p>
+              </div>
+            </div>
+          </object>
         </div>
       );
     }
