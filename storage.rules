@@ -1,30 +1,37 @@
 rules_version = '2';
-
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Match the path for document uploads
+    function isSignedIn() { return request.auth != null; }
+
+    function userDoc() {
+      return get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isHospitalMember(hospitalId) {
+      return isSignedIn()
+        && exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && userDoc().hospitalId == hospitalId
+        && (userDoc().isActive == true || !('isActive' in userDoc())); // por si no lo tienes aún
+    }
+
+    function isEditorOrAdmin(hospitalId) {
+      return isHospitalMember(hospitalId) && userDoc().role in ['admin', 'editor'];
+    }
+
     match /documentos/{hospitalId}/{allPaths=**} {
-      
-      // Allow reads if the user is a member of the hospital.
-      // Use exists() to ensure the user document is there before trying to read from it.
-      allow read: if request.auth != null &&
-                     exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
-                     get(/databases/(default)/documents/users/$(request.auth.uid)).data.hospitalId == hospitalId;
-      
-      // Allow creates (uploads) for admins or editors of the correct hospital.
-      allow create: if request.auth != null &&
-                       exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
-                       get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'editor'] &&
-                       get(/databases/(default)/documents/users/$(request.auth.uid)).data.hospitalId == hospitalId &&
-                       request.resource.size < 25 * 1024 * 1024 &&
-                       (
-                         request.resource.contentType == 'application/pdf' ||
-                         request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-                         request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                       );
-      
-      // Disallow updates and deletes from the client for data integrity.
+
+      allow read: if isHospitalMember(hospitalId);
+
+      allow create: if isEditorOrAdmin(hospitalId)
+        && request.resource.size < 25 * 1024 * 1024
+        && (
+          request.resource.contentType == 'application/pdf' ||
+          request.resource.contentType == 'application/octet-stream' ||  // opcional pero recomendado
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
+
       allow update, delete: if false;
     }
   }
