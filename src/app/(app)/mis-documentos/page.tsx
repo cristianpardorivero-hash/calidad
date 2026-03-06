@@ -18,12 +18,16 @@ export default function MisDocumentosPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const userId = user?.uid;
+  const userEmail = user?.email;
+  const hospitalId = user?.hospitalId;
+
   useEffect(() => {
-    if (user?.uid && user?.email && user?.hospitalId) {
+    if (userId && userEmail && hospitalId) {
       setLoading(true);
       Promise.all([
-        getMyDocuments(user.uid, user.email, user.hospitalId),
-        getCatalogs(user.hospitalId)
+        getMyDocuments(userId, userEmail, hospitalId),
+        getCatalogs(hospitalId)
       ]).then(([docsData, catalogsData]) => {
           setDocuments(docsData);
           setCatalogs(catalogsData);
@@ -36,7 +40,7 @@ export default function MisDocumentosPage() {
     } else if (!user) {
         setLoading(false);
     }
-  }, [user]);
+  }, [userId, userEmail, hospitalId]);
 
   const filteredDocuments = useMemo(() => {
     if (!documents || !catalogs) return [];

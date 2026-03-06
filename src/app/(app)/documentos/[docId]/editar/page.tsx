@@ -12,6 +12,9 @@ export default function EditarDocumentoPage() {
   const { user } = useAuth();
   const params = useParams();
   const docId = params.docId as string;
+  const hospitalId = user?.hospitalId;
+  const userRole = user?.role;
+  const servicioIds = user?.servicioIds;
 
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [documents, setDocuments] = useState<Documento[] | null>(null);
@@ -20,11 +23,11 @@ export default function EditarDocumentoPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user?.hospitalId && docId) {
+    if (hospitalId && docId) {
       setLoading(true);
       Promise.all([
-        getCatalogs(user.hospitalId),
-        getDocuments(user.hospitalId, user), // for linked documents dropdown
+        getCatalogs(hospitalId),
+        getDocuments(hospitalId, userRole, servicioIds), // for linked documents dropdown
         getDocumentById(docId)
       ]).then(([catalogsData, documentsData, docToEditData]) => {
           if (!docToEditData) {
@@ -43,7 +46,7 @@ export default function EditarDocumentoPage() {
           setLoading(false);
         });
     }
-  }, [user, docId]);
+  }, [hospitalId, userRole, servicioIds, docId]);
 
   const pageHeader = (
     <div className="mb-8">

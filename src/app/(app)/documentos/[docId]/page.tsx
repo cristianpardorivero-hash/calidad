@@ -42,6 +42,7 @@ export default function DocumentoDetailPage() {
   const params = useParams();
   const docId = params.docId as string;
   const { user } = useAuth();
+  const hospitalId = user?.hospitalId;
 
   const [document, setDocument] = useState<Documento | null>(null);
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
@@ -54,14 +55,14 @@ export default function DocumentoDetailPage() {
 
 
   useEffect(() => {
-    if (user && docId) {
+    if (hospitalId && docId) {
       const fetchData = async () => {
         setLoading(true);
         setError(null);
         try {
           const [docData, catalogsData, versionsData] = await Promise.all([
             getDocumentById(docId),
-            getCatalogs(user.hospitalId),
+            getCatalogs(hospitalId),
             getDocumentVersions(docId),
           ]);
           
@@ -77,7 +78,7 @@ export default function DocumentoDetailPage() {
 
           // Now fetch linked documents based on the docData
           const [linkedDocumentsData, mainDocData] = await Promise.all([
-            getLinkedDocuments(docId, user.hospitalId),
+            getLinkedDocuments(docId, hospitalId),
             docData.linkedDocumentId ? getDocumentById(docData.linkedDocumentId) : Promise.resolve(null)
           ]);
           
@@ -93,7 +94,7 @@ export default function DocumentoDetailPage() {
       };
       fetchData();
     }
-  }, [user, docId]);
+  }, [hospitalId, docId]);
 
   const canManage = user?.role === 'admin' || user?.role === 'editor';
 

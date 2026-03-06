@@ -12,6 +12,9 @@ export default function NuevaVersionDocumentoPage() {
   const { user } = useAuth();
   const params = useParams();
   const docId = params.docId as string;
+  const hospitalId = user?.hospitalId;
+  const userRole = user?.role;
+  const servicioIds = user?.servicioIds;
 
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [documents, setDocuments] = useState<Documento[] | null>(null);
@@ -20,11 +23,11 @@ export default function NuevaVersionDocumentoPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user?.hospitalId && docId) {
+    if (hospitalId && docId) {
       setLoading(true);
       Promise.all([
-        getCatalogs(user.hospitalId),
-        getDocuments(user.hospitalId, user),
+        getCatalogs(hospitalId),
+        getDocuments(hospitalId, userRole, servicioIds),
         getDocumentById(docId)
       ]).then(([catalogsData, documentsData, docToVersionData]) => {
           if (!docToVersionData) {
@@ -43,7 +46,7 @@ export default function NuevaVersionDocumentoPage() {
           setLoading(false);
         });
     }
-  }, [user, docId]);
+  }, [hospitalId, userRole, servicioIds, docId]);
 
   const pageHeader = (
     <div className="mb-8">

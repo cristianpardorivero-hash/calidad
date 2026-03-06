@@ -54,11 +54,12 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [kpis, setKpis] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
+  const hospitalId = user?.hospitalId;
 
   useEffect(() => {
-    if (user?.hospitalId) {
+    if (hospitalId) {
       setLoading(true);
-      getDashboardKPIs(user.hospitalId)
+      getDashboardKPIs(hospitalId)
         .then(data => {
           setKpis(data);
           setLoading(false);
@@ -68,7 +69,7 @@ export default function DashboardPage() {
           setLoading(false);
         });
     }
-  }, [user]);
+  }, [hospitalId]);
 
   const pageHeader = (
     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">

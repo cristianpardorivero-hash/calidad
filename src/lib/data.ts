@@ -53,7 +53,7 @@ export async function getCatalogs(hospitalId: string): Promise<Catalogs> {
 
 export async function getDocuments(
   hospitalId: string,
-  userRole: UserRole,
+  userRole?: UserRole,
   userServicioIds?: string[]
 ): Promise<Documento[]> {
   const docsRef = collection(db, "documents");

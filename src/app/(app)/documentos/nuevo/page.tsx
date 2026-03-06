@@ -12,13 +12,16 @@ export default function NuevoDocumentoPage() {
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [documents, setDocuments] = useState<Documento[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const hospitalId = user?.hospitalId;
+  const userRole = user?.role;
+  const servicioIds = user?.servicioIds;
 
   useEffect(() => {
-    if (user?.hospitalId) {
+    if (hospitalId) {
       setLoading(true);
       Promise.all([
-        getCatalogs(user.hospitalId),
-        getDocuments(user.hospitalId, user)
+        getCatalogs(hospitalId),
+        getDocuments(hospitalId, userRole, servicioIds)
       ]).then(([catalogsData, documentsData]) => {
           setCatalogs(catalogsData);
           setDocuments(documentsData);
@@ -29,7 +32,7 @@ export default function NuevoDocumentoPage() {
           setLoading(false);
         });
     }
-  }, [user]);
+  }, [hospitalId, userRole, servicioIds]);
 
   const pageHeader = (
     <div className="mb-8">

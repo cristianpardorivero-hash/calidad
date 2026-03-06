@@ -11,11 +11,12 @@ export default function NuevoCatalogoPage() {
   const { user } = useAuth();
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [loading, setLoading] = useState(true);
+  const hospitalId = user?.hospitalId;
 
   useEffect(() => {
-    if (user?.hospitalId) {
+    if (hospitalId) {
       setLoading(true);
-      getCatalogs(user.hospitalId)
+      getCatalogs(hospitalId)
         .then(data => {
           setCatalogs(data);
           setLoading(false);
@@ -25,7 +26,7 @@ export default function NuevoCatalogoPage() {
           setLoading(false);
         });
     }
-  }, [user]);
+  }, [hospitalId]);
 
   const pageHeader = (
     <div className="mb-8">
