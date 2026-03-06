@@ -27,8 +27,6 @@ interface DocumentPreviewModalProps {
   onOpenChange: (isOpen: boolean) => void;
 }
 
-const PREVIEWABLE_EXTENSIONS = ["pdf", "docx", "xlsx"];
-
 export function DocumentPreviewModal({
   documento,
   isOpen,
@@ -42,9 +40,8 @@ export function DocumentPreviewModal({
     if (!isOpen || !documento) return;
 
     const ext = documento.fileExt?.toLowerCase() || "";
-    const isPreviewable = PREVIEWABLE_EXTENSIONS.includes(ext);
 
-    if (!isPreviewable) {
+    if (ext !== "pdf") {
       setLoading(false);
       setError(null);
       setFileUrl(null);
@@ -66,7 +63,7 @@ export function DocumentPreviewModal({
           setFileUrl(url);
         }
       } catch (e: any) {
-        console.error("Error getting file URL:", e);
+        console.error("Error getting PDF URL:", e);
 
         if (!isCancelled) {
           if (e?.code === "storage/object-not-found") {
@@ -74,7 +71,7 @@ export function DocumentPreviewModal({
           } else if (e?.code === "storage/unauthorized") {
             setError("No tienes permiso para ver este archivo.");
           } else {
-            setError("Ocurrió un error al cargar la previsualización.");
+            setError("Ocurrió un error al cargar la previsualización del PDF.");
           }
         }
       } finally {
@@ -97,7 +94,7 @@ export function DocumentPreviewModal({
 
     const link = document.createElement("a");
     link.href = urlToDownload;
-    link.download = documento.fileName || "documento";
+    link.download = documento.fileName || "documento.pdf";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -122,33 +119,26 @@ export function DocumentPreviewModal({
       );
     }
 
-    if (documento && !PREVIEWABLE_EXTENSIONS.includes(documento.fileExt?.toLowerCase() || "")) {
+    if (documento && (documento.fileExt?.toLowerCase() || "") !== "pdf") {
       return (
         <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-lg h-[70vh]">
           <FileText className="h-16 w-16 text-muted-foreground" />
           <p className="mt-4 font-semibold">No hay previsualización disponible</p>
           <p className="text-muted-foreground text-sm mt-1">
-            No se pueden previsualizar archivos de tipo <strong>.{documento.fileExt}</strong>.
+            Este visor solo admite archivos <strong>PDF</strong>.
           </p>
-          <p className="text-muted-foreground text-sm">Puedes descargarlo para verlo.</p>
+          <p className="text-muted-foreground text-sm">Puedes descargar el archivo para verlo.</p>
         </div>
       );
     }
 
-    if (fileUrl && documento) {
-      const ext = documento.fileExt?.toLowerCase();
-      const viewerUrl =
-        ext === "pdf"
-          ? fileUrl
-          : `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`;
-
+    if (fileUrl) {
       return (
         <div className="h-[70vh] w-full rounded-md border overflow-hidden bg-white">
           <iframe
-            src={viewerUrl}
-            title={documento.titulo || "Vista previa"}
+            src={fileUrl}
+            title={documento?.titulo || "Vista previa PDF"}
             className="w-full h-full"
-            frameBorder="0"
           />
         </div>
       );
@@ -163,7 +153,7 @@ export function DocumentPreviewModal({
         <DialogHeader>
           <DialogTitle className="truncate pr-8">{documento?.titulo}</DialogTitle>
           <DialogDescription>
-            Previsualización del documento. Puedes descargarlo si lo necesitas.
+            Previsualización del documento PDF. Puedes descargarlo si lo necesitas.
           </DialogDescription>
         </DialogHeader>
 
@@ -176,7 +166,10 @@ export function DocumentPreviewModal({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cerrar
             </Button>
-            <Button onClick={handleDownload} disabled={!documento || (!fileUrl && !documento?.downloadUrl)}>
+            <Button
+              onClick={handleDownload}
+              disabled={!documento || (!fileUrl && !documento?.downloadUrl)}
+            >
               <Download className="mr-2 h-4 w-4" />
               Descargar
             </Button>
