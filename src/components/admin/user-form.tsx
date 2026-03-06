@@ -1,6 +1,4 @@
-
-
-"use client";
+'use client';
 
 import type { Catalogs, UserProfile } from "@/lib/types";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,6 +37,7 @@ const availablePages = [
   { id: "/dashboard", label: "Dashboard" },
   { id: "/documentos", label: "Explorar Documentos" },
   { id: "/documentos/nuevo", label: "Subir Documento" },
+  { id: "/mis-documentos", label: "Mis Documentos" },
   { id: "/admin/usuarios", label: "Gestión de Usuarios" },
   { id: "/admin/catalogos", label: "Gestión de Catálogos" },
   { id: "/admin/auditoria", label: "Auditoría" },
