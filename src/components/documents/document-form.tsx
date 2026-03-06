@@ -215,22 +215,23 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
         return [];
     }
 
+    // Filter by Ambito and Caracteristica to find relevant documents to link to.
+    // We don't filter by Elemento Medible to allow linking to more general documents
+    // within the same characteristic, as requested.
     if (ambitoId) {
         filtered = filtered.filter(doc => doc.ambitoId === ambitoId);
     }
     if (caracteristicaId) {
         filtered = filtered.filter(doc => doc.caracteristicaId === caracteristicaId);
     }
-    if (elementoMedibleId) {
-        filtered = filtered.filter(doc => doc.elementoMedibleId === elementoMedibleId);
-    }
+    // No longer filtering by elementoMedibleId to broaden the selection.
 
     if (isEditing && document) {
         filtered = filtered.filter(doc => doc.id !== document.id);
     }
 
     return filtered.sort((a, b) => a.titulo.localeCompare(b.titulo));
-  }, [documents, ambitoId, caracteristicaId, elementoMedibleId, linkableDocTypeIds, hasClassification, isEditing, document]);
+  }, [documents, ambitoId, caracteristicaId, linkableDocTypeIds, hasClassification, isEditing, document]);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
