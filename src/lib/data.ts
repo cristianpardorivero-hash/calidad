@@ -156,7 +156,7 @@ export async function getMyDocuments(userId: string, userEmail: string, hospital
   
   const [createdBySnapshot, responsibleForSnapshot] = await Promise.all([
       getDocs(createdByQuery),
-      getDocs(responsibleForSnapshot)
+      getDocs(responsibleForQuery)
   ]);
 
   const docsMap = new Map<string, Documento>();
