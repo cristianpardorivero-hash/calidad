@@ -19,8 +19,8 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 
-// Configure the worker as provided by the user
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// Configure the worker using a stable CDN URL with the correct version.
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@4.0.379/build/pdf.worker.min.js`;
 
 interface DocumentPreviewModalProps {
   documento: Documento | null;
@@ -33,7 +33,6 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // States from user's snippet for navigation and zoom
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.2);
