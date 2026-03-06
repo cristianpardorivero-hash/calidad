@@ -261,12 +261,12 @@ export default function DocumentoDetailPage() {
                     const handleDownloadClick = (e: React.MouseEvent) => {
                         e.preventDefault();
                         if(!document) return;
-                        const link = document.createElement('a');
+                        const link = window.document.createElement('a');
                         link.href = version.downloadUrl;
                         link.download = version.fileName || `${document.titulo} (v${version.version}).${version.fileExt || document.fileExt}`;
-                        document.body.appendChild(link);
+                        window.document.body.appendChild(link);
                         link.click();
-                        document.body.removeChild(link);
+                        window.document.body.removeChild(link);
                     };
 
                     return (
@@ -325,7 +325,7 @@ export default function DocumentoDetailPage() {
                     </div>
                 ))}
                 </CardContent>
-            </Card>
+              </Card>
             )}
 
             {mainDocument && (
