@@ -15,13 +15,10 @@ import { useState, useEffect } from "react";
 import type { Documento } from "@/lib/types";
 import { storage } from "@/lib/firebase";
 import { ref, getBlob } from "firebase/storage";
-import { Document, Page, pdfjs } from 'react-pdf';
+import { Document, Page } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
-
-
-// Set up the worker for react-pdf from a CDN to avoid Next.js build issues
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+import 'react-pdf/dist/esm/pdf.worker.entry';
 
 
 interface DocumentPreviewModalProps {
