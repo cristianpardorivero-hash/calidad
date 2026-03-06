@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Catalogs, UserProfile } from "@/lib/types";
@@ -52,7 +53,7 @@ import { useToast } from "@/hooks/use-toast";
 interface UserManagerProps {
     initialUsers: UserProfile[];
     catalogs: Catalogs;
-    onUsersChange: () => void;
+    onUsersChange?: () => void;
 }
 
 export function UserManager({ initialUsers, catalogs, onUsersChange }: UserManagerProps) {
@@ -84,7 +85,7 @@ export function UserManager({ initialUsers, catalogs, onUsersChange }: UserManag
             title: `Usuario ${user.isActive ? 'desactivado' : 'activado'}`,
             description: `${user.displayName} ha sido ${user.isActive ? 'desactivado' : 'activado'}.`
         });
-        onUsersChange(); // Re-fetch users
+        onUsersChange?.(); // Re-fetch users if needed
     } catch(e) {
         toast({ variant: 'destructive', title: "Error", description: "No se pudo actualizar el estado del usuario."});
     } finally {
@@ -101,7 +102,7 @@ export function UserManager({ initialUsers, catalogs, onUsersChange }: UserManag
             title: "Usuario eliminado",
             description: `${userToDelete.displayName} ha sido eliminado.`
         });
-        onUsersChange(); // Re-fetch users
+        onUsersChange?.(); // Re-fetch users if needed
     } catch (e) {
         toast({ variant: 'destructive', title: "Error", description: "No se pudo eliminar el usuario."});
     } finally {
@@ -195,7 +196,7 @@ export function UserManager({ initialUsers, catalogs, onUsersChange }: UserManag
                 catalogs={catalogs} 
                 onSave={() => {
                     setUserToEdit(null);
-                    onUsersChange();
+                    onUsersChange?.();
                 }}
                 onCancel={() => setUserToEdit(null)}
             />

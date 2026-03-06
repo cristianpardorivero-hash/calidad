@@ -2,40 +2,52 @@
 "use client";
 
 import { CatalogManager } from "@/components/admin/catalog-manager";
-import { getCatalogs } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Catalogs } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth";
-
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function AdminCatalogsPage() {
     const { user } = useAuth();
     const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
     const [loading, setLoading] = useState(true);
-    const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-    const handleDataChange = useCallback(() => {
-      setRefreshTrigger(t => t + 1);
-    }, []);
 
     const hospitalId = user?.hospitalId;
     
     useEffect(() => {
-        const fetchData = async () => {
-            if (hospitalId) {
-                setLoading(true);
-                const fetchedCatalogs = await getCatalogs(hospitalId);
-                setCatalogs(fetchedCatalogs);
+        if (!hospitalId) {
+            setLoading(false);
+            return;
+        }
+        setLoading(true);
+
+        const catalogNames: (keyof Catalogs)[] = [
+          "ambitos", "caracteristicas", "elementosMedibles",
+          "tiposDocumento", "servicios", "estadosAcreditacionDoc",
+        ];
+
+        const unsubscribes = catalogNames.map(name => {
+            const collRef = collection(db, "catalogs", hospitalId, name);
+            return onSnapshot(collRef, (snapshot) => {
+                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setCatalogs(prev => ({
+                    ...(prev || { ambitos: [], caracteristicas: [], elementosMedibles: [], tiposDocumento: [], servicios: [], estadosAcreditacionDoc: [] }),
+                    [name]: data
+                }));
+                setLoading(false); 
+            }, error => {
+                console.error(`Error listening to ${name}:`, error);
                 setLoading(false);
-            }
-        };
-        fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [hospitalId, refreshTrigger]);
+            });
+        });
+
+        return () => unsubscribes.forEach(unsub => unsub());
+    }, [hospitalId]);
 
     const pageHeader = (
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -65,7 +77,7 @@ export default function AdminCatalogsPage() {
     return (
         <div className="space-y-8">
             {pageHeader}
-            <CatalogManager catalogs={catalogs} onCatalogsChange={handleDataChange}/>
+            <CatalogManager catalogs={catalogs} />
         </div>
     );
 }

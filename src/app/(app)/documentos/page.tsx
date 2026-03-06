@@ -2,47 +2,80 @@
 "use client";
 
 import { DocumentsTable } from "@/components/documents/documents-table";
-import { getCatalogs, getDocuments } from "@/lib/data";
+import { getCatalogs } from "@/lib/data";
 import { PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { DocumentsFilters } from "@/components/documents/documents-filters";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
-import type { Catalogs, Documento, UserProfile } from "@/lib/types";
+import type { Catalogs, Documento } from "@/lib/types";
+import { collection, query, where, onSnapshot, Timestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function DocumentosPage() {
   const { user } = useAuth();
   const [documents, setDocuments] = useState<Documento[]>([]);
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  const handleDocumentsChange = useCallback(() => {
-    setRefreshTrigger(t => t + 1);
-  }, []);
 
   const hospitalId = user?.hospitalId;
   const userRole = user?.role;
   const servicioIds = user?.servicioIds;
+  const servicioIdsDependency = useMemo(() => servicioIds?.join(',') ?? '', [servicioIds]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (hospitalId && userRole) {
-        setLoading(true);
-        const [fetchedDocs, fetchedCatalogs] = await Promise.all([
-          getDocuments(hospitalId, userRole, servicioIds),
-          getCatalogs(hospitalId),
-        ]);
-        setDocuments(fetchedDocs);
-        setCatalogs(fetchedCatalogs);
-        setLoading(false);
+    let unsubscribe = () => {};
+    if (hospitalId && userRole) {
+      setLoading(true);
+
+      const docsRef = collection(db, "documents");
+      let q;
+      if (userRole === "lector" && servicioIds && servicioIds.length > 0) {
+        q = query(
+          docsRef,
+          where("hospitalId", "==", hospitalId),
+          where("isDeleted", "==", false),
+          where("servicioIds", "array-contains-any", servicioIds)
+        );
+      } else {
+        q = query(
+          docsRef,
+          where("hospitalId", "==", hospitalId),
+          where("isDeleted", "==", false)
+        );
       }
-    };
-    fetchData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hospitalId, userRole, refreshTrigger]);
+
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const fetchedDocs = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
+            fechaVigenciaDesde: (data.fechaVigenciaDesde as Timestamp)?.toDate(),
+            fechaVigenciaHasta: (data.fechaVigenciaHasta as Timestamp)?.toDate(),
+            createdAt: (data.createdAt as Timestamp)?.toDate(),
+            updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+          } as Documento;
+        });
+        setDocuments(fetchedDocs);
+        setLoading(false);
+      }, (error) => {
+        console.error("Error listening to documents:", error);
+        setLoading(false);
+      });
+
+      // Catalogs can be fetched once as they don't change as often
+      getCatalogs(hospitalId).then(setCatalogs);
+
+    } else if (!user) {
+        setLoading(false);
+    }
+
+    return () => unsubscribe();
+  }, [hospitalId, userRole, servicioIdsDependency, servicioIds]);
   
   const canManage = user?.role === 'admin' || user?.role === 'editor';
 
@@ -84,7 +117,6 @@ export default function DocumentosPage() {
         documents={documents}
         catalogs={catalogs}
         user={user}
-        onDocumentsChange={handleDocumentsChange}
       />
     </div>
   );

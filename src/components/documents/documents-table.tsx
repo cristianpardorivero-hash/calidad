@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -52,12 +53,10 @@ export function DocumentsTable({
   documents,
   catalogs,
   user,
-  onDocumentsChange,
 }: {
   documents: Documento[];
   catalogs: Catalogs;
   user: UserProfile;
-  onDocumentsChange: () => void;
 }) {
   const searchParams = useSearchParams();
   const currentPage = Number(searchParams.get("page")) || 1;
@@ -82,7 +81,7 @@ export function DocumentsTable({
         title: "Documento Eliminado",
         description: `El documento "${docToDelete.titulo}" ha sido eliminado.`,
       });
-      onDocumentsChange();
+      // The onSnapshot listener in the parent page will automatically update the UI
     } catch (e) {
       console.error(e);
       toast({ variant: 'destructive', title: "Error", description: "No se pudo eliminar el documento."});

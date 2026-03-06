@@ -102,7 +102,7 @@ const CatalogTable = ({
   );
 };
 
-export function CatalogManager({ catalogs, onCatalogsChange }: { catalogs: Catalogs, onCatalogsChange: () => void }) {
+export function CatalogManager({ catalogs }: { catalogs: Catalogs }) {
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
   const [itemToEdit, setItemToEdit] = useState<{ data: CatalogItem; type: string } | null>(null);
   const [itemToDelete, setItemToDelete] = useState<{ data: CatalogItem; type: string } | null>(null);
@@ -135,7 +135,7 @@ export function CatalogManager({ catalogs, onCatalogsChange }: { catalogs: Catal
             title: "Ítem Eliminado",
             description: `El ítem "${itemToDelete.data.nombre}" ha sido eliminado.`,
         });
-        onCatalogsChange();
+        // onSnapshot will handle the update
     } catch (e) {
         console.error(e);
         toast({ variant: 'destructive', title: "Error", description: "No se pudo eliminar el ítem."});
@@ -183,7 +183,7 @@ export function CatalogManager({ catalogs, onCatalogsChange }: { catalogs: Catal
                     item={itemToEdit}
                     onSave={() => {
                         setItemToEdit(null);
-                        onCatalogsChange();
+                        // onSnapshot will handle update
                     }}
                     onCancel={() => setItemToEdit(null)}
                 />
@@ -209,5 +209,3 @@ export function CatalogManager({ catalogs, onCatalogsChange }: { catalogs: Catal
     </>
   );
 }
-
-    
