@@ -20,18 +20,20 @@ export default function AdminCatalogsPage() {
     const handleDataChange = useCallback(() => {
       setRefreshTrigger(t => t + 1);
     }, []);
+
+    const hospitalId = user?.hospitalId;
     
     useEffect(() => {
         const fetchData = async () => {
-            if (user) {
+            if (hospitalId) {
                 setLoading(true);
-                const fetchedCatalogs = await getCatalogs(user.hospitalId);
+                const fetchedCatalogs = await getCatalogs(hospitalId);
                 setCatalogs(fetchedCatalogs);
                 setLoading(false);
             }
         };
         fetchData();
-    }, [user, refreshTrigger]);
+    }, [hospitalId, refreshTrigger]);
 
     const pageHeader = (
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">

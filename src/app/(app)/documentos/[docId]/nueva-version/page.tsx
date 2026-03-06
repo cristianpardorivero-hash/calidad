@@ -15,6 +15,7 @@ export default function NuevaVersionDocumentoPage() {
   const hospitalId = user?.hospitalId;
   const userRole = user?.role;
   const servicioIds = user?.servicioIds;
+  const servicioIdsDependency = servicioIds?.join(',') ?? '';
 
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [documents, setDocuments] = useState<Documento[] | null>(null);
@@ -46,7 +47,7 @@ export default function NuevaVersionDocumentoPage() {
           setLoading(false);
         });
     }
-  }, [hospitalId, userRole, servicioIds, docId]);
+  }, [hospitalId, userRole, servicioIdsDependency, docId]);
 
   const pageHeader = (
     <div className="mb-8">
