@@ -39,26 +39,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setLoading(true);
       if (fbUser) {
-        // Set Firebase user, ensuring reference stability if possible
         setFirebaseUser(currentFbUser => 
           (currentFbUser && currentFbUser.uid === fbUser.uid) ? currentFbUser : fbUser
         );
         try {
           const profile = await getUserProfile(fbUser.uid);
 
-          // This is the key fix: ensure the user profile object reference is stable
-          // if its underlying data has not changed. This prevents infinite re-render loops
-          // in components that depend on the `user` object.
           setUser(currentUser => {
-            if (currentUser && profile && JSON.stringify(currentUser) === JSON.stringify(profile)) {
-              return currentUser; // Return previous object to maintain reference stability
+            if (!currentUser || !profile) {
+              return profile;
             }
-            return profile; // Return new object if data is different or no current user
+            
+            // Perform a deep comparison to check if the user profile has actually changed.
+            // This prevents re-renders if the object reference is new but the data is the same.
+            const areEqual = 
+                currentUser.uid === profile.uid &&
+                currentUser.displayName === profile.displayName &&
+                currentUser.email === profile.email &&
+                currentUser.role === profile.role &&
+                currentUser.hospitalId === profile.hospitalId &&
+                currentUser.isActive === profile.isActive &&
+                currentUser.isDeleted === profile.isDeleted &&
+                JSON.stringify(currentUser.servicioIds || []) === JSON.stringify(profile.servicioIds || []) &&
+                JSON.stringify(currentUser.allowedPages || []) === JSON.stringify(profile.allowedPages || []) &&
+                currentUser.createdAt.getTime() === profile.createdAt.getTime() &&
+                currentUser.updatedAt.getTime() === profile.updatedAt.getTime();
+
+            if (areEqual) {
+              return currentUser; // Data is the same, return the existing state object to prevent re-renders.
+            }
+            
+            return profile; // Data is different, return the new profile object.
           });
 
         } catch (e) {
           console.error('Failed to fetch user profile', e);
-          // If fetching profile fails, sign out to prevent being in a weird state
           await signOut(auth);
           setUser(null);
           setFirebaseUser(null);
@@ -76,7 +91,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, pass: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will handle the state update
     } catch (error: any) {
       console.error('Sign-in failed:', error);
       if (error.code === 'auth/invalid-credential') {
@@ -95,7 +109,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await signOut(auth);
-    // onAuthStateChanged will clear the state, but we can do it here for faster UI response
     setUser(null);
     setFirebaseUser(null);
   }, []);
