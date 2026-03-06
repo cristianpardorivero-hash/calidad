@@ -135,6 +135,57 @@ export async function getLinkedDocuments(docId: string, hospitalId: string): Pro
     });
 }
 
+export async function getMyDocuments(userId: string, userEmail: string, hospitalId: string): Promise<Documento[]> {
+  const docsRef = collection(db, "documents");
+
+  const createdByQuery = query(
+    docsRef,
+    where("hospitalId", "==", hospitalId),
+    where("createdByUid", "==", userId),
+    where("isDeleted", "==", false)
+  );
+
+  const responsibleForQuery = query(
+    docsRef,
+    where("hospitalId", "==", hospitalId),
+    where("responsableEmail", "==", userEmail),
+    where("isDeleted", "==", false)
+  );
+  
+  const [createdBySnapshot, responsibleForSnapshot] = await Promise.all([
+      getDocs(createdByQuery),
+      getDocs(responsibleForQuery)
+  ]);
+
+  const docsMap = new Map<string, Documento>();
+
+  const processSnapshot = (snapshot: any) => {
+    snapshot.docs.forEach((doc: any) => {
+        if (!docsMap.has(doc.id)) {
+            const data = doc.data();
+            docsMap.set(doc.id, {
+                id: doc.id,
+                ...data,
+                fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
+                fechaVigenciaDesde: (data.fechaVigenciaDesde as Timestamp)?.toDate(),
+                fechaVigenciaHasta: (data.fechaVigenciaHasta as Timestamp)?.toDate(),
+                createdAt: (data.createdAt as Timestamp)?.toDate(),
+                updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+            } as Documento);
+        }
+    });
+  }
+
+  processSnapshot(createdBySnapshot);
+  processSnapshot(responsibleForSnapshot);
+  
+  // Sort by most recently updated
+  const sortedDocs = Array.from(docsMap.values()).sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+
+  return sortedDocs;
+}
+
+
 export async function createUserProfile(
   uid: string,
   data: Omit<UserProfile, 'uid' | 'createdAt' | 'updatedAt' | 'isDeleted' | 'deletedAt'>
@@ -520,3 +571,4 @@ export async function updateDocument(docId: string, updates: Partial<Documento>)
     throw error;
   }
 }
+

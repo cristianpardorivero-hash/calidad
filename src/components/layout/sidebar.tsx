@@ -20,6 +20,7 @@ import {
   Shield,
   LifeBuoy,
   Settings,
+  FileHeart,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
@@ -41,6 +42,12 @@ const menuItems = [
     href: "/documentos",
     icon: FolderOpen,
     label: "Explorar Documentos",
+    roles: ["admin", "editor", "lector"],
+  },
+  {
+    href: "/mis-documentos",
+    icon: FileHeart,
+    label: "Mis Documentos",
     roles: ["admin", "editor", "lector"],
   },
 ];
