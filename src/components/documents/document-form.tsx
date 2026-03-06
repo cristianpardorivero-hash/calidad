@@ -28,11 +28,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, ChevronsUpDown, GitFork, Loader2, Save, UploadCloud, Check, ArrowRight, ArrowLeft } from "lucide-react";
+import { ChevronsUpDown, GitFork, Loader2, Save, UploadCloud, Check, ArrowRight, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { Separator } from "../ui/separator";
@@ -66,9 +64,9 @@ const getFormSchema = (isEditing: boolean, isNewVersion: boolean) => z.object({
   servicioIds: z.array(z.string()).optional().default([]),
   responsableNombre: z.string().min(2, "El nombre del responsable es requerido.").default(""),
   responsableEmail: z.string().email("Correo electrónico inválido.").default(""),
-  fechaDocumento: z.date({ required_error: "La fecha del documento es requerida." }),
-  fechaVigenciaDesde: z.date().optional(),
-  fechaVigenciaHasta: z.date().optional(),
+  fechaDocumento: z.coerce.date({ required_error: "La fecha del documento es requerida." }),
+  fechaVigenciaDesde: z.coerce.date().optional(),
+  fechaVigenciaHasta: z.coerce.date().optional(),
   file: z.any().refine((file) => isEditing && !isNewVersion ? true : !!file, "El archivo es requerido.").optional(),
   tags: z.string().optional().default(""),
   linkedDocumentId: z.string().optional(),
@@ -165,6 +163,15 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
       file: null,
     },
   });
+  
+  const dateToInputValue = (date: any): string => {
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) return '';
+    try {
+        return format(date, 'yyyy-MM-dd');
+    } catch (e) {
+        return '';
+    }
+  }
 
   const fechaDocumento = form.watch("fechaDocumento");
   React.useEffect(() => {
@@ -214,18 +221,14 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
     if (!hasClassification) {
         return [];
     }
-
-    // Filter by Ambito and Caracteristica to find relevant documents to link to.
-    // We don't filter by Elemento Medible to allow linking to more general documents
-    // within the same characteristic, as requested.
+    
     if (ambitoId) {
         filtered = filtered.filter(doc => doc.ambitoId === ambitoId);
     }
     if (caracteristicaId) {
         filtered = filtered.filter(doc => doc.caracteristicaId === caracteristicaId);
     }
-    // No longer filtering by elementoMedibleId to broaden the selection.
-
+    
     if (isEditing && document) {
         filtered = filtered.filter(doc => doc.id !== document.id);
     }
@@ -276,7 +279,6 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
   };
 
   async function onSubmit(values: FormValues) {
-    // This function remains the same as it's the final submission logic
     if (!user || !firebaseUser) {
       toast({ variant: "destructive", title: "No autenticado", description: "Debes iniciar sesión para guardar un documento." });
       return;
@@ -418,9 +420,9 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
                 <Card>
                     <CardHeader><CardTitle>D) Fechas</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
-                        <FormField control={form.control} name="fechaDocumento" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Fecha del documento</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? (format(field.value, "PPP", { locale: es })) : (<span>Elige una fecha</span>)}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem>)}/>
-                        <FormField control={form.control} name="fechaVigenciaDesde" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Vigencia Desde (Opcional)</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? (format(field.value, "PPP", { locale: es })) : (<span>Elige una fecha</span>)}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem>)}/>
-                        <FormField control={form.control} name="fechaVigenciaHasta" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Vigencia Hasta (Opcional)</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? (format(field.value, "PPP", { locale: es })) : (<span>Elige una fecha</span>)}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem>)}/>
+                        <FormField control={form.control} name="fechaDocumento" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Fecha del documento</FormLabel><FormControl><Input type="date" {...field} value={dateToInputValue(field.value)} max={format(new Date(), 'yyyy-MM-dd')} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="fechaVigenciaDesde" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Vigencia Desde (Opcional)</FormLabel><FormControl><Input type="date" {...field} value={dateToInputValue(field.value)} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="fechaVigenciaHasta" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Vigencia Hasta (Opcional)</FormLabel><FormControl><Input type="date" {...field} value={dateToInputValue(field.value)} /></FormControl><FormMessage /></FormItem>)} />
                     </CardContent>
                 </Card>
             </div>
@@ -486,9 +488,9 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
                         <FormField control={form.control} name="servicioIds" render={({ field }) => (<FormItem><FormLabel>Servicios/Unidades (Opcional)</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")}><span className="truncate">{field.value && field.value.length > 0 ? `${field.value.length} seleccionado(s)` : "Seleccione servicios"}</span><ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-[--radix-popover-trigger-width] p-0"><ScrollArea className="h-48"><div className="p-2 space-y-1">{[...catalogs.servicios].sort((a,b) => a.nombre.localeCompare(b.nombre)).map((servicio) => (<FormItem key={servicio.id} className="flex flex-row items-center space-x-3 space-y-0"><FormControl><Checkbox checked={field.value?.includes(servicio.id)} onCheckedChange={(checked) => { const currentValues = field.value || []; return checked ? field.onChange([...currentValues, servicio.id]) : field.onChange(currentValues.filter((id) => id !== servicio.id)); }}/></FormControl><FormLabel className="font-normal">{servicio.nombre}</FormLabel></FormItem>))}</div></ScrollArea></PopoverContent></Popover><FormMessage /></FormItem>)}/>
                         <Separator className="my-4"/>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <FormField control={form.control} name="fechaDocumento" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Fecha del documento</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? (format(field.value, "PPP", { locale: es })) : (<span>Elige una fecha</span>)}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem>)}/>
-                            <FormField control={form.control} name="fechaVigenciaDesde" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Vigencia Desde</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? (format(field.value, "PPP", { locale: es })) : (<span>Elige una fecha</span>)}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormDescription>Calculado automáticamente.</FormDescription><FormMessage /></FormItem>)}/>
-                            <FormField control={form.control} name="fechaVigenciaHasta" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Vigencia Hasta</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? (format(field.value, "PPP", { locale: es })) : (<span>Elige una fecha</span>)}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormDescription>Calculado a +5 años.</FormDescription><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="fechaDocumento" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Fecha del documento</FormLabel><FormControl><Input type="date" {...field} value={dateToInputValue(field.value)} max={format(new Date(), 'yyyy-MM-dd')} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="fechaVigenciaDesde" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Vigencia Desde</FormLabel><FormControl><Input type="date" {...field} value={dateToInputValue(field.value)} /></FormControl><FormDescription>Calculado automáticamente.</FormDescription><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="fechaVigenciaHasta" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Vigencia Hasta</FormLabel><FormControl><Input type="date" {...field} value={dateToInputValue(field.value)} /></FormControl><FormDescription>Calculado a +5 años.</FormDescription><FormMessage /></FormItem>)} />
                         </div>
                     </CardContent>
                 </Card>
