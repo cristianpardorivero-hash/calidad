@@ -574,3 +574,68 @@ export async function updateDocument(docId: string, updates: Partial<Documento>)
     throw error;
   }
 }
+
+export async function createNewVersionAndUpdateDocument(
+  originalDoc: Documento,
+  newData: Documento,
+  userId: string
+): Promise<void> {
+  const oldVersionRef = doc(collection(db, "document_versions"));
+  const parentDocRef = doc(db, "documents", originalDoc.id);
+
+  // 1. Data for the historical version entry
+  const versionData = {
+    docId: originalDoc.id,
+    hospitalId: originalDoc.hospitalId,
+    version: originalDoc.version,
+    storagePath: originalDoc.storagePath,
+    downloadUrl: originalDoc.downloadUrl,
+    fileSize: originalDoc.fileSize,
+    createdAt: serverTimestamp(),
+    createdByUid: userId,
+  };
+
+  // 2. Data for updating the main document
+  const { id, createdAt, createdByEmail, createdByUid, ...restNewData } = newData;
+  const parentUpdateData: Record<string, any> = {
+    ...restNewData,
+    updatedAt: serverTimestamp(),
+  };
+
+  // Convert dates to Timestamps if they exist
+  if (newData.fechaDocumento instanceof Date) {
+    parentUpdateData.fechaDocumento = Timestamp.fromDate(newData.fechaDocumento);
+  }
+  if (newData.fechaVigenciaDesde instanceof Date) {
+    parentUpdateData.fechaVigenciaDesde = Timestamp.fromDate(newData.fechaVigenciaDesde);
+  } else if (newData.fechaVigenciaDesde === undefined) {
+    parentUpdateData.fechaVigenciaDesde = null;
+  }
+  if (newData.fechaVigenciaHasta instanceof Date) {
+    parentUpdateData.fechaVigenciaHasta = Timestamp.fromDate(newData.fechaVigenciaHasta);
+  } else if (newData.fechaVigenciaHasta === undefined) {
+    parentUpdateData.fechaVigenciaHasta = null;
+  }
+
+  // Create historical version (non-critical, so we just log error)
+  try {
+      await setDoc(oldVersionRef, versionData);
+  } catch (error) {
+      console.error("Failed to create document version history entry. The main document will still be updated.", error);
+  }
+  
+  // Update parent document (this is the critical part)
+  try {
+    await updateDoc(parentDocRef, parentUpdateData);
+  } catch (error) {
+    errorEmitter.emit(
+      'permission-error',
+      new FirestorePermissionError({
+        path: parentDocRef.path,
+        operation: 'update',
+        requestResourceData: parentUpdateData,
+      })
+    );
+    throw error; // Rethrow the critical error
+  }
+}

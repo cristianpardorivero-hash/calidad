@@ -24,6 +24,7 @@ import {
   Info,
   Link as LinkIcon,
   Eye,
+  GitFork,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -89,6 +90,8 @@ export default function DocumentoDetailPage() {
       fetchData();
     }
   }, [user, docId]);
+
+  const canManage = user?.role === 'admin' || user?.role === 'editor';
 
   if (loading) {
     return (
@@ -165,11 +168,20 @@ export default function DocumentoDetailPage() {
                 <Download className="mr-2 h-4 w-4" /> Descargar
               </a>
             </Button>
-            <Button variant="outline" asChild>
-              <Link href={`/documentos/${document.id}/editar`}>
-                <Edit className="mr-2 h-4 w-4" /> Editar
-              </Link>
-            </Button>
+            {canManage && (
+              <>
+                <Button variant="outline" asChild>
+                  <Link href={`/documentos/${document.id}/nueva-version`}>
+                    <GitFork className="mr-2 h-4 w-4" /> Nueva Versión
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href={`/documentos/${document.id}/editar`}>
+                    <Edit className="mr-2 h-4 w-4" /> Editar
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
 

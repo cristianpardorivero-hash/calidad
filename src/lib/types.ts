@@ -117,6 +117,18 @@ export interface Documento {
   searchKeywords: string[];
 }
 
+export interface DocumentVersion {
+  id: string;
+  docId: string;
+  hospitalId: string;
+  version: string;
+  storagePath: string;
+  downloadUrl: string;
+  fileSize: number;
+  createdAt: Date;
+  createdByUid: string;
+}
+
 export type AuditAction = 
   | "UPLOAD" 
   | "UPDATE_META" 

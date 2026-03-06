@@ -29,7 +29,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, ChevronsUpDown, Loader2, Save, UploadCloud } from "lucide-react";
+import { CalendarIcon, ChevronsUpDown, GitFork, Loader2, Save, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -37,7 +37,7 @@ import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { useAuth } from "@/hooks/use-auth";
-import { addDocument, updateDocument } from "@/lib/data";
+import { addDocument, updateDocument, createNewVersionAndUpdateDocument } from "@/lib/data";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "../ui/progress";
@@ -48,13 +48,13 @@ import { auth, storage } from "@/lib/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<ReturnType<typeof getFormSchema>>;
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
 const ALLOWED_EXTENSIONS = ["pdf", "docx", "xlsx"];
 
 // We need a dynamic schema based on whether we are editing or creating
-const getFormSchema = (isEditing: boolean) => z.object({
+const getFormSchema = (isEditing: boolean, isNewVersion: boolean) => z.object({
   titulo: z.string().min(5, "El título debe tener al menos 5 caracteres.").default(""),
   descripcion: z.string().optional().default(""),
   tipoDocumentoId: z.string({ required_error: "Debe seleccionar un tipo." }),
@@ -69,7 +69,7 @@ const getFormSchema = (isEditing: boolean) => z.object({
   fechaDocumento: z.date({ required_error: "La fecha del documento es requerida." }),
   fechaVigenciaDesde: z.date().optional(),
   fechaVigenciaHasta: z.date().optional(),
-  file: z.any().refine((file) => isEditing ? true : !!file, "El archivo es requerido.").optional(),
+  file: z.any().refine((file) => isEditing && !isNewVersion ? true : !!file, "El archivo es requerido.").optional(),
   tags: z.string().optional().default(""),
   linkedDocumentId: z.string().optional(),
 });
@@ -78,9 +78,10 @@ type DocumentFormProps = {
   catalogs: Catalogs;
   documents: Documento[];
   document?: Documento;
+  isNewVersion?: boolean;
 };
 
-export function DocumentForm({ catalogs, documents, document }: DocumentFormProps) {
+export function DocumentForm({ catalogs, documents, document, isNewVersion = false }: DocumentFormProps) {
   const { user, firebaseUser } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -89,14 +90,23 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
 
   const isEditing = !!document;
-  const formSchema = getFormSchema(isEditing);
+  const formSchema = getFormSchema(isEditing, isNewVersion);
+
+  const autoIncrementVersion = (version: string) => {
+    const parts = version.split('.');
+    if (parts.length > 0 && !isNaN(parseInt(parts[0]))) {
+      const major = parseInt(parts[0]) + 1;
+      return `${major}.0`;
+    }
+    return version; // fallback
+  }
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: isEditing && document ? {
         ...document,
+        version: isNewVersion ? autoIncrementVersion(document.version) : document.version,
         tags: document.tags?.join(", ") || "",
-        servicioIds: document.servicioIds || [],
         file: null, // Don't prepopulate file input
     } : {
       version: "1.0",
@@ -208,7 +218,83 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
     }
     setIsSubmitting(true);
     
-    if (isEditing && document) {
+    if (isNewVersion && document) {
+        if (!values.file) {
+            form.setError("file", { message: "El archivo es requerido para una nueva versión." });
+            setIsSubmitting(false);
+            return;
+        }
+
+        setUploadProgress(0);
+
+        const fileToUpload = values.file;
+        const storagePath = `documentos/${user.hospitalId}/${Date.now()}-${fileToUpload.name}`;
+        const storageRef = ref(storage, storagePath);
+        
+        const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
+
+        uploadTask.on('state_changed',
+            (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                setUploadProgress(progress);
+            },
+            (error) => {
+                console.error("DEBUG: Error específico de subida a Storage:", error.code, error.message, error);
+                toast({
+                    variant: "destructive",
+                    title: "Error de Subida",
+                    description: `No se pudo subir el archivo. (${error.code})`,
+                });
+                setIsSubmitting(false);
+                setUploadProgress(0);
+            },
+            () => {
+                getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
+                    const { file, ...restValues } = values;
+                    const fileExt = fileToUpload.name.split(".").pop() as "pdf" | "docx" | "xlsx";
+                    
+                    const newData = {
+                        ...document,
+                        ...restValues,
+                        fileName: fileToUpload.name,
+                        fileExt,
+                        fileSize: fileToUpload.size,
+                        mimeType: fileToUpload.type,
+                        storagePath: storagePath, 
+                        downloadUrl: downloadURL,
+                        tags: values.tags?.split(",").map(t => t.trim()).filter(Boolean),
+                        updatedAt: new Date(),
+                    } as Documento;
+
+                    try {
+                        await createNewVersionAndUpdateDocument(document, newData, firebaseUser.uid);
+                        toast({
+                            title: "Nueva versión creada",
+                            description: `Se ha creado la versión ${newData.version} de "${newData.titulo}".`,
+                        });
+                        router.push(`/documentos/${document.id}`);
+                        router.refresh();
+                    } catch(e) {
+                        console.error("Error creating new version:", e);
+                        setIsSubmitting(false);
+                        toast({
+                            variant: "destructive",
+                            title: "Error al crear versión",
+                            description: "No se pudo guardar la nueva versión del documento.",
+                        });
+                    }
+                }).catch((error) => {
+                    console.error("DEBUG: Error al obtener URL de descarga DESPUÉS de subir el archivo:", error);
+                    toast({
+                        variant: "destructive",
+                        title: "Error de Subida",
+                        description: "No se pudo obtener la URL de descarga. Por favor, inténtalo de nuevo.",
+                    });
+                    setIsSubmitting(false);
+                });
+            }
+        );
+    } else if (isEditing && document) {
         const { file, ...updateValues } = values; // file changes are not handled in edit mode
         const dataToUpdate: Partial<Documento> = {
             ...updateValues,
@@ -629,7 +715,7 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
         </div>
 
 
-        {!isEditing && (
+        {(!isEditing || isNewVersion) && (
             <Card>
                 <CardHeader><CardTitle>E) Archivo</CardTitle></CardHeader>
                 <CardContent>
@@ -638,7 +724,7 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
                     name="file"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Seleccionar archivo</FormLabel>
+                        <FormLabel>Seleccionar archivo {isNewVersion && "(requerido para la nueva versión)"}</FormLabel>
                         <FormControl>
                             <div className="relative flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-border bg-card p-8 hover:bg-muted/50">
                                 <UploadCloud className="mb-2 h-10 w-10 text-muted-foreground" />
@@ -691,7 +777,7 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
 
         <Separator />
         
-        {isSubmitting && !isEditing && (
+        {isSubmitting && (!isEditing || isNewVersion) && (
             <div className="space-y-2">
                 <Label>Subiendo documento...</Label>
                 <Progress value={uploadProgress} />
@@ -706,12 +792,14 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
             <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+             ) : isNewVersion ? (
+                <GitFork className="mr-2 h-4 w-4" />
              ) : isEditing ? (
                 <Save className="mr-2 h-4 w-4" />
              ) : (
                 <UploadCloud className="mr-2 h-4 w-4" />
              )}
-                {isEditing ? "Guardar Cambios" : "Subir Documento"}
+                {isNewVersion ? "Crear Versión" : isEditing ? "Guardar Cambios" : "Subir Documento"}
             </Button>
         </div>
       </form>
