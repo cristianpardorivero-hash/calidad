@@ -1,6 +1,6 @@
 'use client';
 
-import { getCatalogs, getDocumentById, getLinkedDocuments } from "@/lib/data";
+import { getCatalogs, getDocumentById, getLinkedDocuments, getDocumentVersions } from "@/lib/data";
 import { useParams } from "next/navigation";
 import {
   Card,
@@ -25,13 +25,14 @@ import {
   Link as LinkIcon,
   Eye,
   GitFork,
+  History,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import type { Catalogs, Documento } from "@/lib/types";
+import type { Catalogs, Documento, DocumentVersion } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { DocumentPreviewModal } from "@/components/documents/document-preview-modal";
@@ -46,9 +47,10 @@ export default function DocumentoDetailPage() {
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [linkedDocuments, setLinkedDocuments] = useState<Documento[]>([]);
   const [mainDocument, setMainDocument] = useState<Documento | null>(null);
+  const [versions, setVersions] = useState<DocumentVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isPreviewModalOpen, setPreviewModalOpen] = useState(false);
+  const [documentToPreview, setDocumentToPreview] = useState<Documento | null>(null);
 
 
   useEffect(() => {
@@ -57,9 +59,10 @@ export default function DocumentoDetailPage() {
         setLoading(true);
         setError(null);
         try {
-          const [docData, catalogsData] = await Promise.all([
+          const [docData, catalogsData, versionsData] = await Promise.all([
             getDocumentById(docId),
             getCatalogs(user.hospitalId),
+            getDocumentVersions(docId),
           ]);
           
           if (!docData) {
@@ -70,6 +73,7 @@ export default function DocumentoDetailPage() {
 
           setDocument(docData);
           setCatalogs(catalogsData);
+          setVersions(versionsData);
 
           // Now fetch linked documents based on the docData
           const [linkedDocumentsData, mainDocData] = await Promise.all([
@@ -160,7 +164,7 @@ export default function DocumentoDetailPage() {
             <p className="max-w-prose text-muted-foreground">{document.descripcion}</p>
           </div>
           <div className="flex flex-shrink-0 gap-2">
-            <Button variant="outline" onClick={() => setPreviewModalOpen(true)}>
+            <Button variant="outline" onClick={() => setDocumentToPreview(document)}>
               <Eye className="mr-2 h-4 w-4" /> Ver
             </Button>
             <Button asChild>
@@ -199,7 +203,7 @@ export default function DocumentoDetailPage() {
                 <p className="text-muted-foreground">
                   Para ver el contenido del documento, haz clic en el botón "Ver".
                 </p>
-                <Button className="mt-6" onClick={() => setPreviewModalOpen(true)}>
+                <Button className="mt-6" onClick={() => setDocumentToPreview(document)}>
                   <Eye className="mr-2 h-4 w-4" /> Ver Documento
                 </Button>
               </CardContent>
@@ -231,6 +235,65 @@ export default function DocumentoDetailPage() {
                   <p><strong>Elem. Medible:</strong> {getCatalogName("elementosMedibles", document.elementoMedibleId)}</p>
               </CardContent>
             </Card>
+
+            {versions.length > 0 && (
+              <Card>
+                <CardHeader><CardTitle className="flex items-center gap-2"><History className="h-5 w-5"/> Historial de Versiones</CardTitle></CardHeader>
+                <CardContent className="space-y-2">
+                {versions.map(version => {
+                    const handlePreviewClick = () => {
+                      if (!document) return;
+                      const previewDocForVersion: Documento = {
+                          ...document,
+                          id: version.id,
+                          version: version.version,
+                          storagePath: version.storagePath,
+                          downloadUrl: version.downloadUrl,
+                          fileName: version.fileName || `${document.titulo} (v${version.version}).${version.fileExt || document.fileExt}`,
+                          fileExt: version.fileExt || document.fileExt,
+                          fileSize: version.fileSize,
+                          updatedAt: version.createdAt,
+                          createdAt: version.createdAt,
+                      };
+                      setDocumentToPreview(previewDocForVersion);
+                    };
+
+                    const handleDownloadClick = (e: React.MouseEvent) => {
+                        e.preventDefault();
+                        if(!document) return;
+                        const link = document.createElement('a');
+                        link.href = version.downloadUrl;
+                        link.download = version.fileName || `${document.titulo} (v${version.version}).${version.fileExt || document.fileExt}`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    };
+
+                    return (
+                      <div key={version.id} className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
+                          <div className="flex items-center gap-3">
+                              <FileText className="h-5 w-5 text-muted-foreground"/>
+                              <div className="flex flex-col">
+                                  <span className="font-medium text-sm">Versión {version.version}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                      Archivado {format(version.createdAt, "d 'de' MMMM, yyyy", { locale: es })}
+                                  </span>
+                              </div>
+                          </div>
+                          <div className="flex items-center">
+                              <Button variant="ghost" size="icon" onClick={handlePreviewClick} title="Ver versión">
+                                  <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={handleDownloadClick} title="Descargar archivo de esta versión">
+                                  <Download className="h-4 w-4" />
+                              </Button>
+                          </div>
+                      </div>
+                    )
+                })}
+                </CardContent>
+              </Card>
+            )}
 
             {linkedDocuments.length > 0 && (
               <Card>
@@ -314,9 +377,13 @@ export default function DocumentoDetailPage() {
       </div>
 
       <DocumentPreviewModal
-        documento={document}
-        isOpen={isPreviewModalOpen}
-        onOpenChange={setPreviewModalOpen}
+        documento={documentToPreview}
+        isOpen={!!documentToPreview}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setDocumentToPreview(null);
+          }
+        }}
       />
     </>
   );

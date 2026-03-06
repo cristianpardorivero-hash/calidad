@@ -127,6 +127,8 @@ export interface DocumentVersion {
   fileSize: number;
   createdAt: Date;
   createdByUid: string;
+  fileName: string;
+  fileExt: "pdf" | "docx" | "xlsx";
 }
 
 export type AuditAction = 

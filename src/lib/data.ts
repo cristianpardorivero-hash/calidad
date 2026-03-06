@@ -12,9 +12,10 @@ import {
   serverTimestamp,
   Timestamp,
   setDoc,
+  orderBy,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Catalogs, Documento, UserProfile } from "./types";
+import type { Catalogs, Documento, UserProfile, DocumentVersion } from "./types";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { initializeApp, deleteApp } from "firebase/app";
@@ -591,6 +592,8 @@ export async function createNewVersionAndUpdateDocument(
     storagePath: originalDoc.storagePath,
     downloadUrl: originalDoc.downloadUrl,
     fileSize: originalDoc.fileSize,
+    fileName: originalDoc.fileName,
+    fileExt: originalDoc.fileExt,
     createdAt: serverTimestamp(),
     createdByUid: userId,
   };
@@ -638,4 +641,23 @@ export async function createNewVersionAndUpdateDocument(
     );
     throw error; // Rethrow the critical error
   }
+}
+
+export async function getDocumentVersions(docId: string): Promise<DocumentVersion[]> {
+    const versionsRef = collection(db, "document_versions");
+    const q = query(
+        versionsRef,
+        where("docId", "==", docId),
+        orderBy("createdAt", "desc")
+    );
+
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: (data.createdAt as Timestamp)?.toDate(),
+        } as DocumentVersion;
+    });
 }
