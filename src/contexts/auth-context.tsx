@@ -30,20 +30,40 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const areProfilesEqual = (a: UserProfile | null, b: UserProfile | null): boolean => {
-  if (a === b) return true;
-  if (!a || !b) return false;
+  if (a === null && b === null) return true;
+  if (a === null || b === null) return false;
 
-  // If updatedAt exists on both, it's the most reliable and efficient way to check for changes.
-  if (a.updatedAt && b.updatedAt) {
-      if (a.updatedAt.getTime() !== b.updatedAt.getTime()) return false;
+  // Fast check for the most common change indicator
+  if (a.updatedAt.getTime() !== b.updatedAt.getTime()) {
+    return false;
   }
-  
-  // As a fallback, check other critical fields. This handles cases where updatedAt might not be set yet.
-  if (a.uid !== b.uid || a.role !== b.role) return false;
 
-  // A shallow check for array contents is a good compromise.
-  if (String(a.servicioIds) !== String(b.servicioIds)) return false;
-  if (String(a.allowedPages) !== String(b.allowedPages)) return false;
+  // Deeper checks for other properties
+  if (
+    a.uid !== b.uid ||
+    a.displayName !== b.displayName ||
+    a.email !== b.email ||
+    a.role !== b.role ||
+    a.hospitalId !== b.hospitalId ||
+    a.isActive !== b.isActive
+  ) {
+    return false;
+  }
+
+  // Robust array comparison (handles undefined, null, and order differences)
+  const arrayIsEqual = (arrA: string[] | undefined | null, arrB: string[] | undefined | null): boolean => {
+      const a1 = arrA || [];
+      const a2 = arrB || [];
+      if (a1.length !== a2.length) return false;
+      const set1 = new Set(a1);
+      for (const item of a2) {
+          if (!set1.has(item)) return false;
+      }
+      return true;
+  };
+
+  if (!arrayIsEqual(a.servicioIds, b.servicioIds)) return false;
+  if (!arrayIsEqual(a.allowedPages, b.allowedPages)) return false;
 
   return true;
 };
@@ -54,7 +74,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Use a ref to hold the current user profile to compare against inside the listener
   const userRef = useRef(user);
   useEffect(() => {
     userRef.current = user;
@@ -69,11 +88,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const profile = await getUserProfile(fbUser.uid);
           if (!isMounted) return;
 
-          // Compare and only set if different to prevent re-renders
           if (!areProfilesEqual(userRef.current, profile)) {
             setUser(profile ?? null);
           }
-          // Only update firebaseUser if the UID is different
+          
           if (firebaseUser?.uid !== fbUser.uid) {
             setFirebaseUser(fbUser);
           }
@@ -99,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // IMPORTANT: Empty dependency array ensures this runs only once on mount.
+  }, []); 
 
   const login = useCallback(async (email: string, pass: string) => {
     try {
