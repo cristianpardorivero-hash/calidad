@@ -29,7 +29,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, ChevronsUpDown, Loader2, Save, Sparkles, UploadCloud } from "lucide-react";
+import { CalendarIcon, ChevronsUpDown, Loader2, Save, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -41,7 +41,6 @@ import { addDocument, updateDocument } from "@/lib/data";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "../ui/progress";
-import { suggestDocumentMetadata } from "@/ai/flows/ai-metadata-suggester";
 import { Label } from "../ui/label";
 import { Checkbox } from "../ui/checkbox";
 import { ScrollArea } from "../ui/scroll-area";
@@ -86,7 +85,6 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAiLoading, setIsAiLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
 
@@ -185,41 +183,6 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
       form.setValue("file", file);
       form.clearErrors("file");
       setFileToUpload(file);
-    }
-  };
-
-  const handleAiSuggest = async () => {
-    const title = form.getValues("titulo");
-    if (!title) {
-        form.setError("titulo", { message: "El título es necesario para la sugerencia IA." });
-        return;
-    }
-    setIsAiLoading(true);
-    try {
-        const description = form.getValues("descripcion");
-        // @ts-ignore
-        const result = await suggestDocumentMetadata({ title, description, catalogs });
-        
-        form.setValue("tipoDocumentoId", result.suggestedTipoDocumentoId || '', { shouldValidate: true });
-        form.setValue("tags", result.suggestedTags.join(", "), { shouldValidate: true });
-        form.setValue("ambitoId", result.suggestedAmbitoId || '', { shouldValidate: true });
-        form.setValue("caracteristicaId", result.suggestedCaracteristicaId || '', { shouldValidate: true });
-        form.setValue("elementoMedibleId", result.suggestedElementoMedibleId || '', { shouldValidate: true });
-
-        toast({
-            title: "Sugerencias aplicadas",
-            description: "La IA ha rellenado los campos de clasificación.",
-        });
-
-    } catch (error) {
-        console.error("AI suggestion failed", error);
-        toast({
-            variant: "destructive",
-            title: "Error de IA",
-            description: "No se pudieron obtener las sugerencias.",
-        });
-    } finally {
-        setIsAiLoading(false);
     }
   };
 
@@ -447,13 +410,7 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-                <CardTitle>B) Clasificación de Acreditación</CardTitle>
-                <Button type="button" variant="outline" size="sm" onClick={handleAiSuggest} disabled={isAiLoading || isSubmitting}>
-                    {isAiLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4 text-primary" />}
-                    Sugerir con IA
-                </Button>
-            </div>
+            <CardTitle>B) Clasificación de Acreditación</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="space-y-4">
