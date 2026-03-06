@@ -26,9 +26,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
-export const AuthContext = createContext<AuthContextType | undefined>(
-  undefined
-);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -36,56 +34,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      setLoading(true);
-      if (fbUser) {
-        setFirebaseUser(currentFbUser => 
-          (currentFbUser && currentFbUser.uid === fbUser.uid) ? currentFbUser : fbUser
-        );
-        try {
+      if (!isMounted) return;
+
+      try {
+        if (fbUser) {
+          setFirebaseUser(fbUser);
+
           const profile = await getUserProfile(fbUser.uid);
 
-          setUser(currentUser => {
-            if (!currentUser || !profile) {
-              return profile;
-            }
-            
-            // Perform a deep comparison to check if the user profile has actually changed.
-            // This prevents re-renders if the object reference is new but the data is the same.
-            const areEqual = 
-                currentUser.uid === profile.uid &&
-                currentUser.displayName === profile.displayName &&
-                currentUser.email === profile.email &&
-                currentUser.role === profile.role &&
-                currentUser.hospitalId === profile.hospitalId &&
-                currentUser.isActive === profile.isActive &&
-                currentUser.isDeleted === profile.isDeleted &&
-                JSON.stringify(currentUser.servicioIds || []) === JSON.stringify(profile.servicioIds || []) &&
-                JSON.stringify(currentUser.allowedPages || []) === JSON.stringify(profile.allowedPages || []) &&
-                currentUser.createdAt.getTime() === profile.createdAt.getTime() &&
-                currentUser.updatedAt.getTime() === profile.updatedAt.getTime();
+          if (!isMounted) return;
 
-            if (areEqual) {
-              return currentUser; // Data is the same, return the existing state object to prevent re-renders.
-            }
-            
-            return profile; // Data is different, return the new profile object.
-          });
-
-        } catch (e) {
-          console.error('Failed to fetch user profile', e);
-          await signOut(auth);
-          setUser(null);
+          setUser(profile ?? null);
+        } else {
           setFirebaseUser(null);
+          setUser(null);
         }
-      } else {
-        setUser(null);
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+
+        if (!isMounted) return;
+
         setFirebaseUser(null);
+        setUser(null);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   const login = useCallback(async (email: string, pass: string) => {
@@ -93,14 +77,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signInWithEmailAndPassword(auth, email, pass);
     } catch (error: any) {
       console.error('Sign-in failed:', error);
+
       if (error.code === 'auth/invalid-credential') {
         throw new Error(
           'Credenciales incorrectas. Por favor, verifica tu correo y contraseña.'
         );
       }
+
       if (error.code === 'auth/user-disabled') {
         throw new Error('Esta cuenta de usuario ha sido desactivada.');
       }
+
       throw new Error(
         'Error de inicio de sesión: Problema de red o error inesperado.'
       );
