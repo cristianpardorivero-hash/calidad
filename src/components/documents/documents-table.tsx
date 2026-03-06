@@ -70,26 +70,30 @@ export function DocumentsTable({
   const handleDeleteConfirm = async () => {
     if (!docToDelete || !user) return;
 
-    setLoadingStates(prev => ({...prev, [docToDelete.id]: true}));
+    const deletingDoc = docToDelete;
+    setLoadingStates(prev => ({ ...prev, [deletingDoc.id]: true }));
+
     try {
-      await updateDocument(docToDelete.id, { 
+      await updateDocument(deletingDoc.id, {
         isDeleted: true,
         deletedAt: new Date(),
         deletedByUid: user.uid,
-       });
+      });
+
+      setDocToDelete(null); // Close dialog on success
+
       toast({
         title: "Documento Eliminado",
-        description: `El documento "${docToDelete.titulo}" ha sido eliminado.`,
+        description: `El documento "${deletingDoc.titulo}" ha sido eliminado.`,
       });
-      // The onSnapshot listener in the parent page will automatically update the UI
     } catch (e) {
       console.error(e);
-      toast({ variant: 'destructive', title: "Error", description: "No se pudo eliminar el documento."});
+      toast({ variant: 'destructive', title: "Error", description: "No se pudo eliminar el documento." });
+      // Don't close the dialog on error
     } finally {
-        setLoadingStates(prev => ({...prev, [docToDelete.id]: false}));
-        setDocToDelete(null);
+      setLoadingStates(prev => ({ ...prev, [deletingDoc.id]: false }));
     }
-  }
+  };
 
   const getCatalogName = (
     catalog: keyof Catalogs,
@@ -249,16 +253,18 @@ export function DocumentsTable({
                     </Badge>
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
-                    {formatDistanceToNow(doc.updatedAt, {
-                      addSuffix: true,
-                      locale: es,
-                    })}
+                    {doc.updatedAt
+                      ? formatDistanceToNow(doc.updatedAt, {
+                          addSuffix: true,
+                          locale: es,
+                        })
+                      : "N/A"}
                   </TableCell>
                   <TableCell>
                     {loadingStates[doc.id] ? (
                       <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                     ) : (
-                      <DropdownMenu>
+                      <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                           <Button aria-haspopup="true" size="icon" variant="ghost">
                             <MoreHorizontal className="h-4 w-4" />
@@ -287,7 +293,10 @@ export function DocumentsTable({
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
                                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                onSelect={() => setDocToDelete(doc)}
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  setDocToDelete(doc);
+                                }}
                               >
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   Eliminar

@@ -80,14 +80,20 @@ const CatalogTable = ({
               ))}
               <TableCell className="text-right">
                 {loadingStates[item.id] ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : (
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                             <Button size="icon" variant="ghost"><MoreHorizontal className="h-4 w-4"/></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                             <DropdownMenuItem onSelect={() => onEdit(item)}><Edit className="mr-2 h-4 w-4"/> Editar</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={() => onDelete(item)}>
+                            <DropdownMenuItem 
+                              className="text-destructive focus:text-destructive focus:bg-destructive/10" 
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                onDelete(item);
+                              }}
+                            >
                                 <Trash2 className="mr-2 h-4 w-4"/> Eliminar
                             </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -128,20 +134,24 @@ export function CatalogManager({ catalogs }: { catalogs: Catalogs }) {
 
   const handleDeleteConfirm = async () => {
     if (!itemToDelete || !authUser) return;
-    setLoadingStates(prev => ({...prev, [itemToDelete.data.id]: true}));
+
+    const deletingItem = itemToDelete;
+    setLoadingStates(prev => ({ ...prev, [deletingItem.data.id]: true }));
+
     try {
-        await deleteCatalogItem(authUser.hospitalId, itemToDelete.type as keyof Catalogs, itemToDelete.data.id);
+        await deleteCatalogItem(authUser.hospitalId, deletingItem.type as keyof Catalogs, deletingItem.data.id);
+        
+        setItemToDelete(null); // Close on success
+
         toast({
             title: "Ítem Eliminado",
-            description: `El ítem "${itemToDelete.data.nombre}" ha sido eliminado.`,
+            description: `El ítem "${deletingItem.data.nombre}" ha sido eliminado.`,
         });
-        // onSnapshot will handle the update
     } catch (e) {
         console.error(e);
         toast({ variant: 'destructive', title: "Error", description: "No se pudo eliminar el ítem."});
     } finally {
-        setLoadingStates(prev => ({...prev, [itemToDelete.data.id]: false}));
-        setItemToDelete(null);
+        setLoadingStates(prev => ({ ...prev, [deletingItem.data.id]: false }));
     }
   }
 

@@ -95,19 +95,24 @@ export function UserManager({ initialUsers, catalogs, onUsersChange }: UserManag
 
   const handleDelete = async () => {
     if (!userToDelete) return;
-    setLoadingStates(prev => ({...prev, [userToDelete.uid]: true}));
+
+    const deletingUser = userToDelete;
+    setLoadingStates(prev => ({ ...prev, [deletingUser.uid]: true }));
+
     try {
-        await updateUser(userToDelete.uid, { isDeleted: true, isActive: false });
+        await updateUser(deletingUser.uid, { isDeleted: true, isActive: false });
+        
+        setUserToDelete(null); // Close on success
+
         toast({
             title: "Usuario eliminado",
-            description: `${userToDelete.displayName} ha sido eliminado.`
+            description: `${deletingUser.displayName} ha sido eliminado.`
         });
-        onUsersChange?.(); // Re-fetch users if needed
+        onUsersChange?.();
     } catch (e) {
         toast({ variant: 'destructive', title: "Error", description: "No se pudo eliminar el usuario."});
     } finally {
-        setLoadingStates(prev => ({...prev, [userToDelete.uid]: false}));
-        setUserToDelete(null);
+        setLoadingStates(prev => ({ ...prev, [deletingUser.uid]: false }));
     }
   }
 
@@ -150,7 +155,7 @@ export function UserManager({ initialUsers, catalogs, onUsersChange }: UserManag
                 </TableCell>
                 <TableCell className="text-right">
                   {loadingStates[user.uid] ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : (
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
                         <Button size="icon" variant="ghost">
                           <MoreHorizontal className="h-4 w-4" />
@@ -168,7 +173,13 @@ export function UserManager({ initialUsers, catalogs, onUsersChange }: UserManag
                           )}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={() => setUserToDelete(user)}>
+                        <DropdownMenuItem 
+                          className="text-destructive focus:text-destructive focus:bg-destructive/10" 
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            setUserToDelete(user);
+                          }}
+                        >
                             <Trash2 className="mr-2 h-4 w-4"/> Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
