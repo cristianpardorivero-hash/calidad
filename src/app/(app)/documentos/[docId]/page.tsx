@@ -35,7 +35,12 @@ import { useUser } from "@/hooks/use-user";
 import type { Catalogs, Documento, DocumentVersion } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
-import { DocumentPreviewModal } from "@/components/documents/document-preview-modal";
+import dynamic from "next/dynamic";
+
+const DocumentPreviewModal = dynamic(
+  () => import('@/components/documents/document-preview-modal').then(mod => mod.DocumentPreviewModal),
+  { ssr: false }
+);
 
 
 export default function DocumentoDetailPage() {

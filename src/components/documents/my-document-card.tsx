@@ -16,11 +16,16 @@ import { useEffect, useMemo, useState } from "react";
 import { getLinkedDocuments } from "@/lib/data";
 import Link from "next/link";
 import { useUser } from "@/hooks/use-user";
-import { DocumentPreviewModal } from "./document-preview-modal";
+import dynamic from "next/dynamic";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Skeleton } from "../ui/skeleton";
 import { Separator } from "../ui/separator";
+
+const DocumentPreviewModal = dynamic(
+  () => import('./document-preview-modal').then(mod => mod.DocumentPreviewModal),
+  { ssr: false }
+);
 
 interface MyDocumentCardProps {
   document: Documento;

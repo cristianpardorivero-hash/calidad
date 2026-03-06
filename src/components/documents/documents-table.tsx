@@ -42,11 +42,16 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { useSearchParams } from "next/navigation";
-import { DocumentPreviewModal } from "./document-preview-modal";
+import dynamic from "next/dynamic";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { updateDocument } from "@/lib/data";
 import { useUser } from "@/hooks/use-user";
+
+const DocumentPreviewModal = dynamic(
+  () => import('./document-preview-modal').then(mod => mod.DocumentPreviewModal),
+  { ssr: false }
+);
 
 const ITEMS_PER_PAGE = 10;
 
