@@ -3,7 +3,7 @@
 import { DocumentForm } from "@/components/documents/document-form";
 import { getCatalogs, getDocuments, getDocumentById } from "@/lib/data";
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import type { Catalogs, Documento } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useParams } from "next/navigation";
@@ -15,7 +15,7 @@ export default function EditarDocumentoPage() {
   const hospitalId = user?.hospitalId;
   const userRole = user?.role;
   const servicioIds = user?.servicioIds;
-  const servicioIdsDependency = servicioIds?.join(',') ?? '';
+  const servicioIdsDependency = useMemo(() => servicioIds?.join(',') ?? '', [servicioIds]);
 
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [documents, setDocuments] = useState<Documento[] | null>(null);

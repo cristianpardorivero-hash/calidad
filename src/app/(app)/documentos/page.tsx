@@ -75,7 +75,7 @@ export default function DocumentosPage() {
     }
 
     return () => unsubscribe();
-  }, [hospitalId, userRole, servicioIdsDependency, servicioIds]);
+  }, [hospitalId, userRole, servicioIdsDependency]);
   
   const canManage = user?.role === 'admin' || user?.role === 'editor';
 

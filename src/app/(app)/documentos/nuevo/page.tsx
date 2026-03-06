@@ -3,7 +3,7 @@
 import { DocumentForm } from "@/components/documents/document-form";
 import { getCatalogs, getDocuments } from "@/lib/data";
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import type { Catalogs, Documento } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -15,6 +15,7 @@ export default function NuevoDocumentoPage() {
   const hospitalId = user?.hospitalId;
   const userRole = user?.role;
   const servicioIds = user?.servicioIds;
+  const servicioIdsDependency = useMemo(() => servicioIds?.join(',') ?? '', [servicioIds]);
 
   useEffect(() => {
     if (hospitalId) {
@@ -32,7 +33,7 @@ export default function NuevoDocumentoPage() {
           setLoading(false);
         });
     }
-  }, [hospitalId, userRole, servicioIds]);
+  }, [hospitalId, userRole, servicioIdsDependency]);
 
   const pageHeader = (
     <div className="mb-8">
