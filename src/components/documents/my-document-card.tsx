@@ -31,7 +31,7 @@ export function MyDocumentCard({ document, catalogs }: MyDocumentCardProps) {
   const { user } = useAuth();
   const [linkedDocuments, setLinkedDocuments] = useState<Documento[]>([]);
   const [isLoadingLinks, setIsLoadingLinks] = useState(true);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [docForPreview, setDocForPreview] = useState<Documento | null>(null);
 
   useEffect(() => {
     if (user?.hospitalId) {
@@ -94,10 +94,23 @@ export function MyDocumentCard({ document, catalogs }: MyDocumentCardProps) {
                     </h4>
                     <div className="space-y-1.5">
                         {linkedDocuments.slice(0, 2).map(linkedDoc => (
-                            <Link key={linkedDoc.id} href={`/documentos/${linkedDoc.id}`} className="text-xs text-primary hover:underline flex items-center gap-2 group">
-                                <FileText className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0"/>
-                                <span className="truncate">{linkedDoc.titulo}</span>
-                            </Link>
+                            <div key={linkedDoc.id} className="flex items-center justify-between text-xs group">
+                                <Link href={`/documentos/${linkedDoc.id}`} className="text-primary hover:underline flex items-center gap-2 overflow-hidden">
+                                    <FileText className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0"/>
+                                    <span className="truncate">{linkedDoc.titulo}</span>
+                                </Link>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 flex-shrink-0"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDocForPreview(linkedDoc);
+                                    }}
+                                >
+                                    <Eye className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
                         ))}
                          {linkedDocuments.length > 2 && (
                              <p className="text-xs text-muted-foreground pl-5">+ {linkedDocuments.length - 2} más</p>
@@ -108,16 +121,20 @@ export function MyDocumentCard({ document, catalogs }: MyDocumentCardProps) {
             )}
         </CardContent>
         <CardFooter>
-          <Button variant="secondary" className="w-full" onClick={() => setIsPreviewOpen(true)}>
+          <Button variant="secondary" className="w-full" onClick={() => setDocForPreview(document)}>
             <Eye className="mr-2 h-4 w-4" />
             Vista Rápida
           </Button>
         </CardFooter>
       </Card>
       <DocumentPreviewModal
-        isOpen={isPreviewOpen}
-        onOpenChange={setIsPreviewOpen}
-        documento={document}
+        isOpen={!!docForPreview}
+        onOpenChange={(isOpen) => {
+            if (!isOpen) {
+            setDocForPreview(null);
+            }
+        }}
+        documento={docForPreview}
       />
     </>
   );
