@@ -138,7 +138,7 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
   const elementoMedibleId = form.watch("elementoMedibleId");
 
   const linkableDocTypeIds = React.useMemo(() => {
-    const linkableNames = ['pauta de cotejo', 'pauta de evaluacion', 'indicador'];
+    const linkableNames = ['pauta de cotejo', 'pauta de evaluacion', 'indicador', 'informe'];
     return catalogs.tiposDocumento
       .filter(td => linkableNames.includes(td.nombre.toLowerCase()))
       .map(td => td.id);
