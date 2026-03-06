@@ -36,20 +36,20 @@ export default function NuevoDocumentoPage() {
   }, [hospitalId, userRole, servicioIdsDependency]);
 
   const pageHeader = (
-    <div className="mb-8">
+    <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold tracking-tight">Subir Nuevo Documento</h1>
         <p className="text-muted-foreground">
-          Complete el formulario para agregar un nuevo documento al sistema.
+          Sigue los pasos para agregar un nuevo documento al sistema de forma fácil e intuitiva.
         </p>
     </div>
   );
 
   if (loading || !catalogs || !documents) {
     return (
-        <div className="container mx-auto max-w-5xl">
+        <div className="container mx-auto max-w-3xl">
             {pageHeader}
             <div className="space-y-8">
-                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-24 w-full" />
                 <Skeleton className="h-64 w-full" />
                 <Skeleton className="h-32 w-full" />
             </div>
@@ -58,7 +58,7 @@ export default function NuevoDocumentoPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-5xl">
+    <div className="container mx-auto max-w-3xl">
       {pageHeader}
       <DocumentForm catalogs={catalogs} documents={documents} />
     </div>
