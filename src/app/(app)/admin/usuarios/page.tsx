@@ -17,25 +17,27 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const fetchData = useCallback(async () => {
-    if (user) {
-        setLoading(true);
-        const [fetchedUsers, fetchedCatalogs] = await Promise.all([
-            getUsers(user.hospitalId),
-            getCatalogs(user.hospitalId)
-        ]);
-        setUsers(fetchedUsers);
-        setCatalogs(fetchedCatalogs);
-        setLoading(false);
-    }
-  }, [user]);
+  const handleDataChange = useCallback(() => {
+    setRefreshTrigger(t => t + 1);
+  }, []);
 
   useEffect(() => {
-    if (user) {
-      fetchData();
-    }
-  }, [user, fetchData]);
+    const fetchData = async () => {
+      if (user) {
+          setLoading(true);
+          const [fetchedUsers, fetchedCatalogs] = await Promise.all([
+              getUsers(user.hospitalId),
+              getCatalogs(user.hospitalId)
+          ]);
+          setUsers(fetchedUsers);
+          setCatalogs(fetchedCatalogs);
+          setLoading(false);
+      }
+    };
+    fetchData();
+  }, [user, refreshTrigger]);
 
   const pageHeader = (
      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -63,7 +65,7 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-8">
       {pageHeader}
-      <UserManager initialUsers={users} catalogs={catalogs} onUsersChange={fetchData}/>
+      <UserManager initialUsers={users} catalogs={catalogs} onUsersChange={handleDataChange}/>
     </div>
   );
 }

@@ -16,23 +16,27 @@ export default function DocumentosPage() {
   const [documents, setDocuments] = useState<Documento[]>([]);
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const fetchData = useCallback(async () => {
-    if (user) {
-      setLoading(true);
-      const [fetchedDocs, fetchedCatalogs] = await Promise.all([
-        getDocuments(user.hospitalId, user),
-        getCatalogs(user.hospitalId),
-      ]);
-      setDocuments(fetchedDocs);
-      setCatalogs(fetchedCatalogs);
-      setLoading(false);
-    }
-  }, [user]);
+  const handleDocumentsChange = useCallback(() => {
+    setRefreshTrigger(t => t + 1);
+  }, []);
 
   useEffect(() => {
+    const fetchData = async () => {
+      if (user) {
+        setLoading(true);
+        const [fetchedDocs, fetchedCatalogs] = await Promise.all([
+          getDocuments(user.hospitalId, user),
+          getCatalogs(user.hospitalId),
+        ]);
+        setDocuments(fetchedDocs);
+        setCatalogs(fetchedCatalogs);
+        setLoading(false);
+      }
+    };
     fetchData();
-  }, [fetchData]);
+  }, [user, refreshTrigger]);
   
   const canManage = user?.role === 'admin' || user?.role === 'editor';
 
@@ -74,7 +78,7 @@ export default function DocumentosPage() {
         documents={documents}
         catalogs={catalogs}
         user={user}
-        onDocumentsChange={fetchData}
+        onDocumentsChange={handleDocumentsChange}
       />
     </div>
   );
