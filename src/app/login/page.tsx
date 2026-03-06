@@ -12,7 +12,11 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (!authLoading && user) {
-            router.push('/dashboard');
+            if (user.role === 'lector') {
+                router.push('/mis-documentos');
+            } else {
+                router.push('/dashboard');
+            }
         }
     }, [user, authLoading, router]);
 

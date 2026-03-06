@@ -12,7 +12,11 @@ export default function Home() {
   useEffect(() => {
     if (!loading) {
       if (user) {
-        router.push('/dashboard');
+        if (user.role === 'lector') {
+          router.push('/mis-documentos');
+        } else {
+          router.push('/dashboard');
+        }
       } else {
         router.push('/login');
       }
