@@ -25,13 +25,14 @@ export default function DocumentosPage() {
 
   const hospitalId = user?.hospitalId;
   const userRole = user?.role;
-  // Stringify to create a stable dependency for the useEffect hook
-  const servicioIdsStr = JSON.stringify(user?.servicioIds); 
+  // Create a stable primitive dependency from the array for the useEffect hook
+  const servicioIdsDependency = user?.servicioIds?.join(',') ?? '';
 
   useEffect(() => {
     const fetchData = async () => {
       if (hospitalId && userRole) {
         setLoading(true);
+        // Use the original array for the function call, not the dependency string
         const servicioIds = user?.servicioIds;
         const [fetchedDocs, fetchedCatalogs] = await Promise.all([
           getDocuments(hospitalId, userRole, servicioIds),
@@ -43,7 +44,8 @@ export default function DocumentosPage() {
       }
     };
     fetchData();
-  }, [hospitalId, userRole, servicioIdsStr, refreshTrigger]);
+  // Depend on the stable primitive, not the array reference itself.
+  }, [hospitalId, userRole, servicioIdsDependency, refreshTrigger]);
   
   const canManage = user?.role === 'admin' || user?.role === 'editor';
 
