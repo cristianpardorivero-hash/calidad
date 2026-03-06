@@ -164,7 +164,7 @@ export default function DocumentoDetailPage() {
   };
 
   const renderPDF = (url: string | null) => {
-    if (!url || error) { // Also check for general error
+    if (!url || error) {
       return (
         <div className="flex h-full min-h-[600px] w-full flex-col items-center justify-center rounded-lg border border-dashed bg-muted/50 p-4">
           <FileText className="h-16 w-16 text-muted-foreground" />
@@ -182,11 +182,24 @@ export default function DocumentoDetailPage() {
     }
 
     return (
-      <iframe
-        src={url}
+      <object
+        data={url}
+        type="application/pdf"
         className="h-[800px] w-full rounded-lg border"
         title={document.titulo}
-      />
+      >
+        <div className="flex h-full min-h-[600px] w-full flex-col items-center justify-center rounded-lg border border-dashed bg-muted/50 p-4">
+            <FileText className="h-16 w-16 text-muted-foreground" />
+            <p className="mt-4 text-center text-muted-foreground">
+                Tu navegador no soporta la previsualización de PDF.
+            </p>
+            <Button asChild className="mt-4">
+            <a href={document.downloadUrl} download={document.fileName}>
+                <Download className="mr-2 h-4 w-4" /> Descargar Archivo
+            </a>
+            </Button>
+        </div>
+      </object>
     );
   };
   
