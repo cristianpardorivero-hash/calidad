@@ -13,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Download, FileText, AlertTriangle, ChevronLeft, ChevronRight, Loader2, ZoomIn, ZoomOut } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { Documento } from "@/lib/types";
-import { storage } from "@/lib/firebase";
+import { storage } from "@/firebase/client";
 import { ref, getBlob } from "firebase/storage";
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
