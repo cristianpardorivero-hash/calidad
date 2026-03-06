@@ -14,11 +14,13 @@ import { Download, FileText, AlertTriangle, ChevronLeft, ChevronRight, Loader2, 
 import { useState, useEffect, useMemo } from "react";
 import type { Documento } from "@/lib/types";
 import { storage } from "@/firebase/client";
-import { ref, getDownloadURL } from "firebase/storage";
+import { ref, getBlob } from "firebase/storage";
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 
+// Configure the worker to dynamically use the version of pdfjs that react-pdf is using.
+// This ensures the API and Worker versions always match.
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
   import.meta.url,
@@ -31,7 +33,7 @@ interface DocumentPreviewModalProps {
 }
 
 export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: DocumentPreviewModalProps) {
-  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [fileBlob, setFileBlob] = useState<Blob | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -39,17 +41,9 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.2);
 
-  const pdfOptions = useMemo(() => ({
-      cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
-      standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
-      cMapPacked: true,
-  }), []);
-
-
   useEffect(() => {
     if (!isOpen || !documento) {
-      // Reset state on close or when there's no document
-      setFileUrl(null);
+      setFileBlob(null);
       setError(null);
       setNumPages(0);
       setPageNumber(1);
@@ -59,7 +53,7 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
     if (documento.fileExt !== 'pdf') {
       setLoading(false);
       setError(null);
-      setFileUrl(null);
+      setFileBlob(null);
       return;
     }
     
@@ -67,17 +61,21 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
 
     setLoading(true);
     setError(null);
-    setFileUrl(null);
+    setFileBlob(null);
+    setNumPages(0);
+    setPageNumber(1);
+    setScale(1.2);
 
-    const fetchUrl = async () => {
+
+    const fetchBlob = async () => {
       try {
         const storageRef = ref(storage, documento.storagePath);
-        const url = await getDownloadURL(storageRef);
+        const blob = await getBlob(storageRef);
         if (!isCancelled) {
-          setFileUrl(url);
+          setFileBlob(blob);
         }
       } catch (e: any) {
-        console.error("Error fetching download URL for preview:", e);
+        console.error("Error fetching blob for preview:", e);
         if (!isCancelled) {
           if (e.code === 'storage/object-not-found') {
             setError("El archivo no se encontró en el servidor.");
@@ -94,7 +92,7 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
       }
     };
 
-    fetchUrl();
+    fetchBlob();
 
     return () => {
       isCancelled = true;
@@ -107,13 +105,16 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
 
   const handleDownload = () => {
     if (!documento) return;
-    const url = documento.downloadUrl;
+    const url = fileBlob ? URL.createObjectURL(fileBlob) : documento.downloadUrl;
     const link = document.createElement('a');
     link.href = url;
     link.download = documento.fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    if (fileBlob) {
+        URL.revokeObjectURL(url);
+    }
   }
 
   const goToPrevPage = () => setPageNumber(prev => Math.max(prev - 1, 1));
@@ -150,12 +151,11 @@ export function DocumentPreviewModal({ documento, isOpen, onOpenChange }: Docume
             </div>
         )
     }
-    if (fileUrl) {
+    if (fileBlob) {
       return (
         <div className="h-full w-full overflow-auto bg-muted/50 flex items-center justify-center rounded-md border p-4">
             <Document
-                file={fileUrl}
-                options={pdfOptions}
+                file={fileBlob}
                 onLoadSuccess={onDocumentLoadSuccess}
                 onLoadError={(err) => {
                   console.error('React-PDF load error:', err);
