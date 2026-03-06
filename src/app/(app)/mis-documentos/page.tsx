@@ -1,103 +1,108 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { useUser } from "@/hooks/use-user";
-import { getMyDocuments, getCatalogs } from "@/lib/data";
-import type { Documento, Catalogs } from "@/lib/types";
-import { Skeleton } from "@/components/ui/skeleton";
-import { MyDocumentCard } from "@/components/documents/my-document-card";
+import { DocumentsTable } from "@/components/documents/documents-table";
+import { getCatalogs } from "@/lib/data";
+import { PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { FilePlus, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { DocumentsFilters } from "@/components/documents/documents-filters";
+import { useEffect, useState, useMemo } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useUser } from "@/hooks/use-user";
+import type { Catalogs, Documento } from "@/lib/types";
+import { collection, query, where, onSnapshot, Timestamp } from "firebase/firestore";
+import { db } from "@/firebase/client";
 
 export default function MisDocumentosPage() {
   const { user } = useUser();
   const [documents, setDocuments] = useState<Documento[]>([]);
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
 
-  const userId = user?.uid;
-  const userEmail = user?.email;
   const hospitalId = user?.hospitalId;
+  const userRole = user?.role;
+  const servicioIds = user?.servicioIds;
+  const servicioIdsDependency = useMemo(() => servicioIds?.join(',') ?? '', [servicioIds]);
 
   useEffect(() => {
-    if (userId && userEmail && hospitalId) {
+    let unsubscribe = () => {};
+    if (hospitalId && userRole) {
       setLoading(true);
-      Promise.all([
-        getMyDocuments(userId, userEmail, hospitalId),
-        getCatalogs(hospitalId)
-      ]).then(([docsData, catalogsData]) => {
-          // Client-side filter to ensure admins only see their own documents on this page.
-          const finalDocs = docsData.filter(doc => doc.createdByUid === userId || doc.responsableEmail === userEmail);
-          setDocuments(finalDocs);
-          setCatalogs(catalogsData);
-          setLoading(false);
-        })
-        .catch(error => {
-          console.error("Failed to fetch my documents or catalogs", error);
-          setLoading(false);
+
+      const docsRef = collection(db, "documents");
+      let q;
+      if (userRole === "lector" && servicioIds && servicioIds.length > 0) {
+        q = query(
+          docsRef,
+          where("hospitalId", "==", hospitalId),
+          where("isDeleted", "==", false),
+          where("servicioIds", "array-contains-any", servicioIds)
+        );
+      } else {
+        q = query(
+          docsRef,
+          where("hospitalId", "==", hospitalId),
+          where("isDeleted", "==", false)
+        );
+      }
+
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const fetchedDocs = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
+            fechaVigenciaDesde: (data.fechaVigenciaDesde as Timestamp)?.toDate(),
+            fechaVigenciaHasta: (data.fechaVigenciaHasta as Timestamp)?.toDate(),
+            createdAt: (data.createdAt as Timestamp)?.toDate(),
+            updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+          } as Documento;
         });
+        setDocuments(fetchedDocs);
+        setLoading(false);
+      }, (error) => {
+        console.error("Error listening to documents:", error);
+        setLoading(false);
+      });
+
+      getCatalogs(hospitalId).then(setCatalogs);
+
     } else if (!user) {
         setLoading(false);
     }
-  }, [userId, userEmail, hospitalId, user]);
 
-  const filteredDocuments = useMemo(() => {
-    if (!documents || !catalogs) return [];
-    if (!searchQuery) return documents;
-    
-    const lowerCaseQuery = searchQuery.toLowerCase();
-
-    return documents.filter(doc => {
-      const ambitoName = catalogs.ambitos.find(a => a.id === doc.ambitoId)?.nombre || '';
-      const caracteristicaName = catalogs.caracteristicas.find(c => c.id === doc.caracteristicaId)?.nombre || '';
-
-      const titleMatch = doc.titulo.toLowerCase().includes(lowerCaseQuery);
-      const responsableMatch = doc.responsableNombre.toLowerCase().includes(lowerCaseQuery);
-      const tagMatch = doc.tags?.some(tag => tag.toLowerCase().includes(lowerCaseQuery));
-      const ambitoMatch = ambitoName.toLowerCase().includes(lowerCaseQuery);
-      const caracteristicaMatch = caracteristicaName.toLowerCase().includes(lowerCaseQuery);
-
-      return titleMatch || responsableMatch || tagMatch || ambitoMatch || caracteristicaMatch;
-    });
-  }, [documents, searchQuery, catalogs]);
-
+    return () => unsubscribe();
+  }, [hospitalId, userRole, servicioIdsDependency]);
+  
   const canManage = user?.role === 'admin' || user?.role === 'editor';
 
   const pageHeader = (
-    <div className="mb-8">
-      <h1 className="text-3xl font-bold tracking-tight">Mis Documentos</h1>
-      <p className="text-muted-foreground">
-        Documentos que has creado o de los que eres responsable.
-      </p>
+    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Mis Documentos
+        </h1>
+        <p className="text-muted-foreground">
+          Documentos disponibles para ti según tu rol y servicio asignado.
+        </p>
+      </div>
+      {canManage && (
+        <Button asChild>
+          <Link href="/documentos/nuevo">
+            <PlusCircle className="mr-2 h-4 w-4" /> Subir Documento
+          </Link>
+        </Button>
+      )}
     </div>
   );
 
-  const searchBar = (
-    <div className="relative mb-8">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-        <Input
-            placeholder="Buscar por título, tag, responsable, ámbito o característica..."
-            className="h-11 pl-10"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-        />
-    </div>
-  );
-
-  if (loading) {
+  if (loading || !catalogs || !user) {
     return (
       <div className="space-y-8">
         {pageHeader}
-        <Skeleton className="h-11 w-full" />
-        <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          <Skeleton className="h-[280px] w-full" />
-          <Skeleton className="h-[280px] w-full" />
-          <Skeleton className="h-[280px] w-full" />
-          <Skeleton className="h-[280px] w-full" />
-        </div>
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-[400px] w-full" />
       </div>
     );
   }
@@ -105,32 +110,12 @@ export default function MisDocumentosPage() {
   return (
     <div className="space-y-8">
       {pageHeader}
-      {searchBar}
-      {filteredDocuments.length > 0 ? (
-        <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredDocuments.map(doc => (
-            <MyDocumentCard key={doc.id} document={doc} catalogs={catalogs!} />
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center mt-16">
-            <h3 className="text-xl font-semibold">No se encontraron documentos</h3>
-            <p className="text-muted-foreground mt-2 max-w-sm">
-                {searchQuery 
-                    ? "No hay documentos que coincidan con tu búsqueda."
-                    : "No has creado ningún documento ni has sido asignado como responsable de uno."
-                }
-            </p>
-            {!searchQuery && canManage && (
-                <Button asChild className="mt-4">
-                    <Link href="/documentos/nuevo">
-                        <FilePlus className="mr-2 h-4 w-4" />
-                        Subir mi primer documento
-                    </Link>
-                </Button>
-            )}
-        </div>
-      )}
+      <DocumentsFilters catalogs={catalogs} />
+      <DocumentsTable
+        documents={documents}
+        catalogs={catalogs}
+        user={user}
+      />
     </div>
   );
 }
