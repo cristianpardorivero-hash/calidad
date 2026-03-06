@@ -19,7 +19,7 @@ import {
 import { useState, useEffect } from "react";
 import type { Documento } from "@/lib/types";
 import { storage } from "@/firebase/client";
-import { ref, getDownloadURL } from "firebase/storage";
+import { ref, getBlob, getDownloadURL } from "firebase/storage";
 
 interface DocumentPreviewModalProps {
   documento: Documento | null;
@@ -32,39 +32,45 @@ export function DocumentPreviewModal({
   isOpen,
   onOpenChange,
 }: DocumentPreviewModalProps) {
-  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isOpen || !documento) return;
-
-    const ext = documento.fileExt?.toLowerCase() || "";
-
-    if (ext !== "pdf") {
-      setLoading(false);
-      setError(null);
-      setFileUrl(null);
+    if (!isOpen || !documento) {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        setObjectUrl(null);
+      }
       return;
     }
-
+    
     let isCancelled = false;
+    let localUrl: string | null = null;
 
-    setLoading(true);
-    setError(null);
-    setFileUrl(null);
+    const setupPreview = async () => {
+      const ext = documento.fileExt?.toLowerCase() || "";
+      if (ext !== "pdf") {
+        setLoading(false);
+        setError(null);
+        setObjectUrl(null);
+        return;
+      }
+      
+      setLoading(true);
+      setError(null);
+      setObjectUrl(null);
 
-    const fetchFileUrl = async () => {
       try {
         const storageRef = ref(storage, documento.storagePath);
-        const url = await getDownloadURL(storageRef);
+        const blob = await getBlob(storageRef);
+        localUrl = URL.createObjectURL(blob);
 
         if (!isCancelled) {
-          setFileUrl(url);
+          setObjectUrl(localUrl);
         }
       } catch (e: any) {
-        console.error("Error getting PDF URL:", e);
-
+        console.error("Error getting PDF blob:", e);
         if (!isCancelled) {
           if (e?.code === "storage/object-not-found") {
             setError("El archivo no se encontró en el servidor.");
@@ -80,24 +86,33 @@ export function DocumentPreviewModal({
         }
       }
     };
-
-    fetchFileUrl();
+    
+    setupPreview();
 
     return () => {
       isCancelled = true;
+      if (localUrl) {
+        URL.revokeObjectURL(localUrl);
+      }
     };
-  }, [isOpen, documento]);
+  }, [isOpen, documento, objectUrl]);
 
-  const handleDownload = () => {
-    const urlToDownload = fileUrl || documento?.downloadUrl;
-    if (!documento || !urlToDownload) return;
-
-    const link = document.createElement("a");
-    link.href = urlToDownload;
-    link.download = documento.fileName || "documento.pdf";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async () => {
+    if (!documento) return;
+    try {
+      const storageRef = ref(storage, documento.storagePath);
+      const urlToDownload = await getDownloadURL(storageRef);
+      const link = document.createElement("a");
+      link.href = urlToDownload;
+      link.target = '_blank';
+      link.download = documento.fileName || "documento.pdf";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e) {
+      console.error("Error generating download link:", e);
+      setError("No se pudo generar el enlace de descarga.");
+    }
   };
 
   const renderContent = () => {
@@ -132,11 +147,11 @@ export function DocumentPreviewModal({
       );
     }
 
-    if (fileUrl) {
+    if (objectUrl) {
       return (
         <div className="h-[70vh] w-full rounded-md border overflow-hidden bg-white">
           <object
-            data={fileUrl}
+            data={objectUrl}
             type="application/pdf"
             className="w-full h-full"
           >
@@ -177,7 +192,7 @@ export function DocumentPreviewModal({
             </Button>
             <Button
               onClick={handleDownload}
-              disabled={!documento || (!fileUrl && !documento?.downloadUrl)}
+              disabled={!documento}
             >
               <Download className="mr-2 h-4 w-4" />
               Descargar
