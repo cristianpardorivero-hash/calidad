@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { es } from "date-fns/locale/es";
+import { es } from "date-fns/locale";
 import { useEffect, useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import type { Catalogs, Documento, DocumentVersion } from "@/lib/types";

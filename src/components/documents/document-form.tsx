@@ -31,7 +31,7 @@ import {
 import { ChevronsUpDown, GitFork, Loader2, Save, UploadCloud, Check, ArrowRight, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { useUser } from "@/hooks/use-user";
@@ -44,6 +44,7 @@ import { Checkbox } from "../ui/checkbox";
 import { ScrollArea } from "../ui/scroll-area";
 import { storage } from "@/firebase/client";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { es } from "date-fns/locale/es";
 
 
 type FormValues = z.infer<ReturnType<typeof getFormSchema>>;
@@ -128,6 +129,11 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+  const [maxDate, setMaxDate] = useState('');
+
+  useEffect(() => {
+    setMaxDate(format(new Date(), 'yyyy-MM-dd'));
+  }, []);
 
   const [step, setStep] = useState(1);
   const isEditing = !!document;
@@ -420,7 +426,7 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
                 <Card>
                     <CardHeader><CardTitle>D) Fechas</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
-                        <FormField control={form.control} name="fechaDocumento" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Fecha del documento</FormLabel><FormControl><Input type="date" {...field} value={dateToInputValue(field.value)} max={format(new Date(), 'yyyy-MM-dd')} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="fechaDocumento" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Fecha del documento</FormLabel><FormControl><Input type="date" {...field} value={dateToInputValue(field.value)} max={maxDate} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="fechaVigenciaDesde" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Vigencia Desde (Opcional)</FormLabel><FormControl><Input type="date" {...field} value={dateToInputValue(field.value)} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="fechaVigenciaHasta" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Vigencia Hasta (Opcional)</FormLabel><FormControl><Input type="date" {...field} value={dateToInputValue(field.value)} /></FormControl><FormMessage /></FormItem>)} />
                     </CardContent>
@@ -488,7 +494,7 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
                         <FormField control={form.control} name="servicioIds" render={({ field }) => (<FormItem><FormLabel>Servicios/Unidades (Opcional)</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")}><span className="truncate">{field.value && field.value.length > 0 ? `${field.value.length} seleccionado(s)` : "Seleccione servicios"}</span><ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-[--radix-popover-trigger-width] p-0"><ScrollArea className="h-48"><div className="p-2 space-y-1">{[...catalogs.servicios].sort((a,b) => a.nombre.localeCompare(b.nombre)).map((servicio) => (<FormItem key={servicio.id} className="flex flex-row items-center space-x-3 space-y-0"><FormControl><Checkbox checked={field.value?.includes(servicio.id)} onCheckedChange={(checked) => { const currentValues = field.value || []; return checked ? field.onChange([...currentValues, servicio.id]) : field.onChange(currentValues.filter((id) => id !== servicio.id)); }}/></FormControl><FormLabel className="font-normal">{servicio.nombre}</FormLabel></FormItem>))}</div></ScrollArea></PopoverContent></Popover><FormMessage /></FormItem>)}/>
                         <Separator className="my-4"/>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <FormField control={form.control} name="fechaDocumento" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Fecha del documento</FormLabel><FormControl><Input type="date" {...field} value={dateToInputValue(field.value)} max={format(new Date(), 'yyyy-MM-dd')} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="fechaDocumento" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Fecha del documento</FormLabel><FormControl><Input type="date" {...field} value={dateToInputValue(field.value)} max={maxDate} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="fechaVigenciaDesde" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Vigencia Desde</FormLabel><FormControl><Input type="date" {...field} value={dateToInputValue(field.value)} /></FormControl><FormDescription>Calculado automáticamente.</FormDescription><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="fechaVigenciaHasta" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Vigencia Hasta</FormLabel><FormControl><Input type="date" {...field} value={dateToInputValue(field.value)} /></FormControl><FormDescription>Calculado a +5 años.</FormDescription><FormMessage /></FormItem>)} />
                         </div>

@@ -30,7 +30,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale/es";
+import { es } from "date-fns/locale";
 import Link from "next/link";
 import {
   Pagination,
