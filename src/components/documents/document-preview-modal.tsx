@@ -133,7 +133,7 @@ export function DocumentPreviewModal({
       cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
       standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
     }),
-    []
+    [pdfjs.version]
   );
 
   const renderContent = () => {
