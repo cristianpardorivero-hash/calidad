@@ -18,7 +18,7 @@ import Link from "next/link";
 import { useUser } from "@/hooks/use-user";
 import dynamic from "next/dynamic";
 import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { es } from "date-fns/locale/es";
 import { Skeleton } from "../ui/skeleton";
 import { Separator } from "../ui/separator";
 

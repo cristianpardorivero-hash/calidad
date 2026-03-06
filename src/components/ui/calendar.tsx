@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { es } from "date-fns/locale"
+import { es } from "date-fns/locale/es"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { DayPicker } from "react-day-picker"
 
