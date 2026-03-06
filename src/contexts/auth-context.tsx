@@ -39,10 +39,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setLoading(true);
       if (fbUser) {
-        setFirebaseUser(fbUser);
+        // Set Firebase user, ensuring reference stability if possible
+        setFirebaseUser(currentFbUser => 
+          (currentFbUser && currentFbUser.uid === fbUser.uid) ? currentFbUser : fbUser
+        );
         try {
           const profile = await getUserProfile(fbUser.uid);
-          setUser(profile);
+
+          // This is the key fix: ensure the user profile object reference is stable
+          // if its underlying data has not changed. This prevents infinite re-render loops
+          // in components that depend on the `user` object.
+          setUser(currentUser => {
+            if (currentUser && profile && JSON.stringify(currentUser) === JSON.stringify(profile)) {
+              return currentUser; // Return previous object to maintain reference stability
+            }
+            return profile; // Return new object if data is different or no current user
+          });
+
         } catch (e) {
           console.error('Failed to fetch user profile', e);
           // If fetching profile fails, sign out to prevent being in a weird state
