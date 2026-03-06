@@ -111,6 +111,17 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
     },
   });
 
+  const fechaDocumento = form.watch("fechaDocumento");
+  React.useEffect(() => {
+    // Automatically set validity dates when creating a new document
+    if (fechaDocumento && !isEditing) {
+      form.setValue("fechaVigenciaDesde", fechaDocumento, { shouldValidate: true });
+      const newVigenciaHasta = new Date(fechaDocumento.getTime());
+      newVigenciaHasta.setFullYear(newVigenciaHasta.getFullYear() + 5);
+      form.setValue("fechaVigenciaHasta", newVigenciaHasta, { shouldValidate: true });
+    }
+  }, [fechaDocumento, isEditing, form]);
+
   const tipoDocumentoId = form.watch("tipoDocumentoId");
   const ambitoId = form.watch("ambitoId");
   const caracteristicaId = form.watch("caracteristicaId");
