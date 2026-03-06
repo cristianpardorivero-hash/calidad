@@ -111,8 +111,10 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
   const ambitoIdForFilter = form.watch("ambitoId" as any);
 
   const filteredCaracteristicas = useMemo(() => {
-    if (!ambitoIdForFilter) return catalogs.caracteristicas;
-    return catalogs.caracteristicas.filter((c) => c.ambitoId === ambitoIdForFilter);
+    if (!ambitoIdForFilter) return catalogs.caracteristicas.sort((a,b) => a.orden - b.orden);
+    return catalogs.caracteristicas
+        .filter((c) => c.ambitoId === ambitoIdForFilter)
+        .sort((a,b) => a.orden - b.orden);
   }, [ambitoIdForFilter, catalogs.caracteristicas]);
 
   async function onSubmit(values: FormValues) {
@@ -180,7 +182,7 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
 
         {(catalogType === 'ambitos' || catalogType === 'caracteristicas' || catalogType === 'elementosMedibles') && <FormField control={form.control} name="orden" render={({ field }) => (<FormItem><FormLabel>Orden</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />}
 
-        {(catalogType === 'caracteristicas' || catalogType === 'elementosMedibles') && <FormField control={form.control} name="ambitoId" render={({ field }) => (<FormItem><FormLabel>Ámbito</FormLabel><Select onValueChange={v => { field.onChange(v); if(catalogType === 'elementosMedibles') { form.setValue("caracteristicaId" as any, undefined); }}} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un ámbito" /></SelectTrigger></FormControl><SelectContent>{catalogs.ambitos.map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
+        {(catalogType === 'caracteristicas' || catalogType === 'elementosMedibles') && <FormField control={form.control} name="ambitoId" render={({ field }) => (<FormItem><FormLabel>Ámbito</FormLabel><Select onValueChange={v => { field.onChange(v); if(catalogType === 'elementosMedibles') { form.setValue("caracteristicaId" as any, undefined); }}} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un ámbito" /></SelectTrigger></FormControl><SelectContent>{[...catalogs.ambitos].sort((a,b) => a.orden - b.orden).map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
         
         {catalogType === 'elementosMedibles' && (
             <>
@@ -212,7 +214,7 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                           <ScrollArea className="h-48">
                             <div className="p-2 space-y-1">
-                              {catalogs.servicios.map((servicio) => (
+                              {[...catalogs.servicios].sort((a,b) => a.nombre.localeCompare(b.nombre)).map((servicio) => (
                                 <FormItem key={servicio.id} className="flex flex-row items-center space-x-3 space-y-0">
                                   <FormControl>
                                     <Checkbox

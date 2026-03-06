@@ -129,12 +129,16 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
 
   const filteredCaracteristicas = React.useMemo(() => {
     if (!ambitoId) return [];
-    return catalogs.caracteristicas.filter((c) => c.ambitoId === ambitoId);
+    return catalogs.caracteristicas
+      .filter((c) => c.ambitoId === ambitoId)
+      .sort((a,b) => a.orden - b.orden);
   }, [ambitoId, catalogs.caracteristicas]);
 
   const filteredElementos = React.useMemo(() => {
     if (!caracteristicaId) return [];
-    return catalogs.elementosMedibles.filter((e) => e.caracteristicaId === caracteristicaId);
+    return catalogs.elementosMedibles
+      .filter((e) => e.caracteristicaId === caracteristicaId)
+      .sort((a,b) => a.orden - b.orden);
   }, [caracteristicaId, catalogs.elementosMedibles]);
   
   const hasClassification = ambitoId || caracteristicaId || elementoMedibleId;
@@ -163,7 +167,7 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
         filtered = filtered.filter(doc => doc.id !== document.id);
     }
 
-    return filtered;
+    return filtered.sort((a, b) => a.titulo.localeCompare(b.titulo));
   }, [documents, ambitoId, caracteristicaId, elementoMedibleId, linkableDocTypeIds, hasClassification, isEditing, document]);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -390,7 +394,7 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {catalogs.tiposDocumento.map((tipo) => (
+                      {[...catalogs.tiposDocumento].sort((a, b) => a.nombre.localeCompare(b.nombre)).map((tipo) => (
                         <SelectItem key={tipo.id} value={tipo.id}>
                           {tipo.nombre}
                         </SelectItem>
@@ -427,7 +431,7 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {catalogs.estadosAcreditacionDoc.map((estado) => (
+                      {[...catalogs.estadosAcreditacionDoc].sort((a, b) => a.nombre.localeCompare(b.nombre)).map((estado) => (
                         <SelectItem key={estado.id} value={estado.id}>
                           {estado.nombre}
                         </SelectItem>
@@ -461,7 +465,7 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
                     <FormLabel>Ámbito</FormLabel>
                     <Select onValueChange={(value) => { field.onChange(value); form.setValue("caracteristicaId", ''); form.setValue("elementoMedibleId", '');}} value={field.value || ''}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un ámbito" /></SelectTrigger></FormControl>
-                        <SelectContent>{catalogs.ambitos.map((a) => (<SelectItem key={a.id} value={a.id}>{a.nombre}</SelectItem>))}</SelectContent>
+                        <SelectContent>{[...catalogs.ambitos].sort((a, b) => a.orden - b.orden).map((a) => (<SelectItem key={a.id} value={a.id}>{a.nombre}</SelectItem>))}</SelectContent>
                     </Select>
                     <FormMessage />
                     </FormItem>
@@ -568,7 +572,7 @@ export function DocumentForm({ catalogs, documents, document }: DocumentFormProp
                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                       <ScrollArea className="h-48">
                         <div className="p-2 space-y-1">
-                          {catalogs.servicios.map((servicio) => (
+                          {[...catalogs.servicios].sort((a,b) => a.nombre.localeCompare(b.nombre)).map((servicio) => (
                             <FormItem key={servicio.id} className="flex flex-row items-center space-x-3 space-y-0">
                               <FormControl>
                                 <Checkbox
