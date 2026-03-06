@@ -119,7 +119,6 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
         onSave();
       } else {
         router.push("/admin/usuarios");
-        router.refresh();
       }
     } catch (error: any) {
       console.error(error);

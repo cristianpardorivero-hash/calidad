@@ -273,7 +273,6 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
                             description: `Se ha creado la versión ${newData.version} de "${newData.titulo}".`,
                         });
                         router.push(`/documentos/${document.id}`);
-                        router.refresh();
                     } catch(e) {
                         console.error("Error creating new version:", e);
                         setIsSubmitting(false);
@@ -307,7 +306,6 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
                 description: `El documento "${dataToUpdate.titulo}" ha sido guardado.`,
             });
             router.push(`/documentos/${document.id}`);
-            router.refresh(); // Refresh previous page to show updated data
         } catch(e) {
             console.error(e);
             toast({

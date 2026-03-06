@@ -142,7 +142,6 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
         onSave();
       } else {
         router.push("/admin/catalogos");
-        router.refresh();
       }
     } catch (error) {
       console.error(error);
@@ -254,5 +253,3 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
     </Form>
   );
 }
-
-    
