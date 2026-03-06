@@ -27,6 +27,8 @@ interface DocumentPreviewModalProps {
   onOpenChange: (isOpen: boolean) => void;
 }
 
+const PREVIEWABLE_EXTENSIONS = ["pdf", "docx", "xlsx"];
+
 export function DocumentPreviewModal({
   documento,
   isOpen,
@@ -38,8 +40,10 @@ export function DocumentPreviewModal({
 
   useEffect(() => {
     if (!isOpen || !documento) return;
+    
+    const isPreviewable = PREVIEWABLE_EXTENSIONS.includes(documento.fileExt?.toLowerCase());
 
-    if (documento.fileExt?.toLowerCase() !== "pdf") {
+    if (!isPreviewable) {
       setLoading(false);
       setError(null);
       setFileUrl(null);
@@ -54,6 +58,7 @@ export function DocumentPreviewModal({
 
     const fetchFileUrl = async () => {
       try {
+        // We must fetch a fresh URL because the tokens expire.
         const storageRef = ref(storage, documento.storagePath);
         const url = await getDownloadURL(storageRef);
 
@@ -61,7 +66,7 @@ export function DocumentPreviewModal({
           setFileUrl(url);
         }
       } catch (e: any) {
-        console.error("Error getting PDF URL:", e);
+        console.error("Error getting file URL:", e);
 
         if (!isCancelled) {
           if (e?.code === "storage/object-not-found") {
@@ -69,7 +74,7 @@ export function DocumentPreviewModal({
           } else if (e?.code === "storage/unauthorized") {
             setError("No tienes permiso para ver este archivo.");
           } else {
-            setError("Ocurrió un error al cargar la previsualización del PDF.");
+            setError("Ocurrió un error al cargar la previsualización.");
           }
         }
       } finally {
@@ -87,11 +92,14 @@ export function DocumentPreviewModal({
   }, [isOpen, documento]);
 
   const handleDownload = () => {
-    if (!documento || !fileUrl) return;
+    if (!documento) return;
+    // Use the original downloadUrl from the document object as it is the most reliable source
+    const urlToDownload = documento.downloadUrl;
+    if (!urlToDownload) return;
 
     const link = document.createElement("a");
-    link.href = fileUrl;
-    link.download = documento.fileName || "documento.pdf";
+    link.href = urlToDownload;
+    link.download = documento.fileName || "documento";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -116,7 +124,7 @@ export function DocumentPreviewModal({
       );
     }
 
-    if (documento && documento.fileExt?.toLowerCase() !== "pdf") {
+    if (documento && !PREVIEWABLE_EXTENSIONS.includes(documento.fileExt?.toLowerCase())) {
       return (
         <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-lg h-[70vh]">
           <FileText className="h-16 w-16 text-muted-foreground" />
@@ -130,12 +138,14 @@ export function DocumentPreviewModal({
     }
 
     if (fileUrl) {
+      const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`;
       return (
         <div className="h-[70vh] w-full rounded-md border overflow-hidden bg-white">
           <iframe
-            src={fileUrl}
-            title={documento?.titulo || "Vista previa PDF"}
+            src={viewerUrl}
+            title={documento?.titulo || "Vista previa"}
             className="w-full h-full"
+            frameBorder="0"
           />
         </div>
       );
@@ -163,7 +173,7 @@ export function DocumentPreviewModal({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cerrar
             </Button>
-            <Button onClick={handleDownload} disabled={!documento || !fileUrl}>
+            <Button onClick={handleDownload} disabled={!documento}>
               <Download className="mr-2 h-4 w-4" />
               Descargar
             </Button>
