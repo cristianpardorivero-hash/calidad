@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  transpilePackages: ['react-pdf', 'pdfjs-dist'],
   images: {
     remotePatterns: [
       {
