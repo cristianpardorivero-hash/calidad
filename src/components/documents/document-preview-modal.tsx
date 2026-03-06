@@ -15,7 +15,6 @@ import {
   FileText,
   AlertTriangle,
   Loader2,
-  ExternalLink,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { Documento } from "@/lib/types";
@@ -33,143 +32,240 @@ export function DocumentPreviewModal({
   isOpen,
   onOpenChange,
 }: DocumentPreviewModalProps) {
+
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isOpen || !documento) {
+
+    if (!isOpen || !documento) return;
+
+    const ext = documento.fileExt?.toLowerCase();
+
+    if (ext !== "pdf") {
       setFileUrl(null);
       setError(null);
-      setLoading(false);
       return;
     }
 
-    let isCancelled = false;
+    let cancelled = false;
 
     setLoading(true);
     setError(null);
-    setFileUrl(null);
 
-    const fetchFileUrl = async () => {
+    const loadUrl = async () => {
+
       try {
+
         const storageRef = ref(storage, documento.storagePath);
         const url = await getDownloadURL(storageRef);
 
-        if (!isCancelled) {
+        if (!cancelled) {
           setFileUrl(url);
         }
-      } catch (e: any) {
-        console.error("Error getting file URL:", e);
 
-        if (!isCancelled) {
+      } catch (e: any) {
+
+        console.error("Error loading PDF:", e);
+
+        if (!cancelled) {
+
           if (e?.code === "storage/object-not-found") {
-            setError("El archivo no se encontró en el servidor.");
-          } else if (e?.code === "storage/unauthorized") {
-            setError("No tienes permiso para ver este archivo.");
-          } else {
-            setError("Ocurrió un error al intentar acceder al archivo.");
+            setError("El archivo no existe en el servidor.");
           }
+          else if (e?.code === "storage/unauthorized") {
+            setError("No tienes permiso para acceder a este documento.");
+          }
+          else {
+            setError("Error al cargar la previsualización del documento.");
+          }
+
         }
+
       } finally {
-        if (!isCancelled) {
+
+        if (!cancelled) {
           setLoading(false);
         }
+
       }
+
     };
 
-    fetchFileUrl();
+    loadUrl();
 
     return () => {
-      isCancelled = true;
+      cancelled = true;
     };
+
   }, [isOpen, documento]);
 
+
+
   const handleDownload = () => {
-    const urlToDownload = fileUrl || documento?.downloadUrl;
-    if (!documento || !urlToDownload) return;
+
+    const url = fileUrl || documento?.downloadUrl;
+
+    if (!url || !documento) return;
 
     const link = document.createElement("a");
-    link.href = urlToDownload;
-    link.download = documento.fileName || "documento";
+    link.href = url;
+    link.download = documento.fileName || "documento.pdf";
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
   };
 
+
+
   const renderContent = () => {
+
     if (loading) {
+
       return (
-        <div className="flex flex-col h-[200px] w-full items-center justify-center text-center p-8 bg-muted rounded-lg">
+        <div className="flex h-[70vh] items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <p className="mt-4 font-semibold">Obteniendo enlace seguro...</p>
         </div>
       );
+
     }
 
     if (error) {
+
       return (
         <Alert variant="destructive" className="h-full">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Error al obtener el archivo</AlertTitle>
+          <AlertTitle>Error de previsualización</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       );
+
     }
 
-    if (fileUrl) {
-       return (
-        <div className="flex flex-col h-[200px] w-full items-center justify-center text-center p-8 bg-muted rounded-lg">
+    if (documento?.fileExt?.toLowerCase() !== "pdf") {
+
+      return (
+        <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-lg h-[70vh]">
           <FileText className="h-16 w-16 text-muted-foreground" />
-          <p className="mt-4 font-semibold">El archivo está listo</p>
+
+          <p className="mt-4 font-semibold">
+            No hay previsualización disponible
+          </p>
+
           <p className="text-muted-foreground text-sm mt-1">
-            Puedes abrirlo en una nueva pestaña o descargarlo a tu dispositivo.
+            Este visor solo permite visualizar archivos <strong>PDF</strong>.
+          </p>
+
+          <p className="text-muted-foreground text-sm">
+            Puedes descargar el archivo para verlo.
           </p>
         </div>
       );
+
+    }
+
+    if (fileUrl) {
+
+      return (
+        <div className="h-[70vh] w-full rounded-md border overflow-hidden bg-white">
+
+          {/* visor principal */}
+          <iframe
+            src={fileUrl}
+            className="w-full h-full"
+            title={documento?.titulo || "Vista previa PDF"}
+          />
+
+          {/* fallback */}
+          <object
+            data={fileUrl}
+            type="application/pdf"
+            className="hidden"
+          >
+            <div className="flex h-full items-center justify-center p-6 text-center">
+
+              <div>
+
+                <p className="font-semibold">
+                  No se pudo mostrar el PDF en el navegador
+                </p>
+
+                <p className="text-sm text-muted-foreground mt-2">
+                  Usa el botón Descargar para abrirlo.
+                </p>
+
+              </div>
+
+            </div>
+          </object>
+
+        </div>
+      );
+
     }
 
     return null;
+
   };
 
+
+
   return (
+
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+
+      <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
+
         <DialogHeader>
-          <DialogTitle className="truncate pr-8">{documento?.titulo}</DialogTitle>
+
+          <DialogTitle className="truncate pr-8">
+            {documento?.titulo}
+          </DialogTitle>
+
           <DialogDescription>
-            Elige una acción para el documento.
+            Previsualización del documento PDF.
           </DialogDescription>
+
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 py-4">
+
+        <div className="flex-1 min-h-0">
+
           {renderContent()}
+
         </div>
 
+
         <DialogFooter className="pt-4">
-          <div className="flex w-full justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+
+          <div className="flex gap-2">
+
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cerrar
             </Button>
-            <Button
-              asChild
-              disabled={loading || !fileUrl}
-            >
-              <a href={fileUrl || ''} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Abrir en nueva pestaña
-              </a>
-            </Button>
+
             <Button
               onClick={handleDownload}
-              disabled={loading || !fileUrl}
+              disabled={!fileUrl && !documento?.downloadUrl}
             >
               <Download className="mr-2 h-4 w-4" />
               Descargar
             </Button>
+
           </div>
+
         </DialogFooter>
+
       </DialogContent>
+
     </Dialog>
+
   );
+
 }
