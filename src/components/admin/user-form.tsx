@@ -27,15 +27,30 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save } from "lucide-react";
+import { ChevronsUpDown, Loader2, Save } from "lucide-react";
 import { addUser, updateUser } from "@/lib/data";
 import { useAuth } from "@/hooks/use-auth";
+import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
+import { Checkbox } from "../ui/checkbox";
+import { ScrollArea } from "../ui/scroll-area";
+import { cn } from "@/lib/utils";
+
+const availablePages = [
+  { id: "/dashboard", label: "Dashboard" },
+  { id: "/documentos", label: "Explorar Documentos" },
+  { id: "/documentos/nuevo", label: "Subir Documento" },
+  { id: "/admin/usuarios", label: "Gestión de Usuarios" },
+  { id: "/admin/catalogos", label: "Gestión de Catálogos" },
+  { id: "/admin/auditoria", label: "Auditoría" },
+  { id: "/admin/configuracion", label: "Parámetros" },
+];
 
 const baseSchema = z.object({
   displayName: z.string().min(3, "El nombre debe tener al menos 3 caracteres."),
   email: z.string().email("Correo electrónico inválido."),
   role: z.enum(["admin", "editor", "lector"], { required_error: "Debe seleccionar un rol."}),
   servicioId: z.string().optional(),
+  allowedPages: z.array(z.string()).optional(),
 });
 
 const createSchema = baseSchema.extend({
@@ -72,12 +87,14 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
       email: user?.email || "",
       role: user?.role || "lector",
       servicioId: user?.servicioId || "",
+      allowedPages: user?.allowedPages || [],
     } : {
       displayName: "",
       email: "",
       role: "lector",
       servicioId: "",
-      password: ""
+      password: "",
+      allowedPages: [],
     },
   });
 
@@ -193,6 +210,61 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
                 )}
             />
         </div>
+        <div className="grid grid-cols-1">
+          <FormField
+            control={form.control}
+            name="allowedPages"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Permisos de Página Específicos (Opcional)</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className={cn("w-full justify-between", !field.value?.length && "text-muted-foreground")}
+                      >
+                        <span className="truncate">
+                          {field.value && field.value.length > 0
+                            ? `${field.value.length} página(s) seleccionada(s)`
+                            : "Seleccionar páginas"}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <ScrollArea className="h-48">
+                      <div className="p-2 space-y-1">
+                        {availablePages.map((page) => (
+                          <FormItem key={page.id} className="flex flex-row items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value?.includes(page.id)}
+                                onCheckedChange={(checked) => {
+                                  const currentValues = field.value || [];
+                                  return checked
+                                    ? field.onChange([...currentValues, page.id])
+                                    : field.onChange(currentValues.filter((id) => id !== page.id));
+                                }}
+                              />
+                            </FormControl>
+                            <FormLabel className="font-normal">{page.label}</FormLabel>
+                          </FormItem>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </PopoverContent>
+                </Popover>
+                <FormDescription>
+                  Si se seleccionan páginas, se ignorarán los permisos del rol. Dejar en blanco para usar los permisos del rol.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <div className="flex justify-end gap-4 pt-4">
             <Button type="button" variant="outline" onClick={onCancel || (() => router.back())} disabled={isSubmitting}>
                 Cancelar
@@ -206,4 +278,3 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
     </Form>
   );
 }
-

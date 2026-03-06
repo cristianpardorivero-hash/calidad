@@ -40,6 +40,13 @@
           "type": "string",
           "description": "Timestamp when the user account was last updated.",
           "format": "date-time"
+        },
+        "allowedPages": {
+          "type": "array",
+          "description": "Optional list of specific page paths this user is allowed to access, overriding the default role-based permissions.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [

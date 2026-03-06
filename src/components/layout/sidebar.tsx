@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 
 import {
   SidebarContent,
@@ -77,7 +76,25 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
 
-  const isUserInRole = (roles: string[]) => user && roles.includes(user.role);
+  const userHasAccess = (itemRoles: string[], itemHref: string) => {
+    if (!user) return false;
+
+    // Priority 1: User-specific page permissions.
+    // If allowedPages is defined and has items, it is the source of truth.
+    if (user.allowedPages && user.allowedPages.length > 0) {
+      return user.allowedPages.includes(itemHref);
+    }
+
+    // Priority 2: Fallback to role-based permissions.
+    return itemRoles.includes(user.role);
+  };
+
+  const visibleMenuItems = menuItems.filter((item) =>
+    userHasAccess(item.roles, item.href)
+  );
+  const visibleAdminItems = adminMenuItems.filter((item) =>
+    userHasAccess(item.roles, item.href)
+  );
 
   return (
     <>
@@ -92,7 +109,7 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarMenu>
-          {menuItems.filter(item => isUserInRole(item.roles)).map((item) => (
+          {visibleMenuItems.map((item) => (
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild
@@ -107,9 +124,11 @@ export function AppSidebar() {
             </SidebarMenuItem>
           ))}
 
-          {isUserInRole(['admin']) && <div className="my-2 border-t border-sidebar-border -mx-2"></div>}
-          
-          {adminMenuItems.filter(item => isUserInRole(item.roles)).map((item) => (
+          {visibleAdminItems.length > 0 && (
+            <div className="my-2 border-t border-sidebar-border -mx-2"></div>
+          )}
+
+          {visibleAdminItems.map((item) => (
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild

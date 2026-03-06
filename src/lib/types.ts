@@ -12,6 +12,7 @@ export interface UserProfile {
   updatedAt: Date;
   isDeleted?: boolean;
   deletedAt?: Date;
+  allowedPages?: string[];
 }
 
 export interface Hospital {
