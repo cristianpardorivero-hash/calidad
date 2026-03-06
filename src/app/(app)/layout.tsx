@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   SidebarProvider,
@@ -45,7 +45,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </Sidebar>
       <SidebarInset>
         <AppHeader />
-        <main className="min-h-[calc(100vh-4rem-1px)] p-4 md:p-6 lg:p-8">
+        <main className="min-h-[calc(100vh-4rem-1px)] bg-secondary p-4 md:p-6 lg:p-8">
           {children}
         </main>
       </SidebarInset>
