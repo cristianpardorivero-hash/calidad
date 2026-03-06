@@ -69,29 +69,36 @@ export function DocumentsTable({
 
   const handleDeleteConfirm = async () => {
     if (!docToDelete || !user) return;
-
+  
     const deletingDoc = docToDelete;
-    setLoadingStates(prev => ({ ...prev, [deletingDoc.id]: true }));
-
+  
+    setLoadingStates((prev) => ({ ...prev, [deletingDoc.id]: true }));
+  
     try {
       await updateDocument(deletingDoc.id, {
         isDeleted: true,
         deletedAt: new Date(),
         deletedByUid: user.uid,
       });
-
-      setDocToDelete(null); // Close dialog on success
-
+  
+      setDocToDelete(null);
+  
       toast({
-        title: "Documento Eliminado",
+        title: "Documento eliminado",
         description: `El documento "${deletingDoc.titulo}" ha sido eliminado.`,
       });
     } catch (e) {
       console.error(e);
-      toast({ variant: 'destructive', title: "Error", description: "No se pudo eliminar el documento." });
-      // Don't close the dialog on error
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo eliminar el documento.",
+      });
     } finally {
-      setLoadingStates(prev => ({ ...prev, [deletingDoc.id]: false }));
+      setLoadingStates((prev) => ({
+        ...prev,
+        [deletingDoc.id]: false,
+      }));
     }
   };
 
@@ -121,12 +128,8 @@ export function DocumentsTable({
 
       if (query) {
         const lowerQuery = query.toLowerCase();
-        if (
-          !doc.titulo.toLowerCase().includes(lowerQuery) &&
-          !doc.responsableNombre.toLowerCase().includes(lowerQuery) &&
-          !doc.tags?.some(tag => tag.toLowerCase().includes(lowerQuery))
-        ) {
-          return false;
+        if (!doc.searchKeywords?.some(keyword => keyword.includes(lowerQuery))) {
+            return false;
         }
       }
 

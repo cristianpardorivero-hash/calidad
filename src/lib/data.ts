@@ -550,9 +550,10 @@ export async function updateDocument(docId: string, updates: Partial<Documento>)
 
   if (originalData) {
       const newTitle = updates.titulo ?? originalData.titulo;
+      const newDescription = updates.descripcion ?? originalData.descripcion;
       const newResponsable = updates.responsableNombre ?? originalData.responsableNombre;
       const newTags = updates.tags ?? originalData.tags;
-      dataToUpdate.searchKeywords = [newTitle, newResponsable, ...(newTags || [])].filter(Boolean).map(kw => String(kw).toLowerCase());
+      dataToUpdate.searchKeywords = [newTitle, newDescription, newResponsable, ...(newTags || [])].filter(Boolean).map(kw => String(kw).toLowerCase());
   }
 
   // Remove fields that should not be updated from client
