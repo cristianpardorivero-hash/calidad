@@ -80,12 +80,11 @@ export async function getDocuments(
     return {
       id: doc.id,
       ...data,
-      // Convert Firestore Timestamps to JS Dates
-      fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
-      fechaVigenciaDesde: (data.fechaVigenciaDesde as Timestamp)?.toDate(),
-      fechaVigenciaHasta: (data.fechaVigenciaHasta as Timestamp)?.toDate(),
-      createdAt: (data.createdAt as Timestamp)?.toDate(),
-      updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+      fechaDocumento: data.fechaDocumento ? (data.fechaDocumento as Timestamp).toDate() : undefined,
+      fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
+      fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
+      createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : undefined,
+      updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
     } as Documento;
   });
 }
@@ -101,12 +100,11 @@ export async function getDocumentById(
     return {
       id: docSnap.id,
       ...data,
-      // Convert Firestore Timestamps to JS Dates
-      fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
-      fechaVigenciaDesde: (data.fechaVigenciaDesde as Timestamp)?.toDate(),
-      fechaVigenciaHasta: (data.fechaVigenciaHasta as Timestamp)?.toDate(),
-      createdAt: (data.createdAt as Timestamp)?.toDate(),
-      updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+      fechaDocumento: data.fechaDocumento ? (data.fechaDocumento as Timestamp).toDate() : undefined,
+      fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
+      fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
+      createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : undefined,
+      updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
     } as Documento;
   }
   return undefined;
@@ -125,14 +123,13 @@ export async function getLinkedDocuments(docId: string, hospitalId: string): Pro
     return snapshot.docs.map((doc) => {
         const data = doc.data();
         return {
-        id: doc.id,
-        ...data,
-        // Convert Firestore Timestamps to JS Dates
-        fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
-        fechaVigenciaDesde: (data.fechaVigenciaDesde as Timestamp)?.toDate(),
-        fechaVigenciaHasta: (data.fechaVigenciaHasta as Timestamp)?.toDate(),
-        createdAt: (data.createdAt as Timestamp)?.toDate(),
-        updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+            id: doc.id,
+            ...data,
+            fechaDocumento: data.fechaDocumento ? (data.fechaDocumento as Timestamp).toDate() : undefined,
+            fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
+            fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
+            createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : undefined,
+            updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
         } as Documento;
     });
 }
@@ -168,11 +165,11 @@ export async function getMyDocuments(userId: string, userEmail: string, hospital
             docsMap.set(doc.id, {
                 id: doc.id,
                 ...data,
-                fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
-                fechaVigenciaDesde: (data.fechaVigenciaDesde as Timestamp)?.toDate(),
-                fechaVigenciaHasta: (data.fechaVigenciaHasta as Timestamp)?.toDate(),
-                createdAt: (data.createdAt as Timestamp)?.toDate(),
-                updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+                fechaDocumento: data.fechaDocumento ? (data.fechaDocumento as Timestamp).toDate() : undefined,
+                fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
+                fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
+                createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : undefined,
+                updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
             } as Documento);
         }
     });
@@ -241,11 +238,11 @@ export async function getDashboardKPIs(hospitalId: string) {
         return {
           id: doc.id,
           ...data,
-          fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
-          fechaVigenciaDesde: (data.fechaVigenciaDesde as Timestamp)?.toDate(),
-          fechaVigenciaHasta: (data.fechaVigenciaHasta as Timestamp)?.toDate(),
-          createdAt: (data.createdAt as Timestamp)?.toDate(),
-          updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+          fechaDocumento: data.fechaDocumento ? (data.fechaDocumento as Timestamp).toDate() : undefined,
+          fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
+          fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
+          createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : undefined,
+          updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
         } as Documento;
     });
 
@@ -404,11 +401,11 @@ export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | 
     return {
         id: newDocSnap.id,
         ...data,
-        fechaDocumento: (data?.fechaDocumento as Timestamp)?.toDate(),
-        fechaVigenciaDesde: (data?.fechaVigenciaDesde as Timestamp)?.toDate(),
-        fechaVigenciaHasta: (data?.fechaVigenciaHasta as Timestamp)?.toDate(),
-        createdAt: (data?.createdAt as Timestamp)?.toDate(),
-        updatedAt: (data?.updatedAt as Timestamp)?.toDate(),
+        fechaDocumento: data?.fechaDocumento ? (data.fechaDocumento as Timestamp).toDate() : undefined,
+        fechaVigenciaDesde: data?.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
+        fechaVigenciaHasta: data?.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
+        createdAt: data?.createdAt ? (data.createdAt as Timestamp).toDate() : undefined,
+        updatedAt: data?.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
     } as Documento;
   } catch (error) {
     errorEmitter.emit(
