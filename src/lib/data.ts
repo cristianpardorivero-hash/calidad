@@ -377,16 +377,43 @@ export async function updateUser(
 export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | "updatedAt">): Promise<Documento> {
   const collRef = collection(db, "documents");
   
-  const dataToSave: any = {
-    ...docData,
+  // Explicitly build the data object to avoid spreading `undefined` values.
+  const dataToSave: Record<string, any> = {
+    // Copy all known, required properties
+    titulo: docData.titulo,
+    tipoDocumentoId: docData.tipoDocumentoId,
+    version: docData.version,
+    estadoDocId: docData.estadoDocId,
+    ambitoId: docData.ambitoId,
+    caracteristicaId: docData.caracteristicaId,
+    elementoMedibleId: docData.elementoMedibleId,
+    responsableNombre: docData.responsableNombre,
+    responsableEmail: docData.responsableEmail,
+    hospitalId: docData.hospitalId,
+    fileName: docData.fileName,
+    fileExt: docData.fileExt,
+    fileSize: docData.fileSize,
+    mimeType: docData.mimeType,
+    storagePath: docData.storagePath,
+    downloadUrl: docData.downloadUrl,
+    createdByUid: docData.createdByUid,
+    createdByEmail: docData.createdByEmail,
+    isDeleted: docData.isDeleted,
+    searchKeywords: docData.searchKeywords,
+    // Add server timestamps
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
+    // Convert required date to Timestamp
+    fechaDocumento: Timestamp.fromDate(docData.fechaDocumento),
   };
 
-  if (docData.fechaDocumento) {
-    dataToSave.fechaDocumento = Timestamp.fromDate(docData.fechaDocumento);
-  }
-  
+  // Conditionally add optional fields to avoid `undefined`
+  if (docData.descripcion) dataToSave.descripcion = docData.descripcion;
+  if (docData.servicioIds && docData.servicioIds.length > 0) dataToSave.servicioIds = docData.servicioIds;
+  if (docData.tags && docData.tags.length > 0) dataToSave.tags = docData.tags;
+  if (docData.linkedDocumentId) dataToSave.linkedDocumentId = docData.linkedDocumentId;
+
+  // Conditionally convert optional dates to Timestamps
   if (docData.fechaVigenciaDesde) {
     dataToSave.fechaVigenciaDesde = Timestamp.fromDate(docData.fechaVigenciaDesde);
   }
