@@ -50,6 +50,14 @@ import { Calendar } from "../ui/calendar";
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
 const ALLOWED_EXTENSIONS = ["pdf", "docx", "xlsx"];
 
+const getSafeFileName = (fileName: string): string => {
+  return fileName
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "_")
+    .replace(/[^a-zA-Z0-9._-]/g, "");
+}
+
 const getFormSchema = (isEditing: boolean, isNewVersion: boolean) => z.object({
   titulo: z.string().min(5, "El título debe tener al menos 5 caracteres.").default(""),
   descripcion: z.string().optional().default(""),
@@ -86,13 +94,6 @@ const wizardSteps = [
   { id: 4, name: 'Extras y Finalizar' },
 ];
 
-const getSafeFileName = (fileName: string): string => {
-  return fileName
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, "_")
-    .replace(/[^a-zA-Z0-9._-]/g, "");
-}
 
 const Stepper = ({ currentStep }: { currentStep: number }) => (
     <div className="flex items-center mb-8">
@@ -117,7 +118,9 @@ const Stepper = ({ currentStep }: { currentStep: number }) => (
           {index < wizardSteps.length - 1 && (
             <div className={cn(
                 'flex-auto border-t-2 transition-colors duration-500',
-                currentStep > step.id + 1 || currentStep === step.id + 1 ? 'border-primary' : 'border-border'
+                currentStep > step.id + 1 ? 'border-primary' :
+                currentStep === step.id + 1 ? 'border-primary' :
+                'border-border'
             )} />
           )}
         </React.Fragment>
@@ -237,7 +240,7 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
     const file = e.target.files?.[0];
     if (file) {
       const fileExt = file.name.split(".").pop()?.toLowerCase();
-      if (!fileExt || !ALLOWED_EXTENSIONS.includes(fileExt)) {
+      if (!fileExt || !ALLOWED_EXTENSIONS.includes(fileExt as any)) {
         form.setError("file", { message: "Tipo de archivo no permitido." });
         return;
       }
@@ -346,9 +349,6 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
         const newData: Documento = {
           ...document,
           ...values,
-          fechaDocumento: values.fechaDocumento,
-          fechaVigenciaDesde: values.fechaVigenciaDesde,
-          fechaVigenciaHasta: values.fechaVigenciaHasta,
           fileName: file.name,
           fileExt,
           fileSize: file.size,
@@ -381,20 +381,22 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
         const { downloadURL, storagePath, mimeType } = await uploadFile(file, user.hospitalId);
 
         const tagsArray = values.tags?.split(",").map(t => t.trim()).filter(Boolean) || [];
-
-        const searchKeywords = [
-            values.titulo,
-            values.descripcion,
-            values.responsableNombre,
-            ...tagsArray,
-        ].filter((kw): kw is string => typeof kw === 'string' && kw.trim().length > 0)
-         .map(kw => kw.toLowerCase());
         
+        const searchKeywords: string[] = [];
+        const addKeywords = (text: string | undefined | null) => {
+            if (typeof text === "string" && text.trim()) {
+                searchKeywords.push(text.trim().toLowerCase());
+            }
+        };
+        addKeywords(values.titulo);
+        addKeywords(values.descripcion);
+        addKeywords(values.responsableNombre);
+        tagsArray.forEach(addKeywords);
         const uniqueKeywords = [...new Set(searchKeywords)];
 
         const fileExt = file.name.split(".").pop() as "pdf" | "docx" | "xlsx";
-
-        const docData: Omit<Documento, 'id' | 'createdAt' | 'updatedAt'> = {
+        
+        const docData: Record<string, any> = {
             titulo: values.titulo,
             tipoDocumentoId: values.tipoDocumentoId,
             version: values.version,
@@ -416,17 +418,16 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
             createdByEmail: firebaseUser.email || 'N/A',
             isDeleted: false,
             searchKeywords: uniqueKeywords,
-            
-            // Optional fields - only add if they have a value
-            ...(values.descripcion && { descripcion: values.descripcion }),
-            ...(values.servicioIds && values.servicioIds.length > 0 && { servicioIds: values.servicioIds }),
-            ...(values.tags && { tags: tagsArray }),
-            ...(values.linkedDocumentId && { linkedDocumentId: values.linkedDocumentId }),
-            ...(values.fechaVigenciaDesde && { fechaVigenciaDesde: values.fechaVigenciaDesde }),
-            ...(values.fechaVigenciaHasta && { fechaVigenciaHasta: values.fechaVigenciaHasta }),
         };
 
-        const savedDoc = await addDocument(docData);
+        if (values.descripcion) docData.descripcion = values.descripcion;
+        if (values.servicioIds && values.servicioIds.length > 0) docData.servicioIds = values.servicioIds;
+        if (tagsArray.length > 0) docData.tags = tagsArray;
+        if (values.linkedDocumentId) docData.linkedDocumentId = values.linkedDocumentId;
+        if (values.fechaVigenciaDesde) docData.fechaVigenciaDesde = values.fechaVigenciaDesde;
+        if (values.fechaVigenciaHasta) docData.fechaVigenciaHasta = values.fechaVigenciaHasta;
+
+        const savedDoc = await addDocument(docData as Omit<Documento, 'id' | 'createdAt' | 'updatedAt'>);
         toast({ title: "Documento subido con éxito", description: `El documento "${savedDoc.titulo}" ha sido guardado.` });
         router.push(`/documentos/${savedDoc.id}`);
       }
