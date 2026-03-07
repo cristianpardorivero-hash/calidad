@@ -360,32 +360,27 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
                 getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
                     try {
                         const { file, ...restValues } = values;
-
                         const tagsArray = values.tags?.split(",").map(t => t.trim()).filter(Boolean) || [];
 
-                        const potentialKeywords: (string | undefined)[] = [
-                            values.titulo,
-                            values.descripcion,
-                            values.responsableNombre,
-                            ...tagsArray,
-                        ];
-
-                        const keywords: string[] = [];
-                        potentialKeywords.forEach(kw => {
-                            if (typeof kw === 'string' && kw.trim().length > 0) {
-                                keywords.push(kw.trim().toLowerCase());
+                        // --- Robust Keyword Generation ---
+                        const searchKeywords: string[] = [];
+                        const addKeywords = (text: string | undefined | null) => {
+                            if (typeof text === 'string' && text.trim()) {
+                                const lowerText = text.trim().toLowerCase();
+                                searchKeywords.push(lowerText);
+                                lowerText.split(/\s+/).forEach(word => {
+                                    if (word.length > 2) {
+                                        searchKeywords.push(word);
+                                    }
+                                });
                             }
-                        });
-
-                        if (values.titulo) {
-                            values.titulo.split(' ').forEach(word => {
-                                if (word.length > 2) {
-                                    keywords.push(word.toLowerCase());
-                                }
-                            });
-                        }
-                        
-                        const uniqueKeywords = [...new Set(keywords)];
+                        };
+                        addKeywords(values.titulo);
+                        addKeywords(values.descripcion);
+                        addKeywords(values.responsableNombre);
+                        tagsArray.forEach(addKeywords);
+                        const uniqueKeywords = [...new Set(searchKeywords)];
+                        // --- End of Robust Keyword Generation ---
 
                         const fileExt = fileToUpload.name.split(".").pop() as "pdf" | "docx" | "xlsx";
 
