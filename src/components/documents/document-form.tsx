@@ -358,16 +358,46 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
             },
             () => {
                 getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
-                    const { fechaVigenciaDesde, fechaVigenciaHasta, file, ...restValues } = values;
-                    const fileExt = fileToUpload.name.split(".").pop() as "pdf" | "docx" | "xlsx";
-                    const docData: Omit<Documento, 'id'|'createdAt'|'updatedAt'> = { ...restValues, hospitalId: user.hospitalId, fileName: fileToUpload.name, fileExt: fileExt, fileSize: fileToUpload.size, mimeType: fileToUpload.type, storagePath: storagePath, downloadUrl: downloadURL, tags: values.tags?.split(",").map(t => t.trim()).filter(Boolean), createdByUid: firebaseUser.uid, createdByEmail: firebaseUser.email || 'N/A', isDeleted: false, searchKeywords: [values.titulo, values.descripcion, values.responsableNombre, ...(values.tags?.split(",").map(t => t.trim()).filter(Boolean) || [])].filter(Boolean).map(kw => String(kw).toLowerCase()), ...(fechaVigenciaDesde && { fechaVigenciaDesde }), ...(fechaVigenciaHasta && { fechaVigenciaHasta }), };
                     try {
+                        const { file, ...restValues } = values;
+
+                        const tagsArray = values.tags?.split(",").map(t => t.trim()).filter(Boolean) || [];
+
+                        const keywords = [
+                            values.titulo,
+                            values.descripcion,
+                            values.responsableNombre,
+                            ...tagsArray,
+                        ].filter(Boolean).map(kw => kw.toLowerCase());
+                        
+                        const uniqueKeywords = [...new Set(keywords)];
+
+                        const fileExt = fileToUpload.name.split(".").pop() as "pdf" | "docx" | "xlsx";
+
+                        const docData: Omit<Documento, 'id' | 'createdAt' | 'updatedAt'> = {
+                            ...restValues,
+                            hospitalId: user.hospitalId,
+                            fileName: fileToUpload.name,
+                            fileExt,
+                            fileSize: fileToUpload.size,
+                            mimeType: fileToUpload.type,
+                            storagePath: storagePath,
+                            downloadUrl: downloadURL,
+                            tags: tagsArray,
+                            createdByUid: firebaseUser.uid,
+                            createdByEmail: firebaseUser.email || 'N/A',
+                            isDeleted: false,
+                            searchKeywords: uniqueKeywords,
+                        };
+
                         const savedDoc = await addDocument(docData);
                         toast({ title: "Documento subido con éxito", description: `El documento "${savedDoc.titulo}" ha sido guardado.` });
                         router.push(`/documentos/${savedDoc.id}`);
-                    } catch(e) {
-                        console.error("DEBUG: Error al guardar metadatos:", e); setIsSubmitting(false);
-                        toast({ variant: "destructive", title: "Error al guardar en Base de Datos", description: "El archivo se subió, pero no se pudo guardar su información." });
+
+                    } catch (e: any) {
+                        console.error("Error al guardar metadatos:", e);
+                        setIsSubmitting(false);
+                        toast({ variant: "destructive", title: "Error al guardar en Base de Datos", description: e.message || "El archivo se subió, pero no se pudo guardar su información." });
                     }
                 }).catch((error) => {
                     console.error("DEBUG: Error al obtener URL:", error);
