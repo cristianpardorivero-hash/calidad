@@ -363,14 +363,18 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
 
                         const tagsArray = values.tags?.split(",").map(t => t.trim()).filter(Boolean) || [];
 
-                        const keywords = [
+                        const keywordSource = [
                             values.titulo,
                             values.descripcion,
                             values.responsableNombre,
                             ...tagsArray,
-                        ].filter(Boolean).map(kw => kw.toLowerCase());
+                        ];
                         
-                        const uniqueKeywords = [...new Set(keywords)];
+                        const searchKeywords = keywordSource
+                            .filter((kw): kw is string => typeof kw === 'string' && kw.length > 0)
+                            .map(kw => kw.toLowerCase());
+                        
+                        const uniqueKeywords = [...new Set(searchKeywords)];
 
                         const fileExt = fileToUpload.name.split(".").pop() as "pdf" | "docx" | "xlsx";
 
