@@ -34,7 +34,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -327,7 +327,7 @@ export function DocumentForm({
   const caracteristicaId = form.watch("caracteristicaId");
   const elementoMedibleId = form.watch("elementoMedibleId");
 
-  const linkableDocTypeIds = React.useMemo(() => {
+  const linkableDocTypeIds = useMemo(() => {
     const linkableNames = [
       "pauta de cotejo",
       "pauta de evaluacion",
@@ -343,14 +343,14 @@ export function DocumentForm({
     ? linkableDocTypeIds.includes(tipoDocumentoId)
     : false;
 
-  const filteredCaracteristicas = React.useMemo(() => {
+  const filteredCaracteristicas = useMemo(() => {
     if (!ambitoId) return [];
     return catalogs.caracteristicas
       .filter((c) => c.ambitoId === ambitoId)
       .sort((a, b) => a.orden - b.orden);
   }, [ambitoId, catalogs.caracteristicas]);
 
-  const filteredElementos = React.useMemo(() => {
+  const filteredElementos = useMemo(() => {
     if (!caracteristicaId) return [];
     return catalogs.elementosMedibles
       .filter((e) => e.caracteristicaId === caracteristicaId)
@@ -359,7 +359,7 @@ export function DocumentForm({
 
   const hasClassification = ambitoId || caracteristicaId || elementoMedibleId;
 
-  const linkableDocuments = React.useMemo(() => {
+  const linkableDocuments = useMemo(() => {
     if (!documents) return [];
 
     let filtered = documents.filter(
@@ -428,7 +428,6 @@ export function DocumentForm({
     const metadata: { contentType: string; contentDisposition?: string } = {
       contentType: file.type || "application/octet-stream",
     };
-
     if (file.type === "application/pdf") {
       metadata.contentDisposition = "inline";
     }
@@ -447,7 +446,10 @@ export function DocumentForm({
             (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
           setUploadProgress(progress);
         },
-        (error) => reject(error),
+        (error) => {
+          console.error("Error en subida a Storage:", error);
+          reject(error);
+        },
         async () => {
           try {
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
@@ -457,6 +459,7 @@ export function DocumentForm({
               mimeType: file.type || "application/octet-stream",
             });
           } catch (error) {
+            console.error("Error obteniendo URL de descarga:", error);
             reject(error);
           }
         }
@@ -517,9 +520,9 @@ export function DocumentForm({
     }
 
     setIsSubmitting(true);
+    setUploadProgress(0);
 
     const fechaDocumentoDate = fromDateInputValue(values.fechaDocumento);
-
     if (!fechaDocumentoDate) {
       toast({
         variant: "destructive",
@@ -529,19 +532,16 @@ export function DocumentForm({
       setIsSubmitting(false);
       return;
     }
-
     const fechaVigenciaDesdeDate = fromDateInputValue(values.fechaVigenciaDesde);
     const fechaVigenciaHastaDate = fromDateInputValue(values.fechaVigenciaHasta);
 
     try {
       if (isNewVersion && document) {
         if (!(values.file instanceof File)) {
-          form.setError("file", { message: "Debes seleccionar un archivo válido para la nueva versión." });
+          form.setError("file", { message: "Debes seleccionar un archivo válido." });
           setIsSubmitting(false);
           return;
         }
-
-        setUploadProgress(0);
 
         const file = values.file;
         const { downloadURL, storagePath, mimeType } = await uploadFile(
@@ -603,15 +603,14 @@ export function DocumentForm({
         router.push(`/documentos/${document.id}`);
         return;
       }
-
+      
+      // --- CREATION LOGIC ---
       if (!(values.file instanceof File)) {
-        form.setError("file", { message: "Debes seleccionar un archivo para subir." });
+        form.setError("file", { message: "Debes seleccionar un archivo válido." });
         setIsSubmitting(false);
         return;
       }
-
-      setUploadProgress(0);
-
+      
       const file = values.file;
       const { downloadURL, storagePath, mimeType } = await uploadFile(
         file,
@@ -622,28 +621,33 @@ export function DocumentForm({
       const tagsArray =
         values.tags?.split(",").map((t) => t.trim()).filter(Boolean) || [];
 
-      const searchKeywords: string[] = [];
+      // Robust keyword generation
+      const keywords: string[] = [];
       const addKeywords = (text: string | undefined | null) => {
-        if (typeof text === "string" && text.trim()) {
-          const lowerText = text.trim().toLowerCase();
-          searchKeywords.push(lowerText);
-          lowerText.split(/\s+/).forEach((word) => {
-            if (word.length > 2) searchKeywords.push(word);
-          });
+        if (typeof text === "string" && text.trim().length > 0) {
+          keywords.push(text.trim().toLowerCase());
         }
       };
-
+      
       addKeywords(values.titulo);
       addKeywords(values.descripcion);
       addKeywords(values.responsableNombre);
       tagsArray.forEach(addKeywords);
+      const uniqueKeywords = [...new Set(keywords)];
 
-      const uniqueKeywords = [...new Set(searchKeywords)];
-
-      const { file: ignoredFile, ...restValues } = values;
-
+      // Robust data object construction
       const docData: Omit<Documento, "id" | "createdAt" | "updatedAt"> = {
-        ...restValues,
+        titulo: values.titulo,
+        descripcion: values.descripcion || "",
+        tipoDocumentoId: values.tipoDocumentoId,
+        version: values.version,
+        estadoDocId: values.estadoDocId,
+        ambitoId: values.ambitoId,
+        caracteristicaId: values.caracteristicaId,
+        elementoMedibleId: values.elementoMedibleId,
+        servicioIds: values.servicioIds || [],
+        responsableNombre: values.responsableNombre,
+        responsableEmail: values.responsableEmail,
         fechaDocumento: fechaDocumentoDate,
         fechaVigenciaDesde: fechaVigenciaDesdeDate,
         fechaVigenciaHasta: fechaVigenciaHastaDate,
@@ -655,6 +659,7 @@ export function DocumentForm({
         storagePath,
         downloadUrl: downloadURL,
         tags: tagsArray,
+        ...(values.linkedDocumentId && { linkedDocumentId: values.linkedDocumentId }),
         createdByUid: firebaseUser.uid,
         createdByEmail: firebaseUser.email || "N/A",
         isDeleted: false,
@@ -669,17 +674,18 @@ export function DocumentForm({
       });
 
       router.push(`/documentos/${savedDoc.id}`);
+
     } catch (e: any) {
       console.error("Error general en guardado/subida:", e);
       toast({
         variant: "destructive",
         title: "Error",
-        description:
-          e?.message || e?.code || "No se pudo completar la operación.",
+        description: e?.message || e?.code || "No se pudo completar la operación. Revisa las reglas de seguridad.",
       });
-      setUploadProgress(0);
+      
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(0);
     }
   }
 
@@ -1078,7 +1084,7 @@ export function DocumentForm({
                   control={form.control}
                   name="fechaDocumento"
                   label="Fecha del documento"
-                  description="Puedes escribir la fecha manualmente o usar el calendario del navegador."
+                  description="Puedes escribir la fecha manualmente."
                   required
                   max={toDateInputValue(new Date())}
                 />
@@ -1087,14 +1093,14 @@ export function DocumentForm({
                   control={form.control}
                   name="fechaVigenciaDesde"
                   label="Vigencia Desde"
-                  description="Puedes modificarla manualmente si lo necesitas."
+                  description="Puedes modificarla manualmente."
                 />
 
                 <DateInputField
                   control={form.control}
                   name="fechaVigenciaHasta"
                   label="Vigencia Hasta"
-                  description="Puedes modificarla manualmente si lo necesitas."
+                  description="Puedes modificarla manualmente."
                 />
               </CardContent>
             </Card>
@@ -1617,7 +1623,7 @@ export function DocumentForm({
                       control={form.control}
                       name="fechaDocumento"
                       label="Fecha del documento"
-                      description="Puedes escribir la fecha manualmente o usar el calendario del navegador."
+                      description="Puedes escribir la fecha manualmente."
                       required
                       max={toDateInputValue(new Date())}
                     />
@@ -1626,14 +1632,14 @@ export function DocumentForm({
                       control={form.control}
                       name="fechaVigenciaDesde"
                       label="Vigencia Desde"
-                      description="Puedes modificarla manualmente si lo necesitas."
+                      description="Puedes modificarla manualmente."
                     />
 
                     <DateInputField
                       control={form.control}
                       name="fechaVigenciaHasta"
                       label="Vigencia Hasta"
-                      description="Puedes modificarla manualmente si lo necesitas."
+                      description="Puedes modificarla manualmente."
                     />
                   </div>
                 </CardContent>
