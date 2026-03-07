@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Catalogs, Documento } from "@/lib/types";
@@ -363,18 +364,14 @@ export function DocumentForm({ catalogs, documents, document, isNewVersion = fal
 
                         const tagsArray = values.tags?.split(",").map(t => t.trim()).filter(Boolean) || [];
 
-                        const keywordSource = [
+                        const keywords = [
                             values.titulo,
                             values.descripcion,
                             values.responsableNombre,
                             ...tagsArray,
-                        ];
+                        ].filter(Boolean).map(kw => String(kw).toLowerCase());
                         
-                        const searchKeywords = keywordSource
-                            .filter((kw): kw is string => typeof kw === 'string' && kw.length > 0)
-                            .map(kw => kw.toLowerCase());
-                        
-                        const uniqueKeywords = [...new Set(searchKeywords)];
+                        const uniqueKeywords = [...new Set(keywords)];
 
                         const fileExt = fileToUpload.name.split(".").pop() as "pdf" | "docx" | "xlsx";
 
