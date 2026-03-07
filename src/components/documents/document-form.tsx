@@ -34,7 +34,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -311,7 +311,7 @@ export function DocumentForm({
 
   const fechaDocumento = form.watch("fechaDocumento");
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (fechaDocumento && (!isEditing || isNewVersion)) {
       form.setValue("fechaVigenciaDesde", fechaDocumento, {
         shouldValidate: true,
@@ -368,10 +368,17 @@ export function DocumentForm({
 
     if (!hasClassification) return [];
 
-    if (ambitoId) filtered = filtered.filter((doc) => doc.ambitoId === ambitoId);
+    if (ambitoId) {
+      filtered = filtered.filter((doc) => doc.ambitoId === ambitoId);
+    }
     if (caracteristicaId) {
       filtered = filtered.filter(
         (doc) => doc.caracteristicaId === caracteristicaId
+      );
+    }
+    if (elementoMedibleId) {
+      filtered = filtered.filter(
+        (doc) => doc.elementoMedibleId === elementoMedibleId
       );
     }
 
@@ -384,6 +391,7 @@ export function DocumentForm({
     documents,
     ambitoId,
     caracteristicaId,
+    elementoMedibleId,
     linkableDocTypeIds,
     hasClassification,
     isEditing,
@@ -417,10 +425,13 @@ export function DocumentForm({
     const storagePath = `documentos/${hospitalId}/${Date.now()}-${safeFileName}`;
     const storageRef = ref(storage, storagePath);
 
-    const metadata = {
+    const metadata: { contentType: string; contentDisposition?: string } = {
       contentType: file.type || "application/octet-stream",
-      contentDisposition: file.type === "application/pdf" ? "inline" : undefined,
     };
+
+    if (file.type === "application/pdf") {
+      metadata.contentDisposition = "inline";
+    }
 
     return new Promise<{
       downloadURL: string;
@@ -508,22 +519,31 @@ export function DocumentForm({
     setIsSubmitting(true);
 
     const fechaDocumentoDate = fromDateInputValue(values.fechaDocumento);
+
+    if (!fechaDocumentoDate) {
+      toast({
+        variant: "destructive",
+        title: "Fecha inválida",
+        description: "Debes ingresar una fecha de documento válida.",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
     const fechaVigenciaDesdeDate = fromDateInputValue(values.fechaVigenciaDesde);
     const fechaVigenciaHastaDate = fromDateInputValue(values.fechaVigenciaHasta);
 
     try {
       if (isNewVersion && document) {
-        if (!values.file) {
-          form.setError("file", {
-            message: "El archivo es requerido para una nueva versión.",
-          });
+        if (!(values.file instanceof File)) {
+          form.setError("file", { message: "Debes seleccionar un archivo válido para la nueva versión." });
           setIsSubmitting(false);
           return;
         }
 
         setUploadProgress(0);
 
-        const file = values.file as File;
+        const file = values.file;
         const { downloadURL, storagePath, mimeType } = await uploadFile(
           file,
           user.hospitalId
@@ -584,15 +604,15 @@ export function DocumentForm({
         return;
       }
 
-      if (!values.file) {
-        form.setError("file", { message: "El archivo es requerido." });
+      if (!(values.file instanceof File)) {
+        form.setError("file", { message: "Debes seleccionar un archivo para subir." });
         setIsSubmitting(false);
         return;
       }
 
       setUploadProgress(0);
 
-      const file = values.file as File;
+      const file = values.file;
       const { downloadURL, storagePath, mimeType } = await uploadFile(
         file,
         user.hospitalId
@@ -624,7 +644,7 @@ export function DocumentForm({
 
       const docData: Omit<Documento, "id" | "createdAt" | "updatedAt"> = {
         ...restValues,
-        fechaDocumento: fechaDocumentoDate!,
+        fechaDocumento: fechaDocumentoDate,
         fechaVigenciaDesde: fechaVigenciaDesdeDate,
         fechaVigenciaHasta: fechaVigenciaHastaDate,
         hospitalId: user.hospitalId,
@@ -1067,14 +1087,14 @@ export function DocumentForm({
                   control={form.control}
                   name="fechaVigenciaDesde"
                   label="Vigencia Desde"
-                  description="Puedes modificarla manually si lo necesitas."
+                  description="Puedes modificarla manualmente si lo necesitas."
                 />
 
                 <DateInputField
                   control={form.control}
                   name="fechaVigenciaHasta"
                   label="Vigencia Hasta"
-                  description="Puedes modificarla manually si lo necesitas."
+                  description="Puedes modificarla manualmente si lo necesitas."
                 />
               </CardContent>
             </Card>
