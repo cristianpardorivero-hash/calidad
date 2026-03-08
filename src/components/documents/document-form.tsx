@@ -129,7 +129,6 @@ type DocumentFormProps = {
   documents: Documento[];
   document?: Documento;
   isNewVersion?: boolean;
-  addLog?: (message: string) => void;
 };
 
 const wizardSteps = [
@@ -188,7 +187,6 @@ export function DocumentForm({
   documents,
   document,
   isNewVersion = false,
-  addLog,
 }: DocumentFormProps) {
   const { user, firebaseUser } = useUser();
   const router = useRouter();
@@ -208,7 +206,7 @@ export function DocumentForm({
     const parts = version.split(".");
     if (parts.length > 0 && !isNaN(parseInt(parts[0], 10))) {
       const major = parseInt(parts[0], 10) + 1;
-      return \`\${major}.0\`;
+      return `${major}.0`;
     }
     return version;
   };
@@ -346,7 +344,7 @@ export function DocumentForm({
 
     if (file.size > MAX_FILE_SIZE) {
       form.setError("file", {
-        message: \`El archivo no debe exceder \${MAX_FILE_SIZE / 1024 / 1024}MB.\`,
+        message: `El archivo no debe exceder ${MAX_FILE_SIZE / 1024 / 1024}MB.`,
       });
       return;
     }
@@ -361,11 +359,9 @@ export function DocumentForm({
     hospitalId: string,
     onProgress: (progress: number) => void
   ) => {
-    addLog?.("Función uploadFile: Creando nombre y ruta de archivo seguros.");
     const safeFileName = getSafeFileName(file.name);
-    const storagePath = \`documentos/\${hospitalId}/\${Date.now()}-\${safeFileName}\`;
+    const storagePath = `documentos/${hospitalId}/${Date.now()}-${safeFileName}`;
     const storageRef = ref(storage, storagePath);
-    addLog?.(\`Ruta de Storage: \${storagePath}\`);
 
     const metadata: { contentType: string; contentDisposition?: string } = {
       contentType: file.type || "application/octet-stream",
@@ -373,7 +369,6 @@ export function DocumentForm({
     if (file.type === "application/pdf") {
       metadata.contentDisposition = "inline";
     }
-    addLog?.(\`Metadatos de subida: \${JSON.stringify(metadata)}\`);
 
     return new Promise<{
       downloadURL: string;
@@ -390,21 +385,17 @@ export function DocumentForm({
           onProgress(progress);
         },
         (error) => {
-          addLog?.(\`ERROR en uploadTask: \${error.code} - \${error.message}\`);
           reject(error);
         },
         async () => {
           try {
-            addLog?.("Subida completada. Obteniendo URL de descarga...");
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            addLog?.("URL de descarga obtenida.");
             resolve({
               downloadURL,
               storagePath,
               mimeType: file.type || "application/octet-stream",
             });
           } catch (error: any) {
-            addLog?.(\`ERROR al obtener URL de descarga: \${error.message}\`);
             reject(error);
           }
         }
@@ -455,200 +446,124 @@ export function DocumentForm({
   };
 
   async function onSubmit(values: FormValues) {
-    addLog?.("---------------------------------");
-    addLog?.("onSubmit: Iniciando proceso de guardado.");
-    
     if (!user || !firebaseUser) {
-      const msg = "Error de validación: Usuario no autenticado.";
-      addLog?.(msg);
       toast({ variant: "destructive", title: "No autenticado", description: "Debes iniciar sesión para guardar un documento." });
       return;
     }
-    setIsSubmitting(true);
-    addLog?.("Estado: IsSubmitting = true.");
-
-    const { fechaDocumento, fechaVigenciaDesde, fechaVigenciaHasta } = values;
-    addLog?.(\`Fechas del formulario: fechaDocumento: \${fechaDocumento}, fechaVigenciaDesde: \${fechaVigenciaDesde}, fechaVigenciaHasta: \${fechaVigenciaHasta}\`);
     
-    try {
-      if (isNewVersion && document) {
-        addLog?.("Flujo: Creando nueva versión.");
+    if (isCreation || isNewVersion) {
         if (!(values.file instanceof File)) {
-          const msg = "Error de validación para nueva versión: El archivo no es una instancia de File.";
-          addLog?.(msg);
-          form.setError("file", { message: "Debes seleccionar un archivo válido." });
-          setIsSubmitting(false);
-          return;
+            form.setError("file", { message: "Debes seleccionar un archivo válido." });
+            setIsSubmitting(false);
+            return;
         }
+    }
 
-        setUploadProgress(0);
+    setIsSubmitting(true);
+    setUploadProgress(0);
 
-        const file = values.file;
-        const { downloadURL, storagePath, mimeType } = await uploadFile(
+    try {
+      // --- File Upload (if applicable) ---
+      let fileData: { downloadURL: string; storagePath: string; mimeType: string, fileExt: string, fileName: string, fileSize: number } | null = null;
+      if ((isCreation || isNewVersion) && values.file) {
+        const file = values.file as File;
+        const uploadResult = await uploadFile(
           file,
           user.hospitalId,
-           (progress) => {
-            if(progress < 100 && (progress === 0 || progress % 10 < 1)) addLog?.(\`Progreso de subida: \${Math.round(progress)}%\`);
-          }
+          (progress) => setUploadProgress(progress)
         );
+        fileData = {
+            ...uploadResult,
+            fileName: file.name,
+            fileExt: file.name.split(".").pop() as "pdf" | "docx" | "xlsx",
+            fileSize: file.size,
+        };
+      }
 
-        const fileExt = file.name.split(".").pop() as "pdf" | "docx" | "xlsx";
+      // --- Data Preparation ---
+      const tagsArray = values.tags?.split(",").map((t) => t.trim()).filter(Boolean) || [];
 
-        const newData: Omit<Documento, 'id'> & {id: string} = {
+      const searchKeywords: string[] = [
+        values.titulo,
+        values.descripcion,
+        values.responsableNombre,
+        ...tagsArray
+      ]
+      .filter((kw): kw is string => typeof kw === 'string' && kw.trim().length > 0)
+      .map(kw => kw.toLowerCase());
+      
+      const uniqueKeywords = [...new Set(searchKeywords)];
+
+      // --- Database Operation ---
+      if (isNewVersion && document && fileData) {
+         const newData: Omit<Documento, 'id'> & {id: string} = {
           ...document,
           ...values,
-          fechaDocumento: fechaDocumento,
-          fechaVigenciaDesde: fechaVigenciaDesde || null,
-          fechaVigenciaHasta: fechaVigenciaHasta || null,
-          fileName: file.name,
-          fileExt,
-          fileSize: file.size,
-          mimeType,
-          storagePath,
-          downloadUrl: downloadURL,
-          tags: values.tags?.split(",").map((t) => t.trim()).filter(Boolean),
+          fechaDocumento: values.fechaDocumento,
+          fechaVigenciaDesde: values.fechaVigenciaDesde || null,
+          fechaVigenciaHasta: values.fechaVigenciaHasta || null,
+          fileName: fileData.fileName,
+          fileExt: fileData.fileExt as any,
+          fileSize: fileData.fileSize,
+          mimeType: fileData.mimeType,
+          storagePath: fileData.storagePath,
+          downloadUrl: fileData.downloadURL,
+          tags: tagsArray,
           updatedAt: new Date(),
+          searchKeywords: uniqueKeywords,
         };
+        await createNewVersionAndUpdateDocument(document, newData, firebaseUser.uid);
+        toast({ title: "Nueva versión creada", description: `Se ha creado la versión ${newData.version} de "${newData.titulo}".` });
+        router.push(`/documentos/${document.id}`);
 
-        await createNewVersionAndUpdateDocument(
-          document,
-          newData,
-          firebaseUser.uid
-        );
-
-        toast({
-          title: "Nueva versión creada",
-          description: \`Se ha creado la versión \${newData.version} de "\${newData.titulo}".\`,
-        });
-
-        router.push(\`/documentos/\${document.id}\`);
-        return;
-      }
-
-      if (isEditing && document) {
-        addLog?.("Flujo: Editando documento existente.");
-        const { file, ...updateValues } = values;
-
-        const dataToUpdate: Partial<Documento> = {
-          ...updateValues,
-          fechaDocumento: fechaDocumento,
-          fechaVigenciaDesde: fechaVigenciaDesde || null,
-          fechaVigenciaHasta: fechaVigenciaHasta || null,
-          tags: updateValues.tags?.split(",").map((t) => t.trim()).filter(Boolean),
-        };
-
+      } else if (isEditing && document) {
+         const dataToUpdate: Partial<Documento> = {
+            ...values,
+            fechaDocumento: values.fechaDocumento,
+            fechaVigenciaDesde: values.fechaVigenciaDesde || null,
+            fechaVigenciaHasta: values.fechaVigenciaHasta || null,
+            tags: tagsArray,
+            searchKeywords: uniqueKeywords
+         };
+         delete dataToUpdate.file; // Don't try to update the file
         await updateDocument(document.id, dataToUpdate);
+        toast({ title: "Documento actualizado", description: `El documento "${dataToUpdate.titulo}" ha sido guardado.` });
+        router.push(`/documentos/${document.id}`);
 
-        toast({
-          title: "Documento actualizado",
-          description: \`El documento "\${dataToUpdate.titulo}" ha sido guardado.\`,
-        });
-
-        router.push(\`/documentos/\${document.id}\`);
-        return;
+      } else if (isCreation && fileData) {
+        const { file: ignoredFile, ...restValues } = values;
+        const docData: Omit<Documento, "id" | "createdAt" | "updatedAt"> = {
+          ...restValues,
+          fechaDocumento: values.fechaDocumento,
+          fechaVigenciaDesde: values.fechaVigenciaDesde || null,
+          fechaVigenciaHasta: values.fechaVigenciaHasta || null,
+          hospitalId: user.hospitalId,
+          fileName: fileData.fileName,
+          fileExt: fileData.fileExt as any,
+          fileSize: fileData.fileSize,
+          mimeType: fileData.mimeType,
+          storagePath: fileData.storagePath,
+          downloadUrl: fileData.downloadURL,
+          tags: tagsArray,
+          createdByUid: firebaseUser.uid,
+          createdByEmail: firebaseUser.email || "N/A",
+          isDeleted: false,
+          searchKeywords: uniqueKeywords,
+        };
+        
+        const savedDoc = await addDocument(docData);
+        toast({ title: "Documento subido con éxito", description: `El documento "${savedDoc.titulo}" ha sido guardado.` });
+        router.push(`/documentos/${savedDoc.id}`);
       }
-      
-      addLog?.("Flujo: Creando nuevo documento.");
-      addLog?.("Paso 1: Validando archivo.");
-      if (!(values.file instanceof File)) {
-        const msg = "Error de validación: El archivo no es una instancia de File.";
-        addLog?.(msg);
-        form.setError("file", { message: "Debes seleccionar un archivo válido." });
-        setIsSubmitting(false);
-        return;
-      }
-      addLog?.(\`Archivo validado: \${values.file.name}\`);
 
-      setUploadProgress(0);
-
-      const file = values.file;
-      addLog?.("Paso 2: Subiendo archivo a Firebase Storage...");
-      const { downloadURL, storagePath, mimeType } = await uploadFile(
-        file,
-        user.hospitalId,
-        (progress) => {
-            setUploadProgress(progress);
-            if(progress < 100 && (progress === 0 || Math.round(progress) % 10 === 0)) addLog?.(\`Progreso de subida: \${Math.round(progress)}%\`);
-            else if(progress === 100) addLog?.('Progreso de subida: 100%');
-        }
-      );
-      addLog?.("Paso 3: Archivo subido. Preparando metadatos para Firestore...");
-
-      const fileExt = file.name.split(".").pop() as "pdf" | "docx" | "xlsx";
-      const tagsArray =
-        values.tags?.split(",").map((t) => t.trim()).filter(Boolean) || [];
-
-      addLog?.("Generando palabras clave de búsqueda...");
-      const searchKeywords: string[] = [];
-      const addKeywords = (text: string | undefined | null) => {
-        if (typeof text === "string" && text.trim()) {
-            searchKeywords.push(text.trim().toLowerCase());
-        }
-      };
-
-      addKeywords(values.titulo);
-      addKeywords(values.descripcion);
-      addKeywords(values.responsableNombre);
-      tagsArray.forEach(addKeywords);
-
-      const uniqueKeywords = [...new Set(searchKeywords)];
-      addLog?.(\`Palabras clave generadas: [\${uniqueKeywords.join(', ')}]\`);
-
-      const { file: ignoredFile, ...restValues } = values;
-      
-      const docData: Omit<Documento, "id" | "createdAt" | "updatedAt"> = {
-        ...restValues,
-        fechaDocumento: fechaDocumento,
-        fechaVigenciaDesde: fechaVigenciaDesde || null,
-        fechaVigenciaHasta: fechaVigenciaHasta || null,
-        hospitalId: user.hospitalId,
-        fileName: file.name,
-        fileExt,
-        fileSize: file.size,
-        mimeType,
-        storagePath,
-        downloadUrl: downloadURL,
-        tags: tagsArray,
-        createdByUid: firebaseUser.uid,
-        createdByEmail: firebaseUser.email || "N/A",
-        isDeleted: false,
-        searchKeywords: uniqueKeywords,
-        linkedDocumentId: values.linkedDocumentId || undefined,
-      };
-      
-      const finalDocData: {[key: string]: any} = {};
-      Object.keys(docData).forEach(key => {
-        const value = docData[key as keyof typeof docData];
-        if (value !== undefined) {
-          finalDocData[key] = value;
-        }
-      });
-      
-      addLog?.(\`Datos a guardar en Firestore: \${JSON.stringify(Object.keys(finalDocData))}\`);
-      addLog?.("Paso 4: Guardando metadatos en Firestore...");
-      const savedDoc = await addDocument(finalDocData as Omit<Documento, "id" | "createdAt" | "updatedAt">);
-      addLog?.(\`Paso 5: ¡Éxito! Documento guardado con ID: \${savedDoc.id}\`);
-      addLog?.("Redirigiendo a la página del documento...");
-
-      toast({
-        title: "Documento subido con éxito",
-        description: \`El documento "\${savedDoc.titulo}" ha sido guardado.\`,
-      });
-
-      router.push(\`/documentos/\${savedDoc.id}\`);
     } catch (e: any) {
-      const msg = \`ERROR CATASTRÓFICO en onSubmit: \${e?.message || e?.code || "Error desconocido"}\`;
-      addLog?.(msg);
-      console.error("Error general en guardado/subida:", e);
+      console.error("Error en onSubmit:", e);
       toast({
         variant: "destructive",
-        title: "Error",
-        description:
-          e?.message || e?.code || "No se pudo completar la operación.",
+        title: "Error al guardar",
+        description: e?.message || e?.code || "No se pudo completar la operación.",
       });
-      setUploadProgress(0);
     } finally {
-      addLog?.("onSubmit: Finalizando proceso.");
       setIsSubmitting(false);
     }
   }
@@ -1250,7 +1165,7 @@ export function DocumentForm({
               <p className="text-sm text-muted-foreground">
                 {Math.round(uploadProgress) === 100
                   ? "Finalizando..."
-                  : \`Progreso: \${Math.round(uploadProgress)}%\`}
+                  : `Progreso: ${Math.round(uploadProgress)}%`}
               </p>
             </div>
           )}
@@ -1628,7 +1543,7 @@ export function DocumentForm({
                               >
                                 <span className="truncate">
                                   {field.value && field.value.length > 0
-                                    ? \`\${field.value.length} seleccionado(s)\`
+                                    ? `${field.value.length} seleccionado(s)`
                                     : "Seleccione servicios"}
                                 </span>
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -1905,7 +1820,7 @@ export function DocumentForm({
               <p className="text-sm text-muted-foreground">
                 {Math.round(uploadProgress) === 100
                   ? "Finalizando..."
-                  : \`Progreso: \${Math.round(uploadProgress)}%\`}
+                  : `Progreso: ${Math.round(uploadProgress)}%`}
               </p>
             </div>
           )}

@@ -351,11 +351,9 @@ export async function updateUser(
   const userRef = doc(db, "users", uid);
   const dataToUpdate: Record<string, any> = { updatedAt: serverTimestamp() };
   
-  // Safely copy properties from 'updates' to avoid undefined values
   Object.keys(updates).forEach(key => {
     const value = updates[key as keyof typeof updates];
     if (value !== undefined) {
-      // @ts-ignore
       dataToUpdate[key] = value;
     }
   });
@@ -392,19 +390,21 @@ export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | 
     updatedAt: serverTimestamp(),
   };
 
-  // Safely build the data object to avoid undefined values
-  Object.keys(docData).forEach(key => {
+  // Safely build the data object to avoid undefined values being sent to Firestore
+  for (const key in docData) {
     const value = docData[key as keyof typeof docData];
     if (value !== undefined) {
         if (value instanceof Date) {
-            // @ts-ignore
             dataToSave[key] = Timestamp.fromDate(value);
         } else {
-            // @ts-ignore
             dataToSave[key] = value;
         }
     }
-  });
+  }
+  // Ensure optional date fields are null if not provided, to match schema expectations
+  if (!dataToSave.fechaVigenciaDesde) dataToSave.fechaVigenciaDesde = null;
+  if (!dataToSave.fechaVigenciaHasta) dataToSave.fechaVigenciaHasta = null;
+
 
   try {
     const docRef = await addDoc(collRef, dataToSave);
@@ -530,47 +530,23 @@ export async function updateDocument(docId: string, updates: Partial<Documento>)
   
   const dataToUpdate: Record<string, any> = { updatedAt: serverTimestamp() };
 
-  // Safely copy properties and convert dates
-  Object.keys(updates).forEach(key => {
+  for (const key in updates) {
     const value = updates[key as keyof typeof updates];
     if (value !== undefined) {
-      if (value instanceof Date) {
-        // @ts-ignore
-        dataToUpdate[key] = Timestamp.fromDate(value);
-      } else {
-        // @ts-ignore
-        dataToUpdate[key] = value;
-      }
+        if (value instanceof Date) {
+            dataToUpdate[key] = Timestamp.fromDate(value);
+        } else {
+            dataToUpdate[key] = value;
+        }
     }
-  });
+  }
   
   if (updates.isDeleted) {
     dataToUpdate.deletedAt = serverTimestamp();
   }
+  if (!updates.fechaVigenciaDesde) dataToUpdate.fechaVigenciaDesde = null;
+  if (!updates.fechaVigenciaHasta) dataToUpdate.fechaVigenciaHasta = null;
 
-  // Re-generate search keywords if relevant fields are updated
-  const hasSearchableUpdate = ['titulo', 'descripcion', 'responsableNombre', 'tags'].some(key => key in updates);
-  if (hasSearchableUpdate) {
-    const originalDocSnap = await getDoc(docRef);
-    const originalData = originalDocSnap.data() as Documento;
-
-    const newTitle = updates.titulo ?? originalData.titulo;
-    const newDescription = updates.descripcion ?? originalData.descripcion;
-    const newResponsable = updates.responsableNombre ?? originalData.responsableNombre;
-    const newTags = updates.tags ?? originalData.tags;
-    
-    const searchKeywords: string[] = [];
-    const addKeywords = (text: string | undefined | null) => {
-        if (typeof text === "string" && text.trim()) {
-            searchKeywords.push(text.trim().toLowerCase());
-        }
-    };
-    addKeywords(newTitle);
-    addKeywords(newDescription);
-    addKeywords(newResponsable);
-    (newTags || []).forEach(addKeywords);
-    dataToUpdate.searchKeywords = [...new Set(searchKeywords)];
-  }
 
   try {
     await updateDoc(docRef, dataToUpdate);
@@ -609,19 +585,19 @@ export async function createNewVersionAndUpdateDocument(
   };
 
   const parentUpdateData: Record<string, any> = { updatedAt: serverTimestamp() };
-  Object.keys(newData).forEach(key => {
-    // @ts-ignore
-    const value = newData[key];
+  for (const key in newData) {
+    const value = newData[key as keyof typeof newData];
     if (value !== undefined && !['id', 'createdAt', 'createdByEmail', 'createdByUid'].includes(key)) {
         if (value instanceof Date) {
-            // @ts-ignore
             parentUpdateData[key] = Timestamp.fromDate(value);
         } else {
-            // @ts-ignore
             parentUpdateData[key] = value;
         }
     }
-  });
+  }
+  if (!parentUpdateData.fechaVigenciaDesde) parentUpdateData.fechaVigenciaDesde = null;
+  if (!parentUpdateData.fechaVigenciaHasta) parentUpdateData.fechaVigenciaHasta = null;
+
 
   try {
       await setDoc(oldVersionRef, versionData);
