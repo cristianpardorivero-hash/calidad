@@ -32,9 +32,10 @@ import {
   Check,
   ArrowRight,
   ArrowLeft,
+  CalendarIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -62,34 +63,12 @@ import {
 } from "@/components/ui/popover";
 import { storage } from "@/firebase/client";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { Calendar } from "../ui/calendar";
+import { es } from "date-fns/locale";
+import { format } from "date-fns";
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = ["pdf", "docx", "xlsx"] as const;
-
-function toDateInputValue(date?: Date | string | null): string {
-  if (!date) return "";
-  const d = date instanceof Date ? date : new Date(date);
-  if (isNaN(d.getTime())) return "";
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function fromDateInputValue(value?: string): Date | undefined {
-  if (!value) return undefined;
-  const [year, month, day] = value.split("-").map(Number);
-  if (!year || !month || !day) return undefined;
-  const d = new Date(year, month - 1, day);
-  return isNaN(d.getTime()) ? undefined : d;
-}
-
-function addYearsToInputDate(value: string, years: number): string {
-  const d = fromDateInputValue(value);
-  if (!d) return "";
-  d.setFullYear(d.getFullYear() + years);
-  return toDateInputValue(d);
-}
 
 function getSafeFileName(fileName: string): string {
   return fileName
@@ -127,11 +106,11 @@ const getFormSchema = (isEditing: boolean, isNewVersion: boolean) =>
       .string()
       .email("Correo electrónico inválido.")
       .default(""),
-    fechaDocumento: z
-      .string()
-      .min(1, "La fecha del documento es requerida."),
-    fechaVigenciaDesde: z.string().optional().default(""),
-    fechaVigenciaHasta: z.string().optional().default(""),
+    fechaDocumento: z.date({
+      required_error: "La fecha del documento es requerida.",
+    }),
+    fechaVigenciaDesde: z.date().optional(),
+    fechaVigenciaHasta: z.date().optional(),
     file: z
       .any()
       .refine(
@@ -150,6 +129,7 @@ type DocumentFormProps = {
   documents: Documento[];
   document?: Documento;
   isNewVersion?: boolean;
+  addLog?: (message: string) => void;
 };
 
 const wizardSteps = [
@@ -202,57 +182,13 @@ const Stepper = ({ currentStep }: { currentStep: number }) => (
   </div>
 );
 
-function DateInputField({
-  control,
-  name,
-  label,
-  description,
-  required = false,
-  max,
-  min = "1900-01-01",
-}: {
-  control: any;
-  name: "fechaDocumento" | "fechaVigenciaDesde" | "fechaVigenciaHasta";
-  label: string;
-  description?: string;
-  required?: boolean;
-  max?: string;
-  min?: string;
-}) {
-  return (
-    <FormField
-      control={control}
-      name={name}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>
-            {label}
-            {required ? "" : " (Opcional)"}
-          </FormLabel>
-          <FormControl>
-            <Input
-              type="date"
-              value={field.value || ""}
-              onChange={field.onChange}
-              min={min}
-              max={max}
-            />
-          </FormControl>
-          {description ? (
-            <FormDescription>{description}</FormDescription>
-          ) : null}
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  );
-}
 
 export function DocumentForm({
   catalogs,
   documents,
   document,
   isNewVersion = false,
+  addLog,
 }: DocumentFormProps) {
   const { user, firebaseUser } = useUser();
   const router = useRouter();
@@ -272,7 +208,7 @@ export function DocumentForm({
     const parts = version.split(".");
     if (parts.length > 0 && !isNaN(parseInt(parts[0], 10))) {
       const major = parseInt(parts[0], 10) + 1;
-      return `${major}.0`;
+      return \`\${major}.0\`;
     }
     return version;
   };
@@ -289,9 +225,9 @@ export function DocumentForm({
             tags: document.tags?.join(", ") || "",
             servicioIds: document.servicioIds || [],
             file: null,
-            fechaDocumento: toDateInputValue(document.fechaDocumento),
-            fechaVigenciaDesde: toDateInputValue(document.fechaVigenciaDesde),
-            fechaVigenciaHasta: toDateInputValue(document.fechaVigenciaHasta),
+            fechaDocumento: document.fechaDocumento ? new Date(document.fechaDocumento) : undefined,
+            fechaVigenciaDesde: document.fechaVigenciaDesde ? new Date(document.fechaVigenciaDesde) : undefined,
+            fechaVigenciaHasta: document.fechaVigenciaHasta ? new Date(document.fechaVigenciaHasta) : undefined,
           }
         : {
             version: "1.0",
@@ -303,20 +239,22 @@ export function DocumentForm({
             servicioIds: [],
             linkedDocumentId: "",
             file: null,
-            fechaDocumento: "",
-            fechaVigenciaDesde: "",
-            fechaVigenciaHasta: "",
+            fechaDocumento: undefined,
+            fechaVigenciaDesde: undefined,
+            fechaVigenciaHasta: undefined,
           },
   });
 
   const fechaDocumento = form.watch("fechaDocumento");
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (fechaDocumento && (!isEditing || isNewVersion)) {
       form.setValue("fechaVigenciaDesde", fechaDocumento, {
         shouldValidate: true,
       });
-      form.setValue("fechaVigenciaHasta", addYearsToInputDate(fechaDocumento, 5), {
+      const newVigenciaHasta = new Date(fechaDocumento.getTime());
+      newVigenciaHasta.setFullYear(newVigenciaHasta.getFullYear() + 5);
+      form.setValue("fechaVigenciaHasta", newVigenciaHasta, {
         shouldValidate: true,
       });
     }
@@ -325,6 +263,7 @@ export function DocumentForm({
   const tipoDocumentoId = form.watch("tipoDocumentoId");
   const ambitoId = form.watch("ambitoId");
   const caracteristicaId = form.watch("caracteristicaId");
+  const elementoMedibleId = form.watch("elementoMedibleId");
 
   const linkableDocTypeIds = useMemo(() => {
     const linkableNames = [
@@ -373,6 +312,11 @@ export function DocumentForm({
         (doc) => doc.caracteristicaId === caracteristicaId
       );
     }
+    if (elementoMedibleId) {
+      filtered = filtered.filter(
+        (doc) => doc.elementoMedibleId === elementoMedibleId
+      );
+    }
 
     if (isEditing && document) {
       filtered = filtered.filter((doc) => doc.id !== document.id);
@@ -383,6 +327,7 @@ export function DocumentForm({
     documents,
     ambitoId,
     caracteristicaId,
+    elementoMedibleId,
     linkableDocTypeIds,
     hasClassification,
     isEditing,
@@ -401,7 +346,7 @@ export function DocumentForm({
 
     if (file.size > MAX_FILE_SIZE) {
       form.setError("file", {
-        message: `El archivo no debe exceder ${MAX_FILE_SIZE / 1024 / 1024}MB.`,
+        message: \`El archivo no debe exceder \${MAX_FILE_SIZE / 1024 / 1024}MB.\`,
       });
       return;
     }
@@ -411,17 +356,24 @@ export function DocumentForm({
     setFileToUpload(file);
   };
 
-  const uploadFile = async (file: File, hospitalId: string) => {
+  const uploadFile = async (
+    file: File,
+    hospitalId: string,
+    onProgress: (progress: number) => void
+  ) => {
+    addLog?.("Función uploadFile: Creando nombre y ruta de archivo seguros.");
     const safeFileName = getSafeFileName(file.name);
-    const storagePath = `documentos/${hospitalId}/${Date.now()}-${safeFileName}`;
+    const storagePath = \`documentos/\${hospitalId}/\${Date.now()}-\${safeFileName}\`;
     const storageRef = ref(storage, storagePath);
+    addLog?.(\`Ruta de Storage: \${storagePath}\`);
 
     const metadata: { contentType: string; contentDisposition?: string } = {
-        contentType: file.type || "application/octet-stream",
+      contentType: file.type || "application/octet-stream",
     };
     if (file.type === "application/pdf") {
-        metadata.contentDisposition = "inline";
+      metadata.contentDisposition = "inline";
     }
+    addLog?.(\`Metadatos de subida: \${JSON.stringify(metadata)}\`);
 
     return new Promise<{
       downloadURL: string;
@@ -435,18 +387,24 @@ export function DocumentForm({
         (snapshot) => {
           const progress =
             (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(progress);
+          onProgress(progress);
         },
-        (error) => reject(error),
+        (error) => {
+          addLog?.(\`ERROR en uploadTask: \${error.code} - \${error.message}\`);
+          reject(error);
+        },
         async () => {
           try {
+            addLog?.("Subida completada. Obteniendo URL de descarga...");
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            addLog?.("URL de descarga obtenida.");
             resolve({
               downloadURL,
               storagePath,
               mimeType: file.type || "application/octet-stream",
             });
-          } catch (error) {
+          } catch (error: any) {
+            addLog?.(\`ERROR al obtener URL de descarga: \${error.message}\`);
             reject(error);
           }
         }
@@ -497,31 +455,27 @@ export function DocumentForm({
   };
 
   async function onSubmit(values: FormValues) {
+    addLog?.("---------------------------------");
+    addLog?.("onSubmit: Iniciando proceso de guardado.");
+    
     if (!user || !firebaseUser) {
-      toast({
-        variant: "destructive",
-        title: "No autenticado",
-        description: "Debes iniciar sesión para guardar un documento.",
-      });
+      const msg = "Error de validación: Usuario no autenticado.";
+      addLog?.(msg);
+      toast({ variant: "destructive", title: "No autenticado", description: "Debes iniciar sesión para guardar un documento." });
       return;
     }
-
     setIsSubmitting(true);
+    addLog?.("Estado: IsSubmitting = true.");
 
-    const fechaDocumentoDate = fromDateInputValue(values.fechaDocumento);
-
-    if (!isEditing && !fechaDocumentoDate) {
-        toast({ variant: "destructive", title: "Fecha inválida", description: "Debes ingresar una fecha de documento válida."});
-        setIsSubmitting(false);
-        return;
-    }
-
-    const fechaVigenciaDesdeDate = fromDateInputValue(values.fechaVigenciaDesde);
-    const fechaVigenciaHastaDate = fromDateInputValue(values.fechaVigenciaHasta);
-
+    const { fechaDocumento, fechaVigenciaDesde, fechaVigenciaHasta } = values;
+    addLog?.(\`Fechas del formulario: fechaDocumento: \${fechaDocumento}, fechaVigenciaDesde: \${fechaVigenciaDesde}, fechaVigenciaHasta: \${fechaVigenciaHasta}\`);
+    
     try {
       if (isNewVersion && document) {
+        addLog?.("Flujo: Creando nueva versión.");
         if (!(values.file instanceof File)) {
+          const msg = "Error de validación para nueva versión: El archivo no es una instancia de File.";
+          addLog?.(msg);
           form.setError("file", { message: "Debes seleccionar un archivo válido." });
           setIsSubmitting(false);
           return;
@@ -532,17 +486,20 @@ export function DocumentForm({
         const file = values.file;
         const { downloadURL, storagePath, mimeType } = await uploadFile(
           file,
-          user.hospitalId
+          user.hospitalId,
+           (progress) => {
+            if(progress < 100 && (progress === 0 || progress % 10 < 1)) addLog?.(\`Progreso de subida: \${Math.round(progress)}%\`);
+          }
         );
 
         const fileExt = file.name.split(".").pop() as "pdf" | "docx" | "xlsx";
 
-        const newData = {
+        const newData: Omit<Documento, 'id'> & {id: string} = {
           ...document,
           ...values,
-          fechaDocumento: fechaDocumentoDate!,
-          fechaVigenciaDesde: fechaVigenciaDesdeDate || null,
-          fechaVigenciaHasta: fechaVigenciaHastaDate || null,
+          fechaDocumento: fechaDocumento,
+          fechaVigenciaDesde: fechaVigenciaDesde || null,
+          fechaVigenciaHasta: fechaVigenciaHasta || null,
           fileName: file.name,
           fileExt,
           fileSize: file.size,
@@ -551,7 +508,7 @@ export function DocumentForm({
           downloadUrl: downloadURL,
           tags: values.tags?.split(",").map((t) => t.trim()).filter(Boolean),
           updatedAt: new Date(),
-        } as Documento;
+        };
 
         await createNewVersionAndUpdateDocument(
           document,
@@ -561,21 +518,22 @@ export function DocumentForm({
 
         toast({
           title: "Nueva versión creada",
-          description: `Se ha creado la versión ${newData.version} de "${newData.titulo}".`,
+          description: \`Se ha creado la versión \${newData.version} de "\${newData.titulo}".\`,
         });
 
-        router.push(`/documentos/${document.id}`);
+        router.push(\`/documentos/\${document.id}\`);
         return;
       }
 
       if (isEditing && document) {
+        addLog?.("Flujo: Editando documento existente.");
         const { file, ...updateValues } = values;
 
         const dataToUpdate: Partial<Documento> = {
           ...updateValues,
-          fechaDocumento: fechaDocumentoDate!,
-          fechaVigenciaDesde: fechaVigenciaDesdeDate || null,
-          fechaVigenciaHasta: fechaVigenciaHastaDate || null,
+          fechaDocumento: fechaDocumento,
+          fechaVigenciaDesde: fechaVigenciaDesde || null,
+          fechaVigenciaHasta: fechaVigenciaHasta || null,
           tags: updateValues.tags?.split(",").map((t) => t.trim()).filter(Boolean),
         };
 
@@ -583,49 +541,66 @@ export function DocumentForm({
 
         toast({
           title: "Documento actualizado",
-          description: `El documento "${dataToUpdate.titulo}" ha sido guardado.`,
+          description: \`El documento "\${dataToUpdate.titulo}" ha sido guardado.\`,
         });
 
-        router.push(`/documentos/${document.id}`);
+        router.push(\`/documentos/\${document.id}\`);
         return;
       }
       
+      addLog?.("Flujo: Creando nuevo documento.");
+      addLog?.("Paso 1: Validando archivo.");
       if (!(values.file instanceof File)) {
+        const msg = "Error de validación: El archivo no es una instancia de File.";
+        addLog?.(msg);
         form.setError("file", { message: "Debes seleccionar un archivo válido." });
         setIsSubmitting(false);
         return;
       }
+      addLog?.(\`Archivo validado: \${values.file.name}\`);
 
       setUploadProgress(0);
 
       const file = values.file;
+      addLog?.("Paso 2: Subiendo archivo a Firebase Storage...");
       const { downloadURL, storagePath, mimeType } = await uploadFile(
         file,
-        user.hospitalId
+        user.hospitalId,
+        (progress) => {
+            setUploadProgress(progress);
+            if(progress < 100 && (progress === 0 || Math.round(progress) % 10 === 0)) addLog?.(\`Progreso de subida: \${Math.round(progress)}%\`);
+            else if(progress === 100) addLog?.('Progreso de subida: 100%');
+        }
       );
+      addLog?.("Paso 3: Archivo subido. Preparando metadatos para Firestore...");
 
       const fileExt = file.name.split(".").pop() as "pdf" | "docx" | "xlsx";
       const tagsArray =
         values.tags?.split(",").map((t) => t.trim()).filter(Boolean) || [];
 
-      const searchKeywords = [
-          values.titulo,
-          values.descripcion,
-          values.responsableNombre,
-          ...tagsArray,
-      ]
-      .filter((kw): kw is string => typeof kw === 'string' && kw.trim().length > 0)
-      .map(kw => kw.toLowerCase());
+      addLog?.("Generando palabras clave de búsqueda...");
+      const searchKeywords: string[] = [];
+      const addKeywords = (text: string | undefined | null) => {
+        if (typeof text === "string" && text.trim()) {
+            searchKeywords.push(text.trim().toLowerCase());
+        }
+      };
+
+      addKeywords(values.titulo);
+      addKeywords(values.descripcion);
+      addKeywords(values.responsableNombre);
+      tagsArray.forEach(addKeywords);
 
       const uniqueKeywords = [...new Set(searchKeywords)];
+      addLog?.(\`Palabras clave generadas: [\${uniqueKeywords.join(', ')}]\`);
 
       const { file: ignoredFile, ...restValues } = values;
       
       const docData: Omit<Documento, "id" | "createdAt" | "updatedAt"> = {
         ...restValues,
-        fechaDocumento: fechaDocumentoDate!,
-        fechaVigenciaDesde: fechaVigenciaDesdeDate || null,
-        fechaVigenciaHasta: fechaVigenciaHastaDate || null,
+        fechaDocumento: fechaDocumento,
+        fechaVigenciaDesde: fechaVigenciaDesde || null,
+        fechaVigenciaHasta: fechaVigenciaHasta || null,
         hospitalId: user.hospitalId,
         fileName: file.name,
         fileExt,
@@ -638,22 +613,32 @@ export function DocumentForm({
         createdByEmail: firebaseUser.email || "N/A",
         isDeleted: false,
         searchKeywords: uniqueKeywords,
-        linkedDocumentId: values.linkedDocumentId || '',
+        linkedDocumentId: values.linkedDocumentId || undefined,
       };
       
-      if (!docData.linkedDocumentId) {
-        delete (docData as any).linkedDocumentId;
-      }
+      const finalDocData: {[key: string]: any} = {};
+      Object.keys(docData).forEach(key => {
+        const value = docData[key as keyof typeof docData];
+        if (value !== undefined) {
+          finalDocData[key] = value;
+        }
+      });
       
-      const savedDoc = await addDocument(docData);
+      addLog?.(\`Datos a guardar en Firestore: \${JSON.stringify(Object.keys(finalDocData))}\`);
+      addLog?.("Paso 4: Guardando metadatos en Firestore...");
+      const savedDoc = await addDocument(finalDocData as Omit<Documento, "id" | "createdAt" | "updatedAt">);
+      addLog?.(\`Paso 5: ¡Éxito! Documento guardado con ID: \${savedDoc.id}\`);
+      addLog?.("Redirigiendo a la página del documento...");
 
       toast({
         title: "Documento subido con éxito",
-        description: `El documento "${savedDoc.titulo}" ha sido guardado.`,
+        description: \`El documento "\${savedDoc.titulo}" ha sido guardado.\`,
       });
 
-      router.push(`/documentos/${savedDoc.id}`);
+      router.push(\`/documentos/\${savedDoc.id}\`);
     } catch (e: any) {
+      const msg = \`ERROR CATASTRÓFICO en onSubmit: \${e?.message || e?.code || "Error desconocido"}\`;
+      addLog?.(msg);
       console.error("Error general en guardado/subida:", e);
       toast({
         variant: "destructive",
@@ -663,6 +648,7 @@ export function DocumentForm({
       });
       setUploadProgress(0);
     } finally {
+      addLog?.("onSubmit: Finalizando proceso.");
       setIsSubmitting(false);
     }
   }
@@ -1058,27 +1044,124 @@ export function DocumentForm({
                 <CardTitle>D) Fechas</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <DateInputField
+                 <FormField
                   control={form.control}
                   name="fechaDocumento"
-                  label="Fecha del documento"
-                  description="Puedes modificarla manualmente si lo necesitas."
-                  required
-                  max={toDateInputValue(new Date())}
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Fecha del documento</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP", { locale: es })
+                              ) : (
+                                <span>Elige una fecha</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) =>
+                              date > new Date() || date < new Date("1900-01-01")
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
 
-                <DateInputField
+                <FormField
                   control={form.control}
                   name="fechaVigenciaDesde"
-                  label="Vigencia Desde"
-                  description="Puedes modificarla manualmente si lo necesitas."
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Vigencia Desde (Opcional)</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP", { locale: es })
+                              ) : (
+                                <span>Elige una fecha</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
 
-                <DateInputField
+                <FormField
                   control={form.control}
                   name="fechaVigenciaHasta"
-                  label="Vigencia Hasta"
-                  description="Puedes modificarla manualmente si lo necesitas."
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Vigencia Hasta (Opcional)</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP", { locale: es })
+                              ) : (
+                                <span>Elige una fecha</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
               </CardContent>
             </Card>
@@ -1167,7 +1250,7 @@ export function DocumentForm({
               <p className="text-sm text-muted-foreground">
                 {Math.round(uploadProgress) === 100
                   ? "Finalizando..."
-                  : `Progreso: ${Math.round(uploadProgress)}%`}
+                  : \`Progreso: \${Math.round(uploadProgress)}%\`}
               </p>
             </div>
           )}
@@ -1545,7 +1628,7 @@ export function DocumentForm({
                               >
                                 <span className="truncate">
                                   {field.value && field.value.length > 0
-                                    ? `${field.value.length} seleccionado(s)`
+                                    ? \`\${field.value.length} seleccionado(s)\`
                                     : "Seleccione servicios"}
                                 </span>
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -1597,28 +1680,126 @@ export function DocumentForm({
                   <Separator className="my-4" />
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <DateInputField
-                      control={form.control}
-                      name="fechaDocumento"
-                      label="Fecha del documento"
-                      description="Puedes escribir la fecha manualmente."
-                      required
-                      max={toDateInputValue(new Date())}
-                    />
+                     <FormField
+                        control={form.control}
+                        name="fechaDocumento"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Fecha del documento</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {field.value ? (
+                                      format(field.value, "PPP", { locale: es })
+                                    ) : (
+                                      <span>Elige una fecha</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value}
+                                  onSelect={field.onChange}
+                                  disabled={(date) =>
+                                    date > new Date() || date < new Date("1900-01-01")
+                                  }
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                    <DateInputField
-                      control={form.control}
-                      name="fechaVigenciaDesde"
-                      label="Vigencia Desde"
-                      description="Calculado automáticamente."
-                    />
-
-                    <DateInputField
-                      control={form.control}
-                      name="fechaVigenciaHasta"
-                      label="Vigencia Hasta"
-                      description="Calculado a +5 años."
-                    />
+                     <FormField
+                        control={form.control}
+                        name="fechaVigenciaDesde"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Vigencia Desde</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {field.value ? (
+                                      format(field.value, "PPP", { locale: es })
+                                    ) : (
+                                      <span>Elige una fecha</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value}
+                                  onSelect={field.onChange}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormDescription>Calculado automáticamente.</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    <FormField
+                        control={form.control}
+                        name="fechaVigenciaHasta"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Vigencia Hasta</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {field.value ? (
+                                      format(field.value, "PPP", { locale: es })
+                                    ) : (
+                                      <span>Elige una fecha</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value}
+                                  onSelect={field.onChange}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormDescription>Calculado a +5 años.</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                   </div>
                 </CardContent>
               </Card>
@@ -1724,7 +1905,7 @@ export function DocumentForm({
               <p className="text-sm text-muted-foreground">
                 {Math.round(uploadProgress) === 100
                   ? "Finalizando..."
-                  : `Progreso: ${Math.round(uploadProgress)}%`}
+                  : \`Progreso: \${Math.round(uploadProgress)}%\`}
               </p>
             </div>
           )}
