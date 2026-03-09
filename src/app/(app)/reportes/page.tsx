@@ -170,13 +170,13 @@ export default function ReportesPage() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="ambito-select" className="text-sm font-medium">Ámbito</label>
-            <Select value={ambitoFilter} onValueChange={setAmbitoFilter}>
+            <Select value={ambitoFilter} onValueChange={(value) => setAmbitoFilter(value === 'all' ? '' : value)}>
               <SelectTrigger id="ambito-select">
                 <SelectValue placeholder="Todos los ámbitos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos los ámbitos</SelectItem>
-                {catalogs.ambitos.map(ambito => (
+                <SelectItem value="all">Todos los ámbitos</SelectItem>
+                {catalogs.ambitos.filter(item => item.id).map(ambito => (
                   <SelectItem key={ambito.id} value={ambito.id}>
                     {ambito.nombre}
                   </SelectItem>
@@ -186,13 +186,13 @@ export default function ReportesPage() {
           </div>
           <div className="space-y-2">
             <label htmlFor="servicio-select" className="text-sm font-medium">Servicio</label>
-            <Select value={servicioFilter} onValueChange={setServicioFilter}>
+            <Select value={servicioFilter} onValueChange={(value) => setServicioFilter(value === 'all' ? '' : value)}>
               <SelectTrigger id="servicio-select">
                 <SelectValue placeholder="Todos los servicios" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos los servicios</SelectItem>
-                {catalogs.servicios.map(servicio => (
+                <SelectItem value="all">Todos los servicios</SelectItem>
+                {catalogs.servicios.filter(item => item.id).map(servicio => (
                   <SelectItem key={servicio.id} value={servicio.id}>
                     {servicio.nombre}
                   </SelectItem>
