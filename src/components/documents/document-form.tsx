@@ -591,7 +591,7 @@ export function DocumentForm({
           fileSize: fileData.fileSize,
           mimeType: fileData.mimeType,
           storagePath: fileData.storagePath,
-          downloadUrl: fileData.downloadUrl,
+          downloadUrl: fileData.downloadURL,
         };
         
         console.log("[SUBMIT_INFO] Llamando a addDocument...");
@@ -609,43 +609,54 @@ export function DocumentForm({
   }
 
   const DateInputField = ({ field, label, description }: { field: any, label: string, description?: string }) => {
+    // This state is ONLY for the visual input. It is the source of truth for the <Input>.
     const [inputValue, setInputValue] = useState<string>(
       field.value && isValid(field.value) ? format(field.value, 'dd/MM/yyyy') : ''
     );
   
-    useEffect(() => {
+    // This effect ONLY syncs changes from the form state (field.value) down to the local input value.
+    // It is for external updates like form.reset() or programmatic changes.
+    React.useEffect(() => {
+      // Check if the external value is a valid date
       if (field.value && isValid(field.value)) {
-        const formatted = format(field.value, 'dd/MM/yyyy');
-        if (formatted !== inputValue) {
-          setInputValue(formatted);
+        const formattedDate = format(field.value, 'dd/MM/yyyy');
+        // Update local state only if it's different to prevent loops
+        if (formattedDate !== inputValue) {
+          setInputValue(formattedDate);
         }
       } else if (!field.value && inputValue) {
+        // If the external value is cleared (e.g., reset) and we have a local value, clear the local value too.
         setInputValue('');
       }
-    }, [field.value]);
+    }, [field.value]); // CRITICAL: Only depends on the external form value.
   
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
-      setInputValue(val); // Update visual state immediately
+      setInputValue(val); // Update the visual input immediately to allow typing.
   
-      if (val === '') {
+      // We only update the actual form state on blur to avoid validation errors while typing.
+    };
+
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      
+      if (val.trim() === '') {
+        // If the input is empty, clear the form state.
         field.onChange(undefined);
         return;
       }
-  
-      if (val.length === 10) {
-        const parsedDate = parse(val, 'dd/MM/yyyy', new Date());
-        field.onChange(parsedDate); // Pass to RHF, Zod will validate
-      }
-    };
 
-    const handleBlur = () => {
-      // On blur, if the RHF value is a valid date, reformat the input
-      // This cleans up any weird partial input if the user clicks away
-      if (field.value && isValid(field.value)) {
-        setInputValue(format(field.value, 'dd/MM/yyyy'));
-      } else if (inputValue !== '') {
-        // If input is not empty and not a valid date, trigger validation by passing an invalid date
+      // Try to parse the input value.
+      const parsedDate = parse(val, 'dd/MM/yyyy', new Date());
+
+      if (isValid(parsedDate)) {
+        // If parsing is successful, update the form state with the valid Date object.
+        field.onChange(parsedDate);
+        // Also, reformat the input to a consistent format in case the user typed something like '1/2/24'.
+        setInputValue(format(parsedDate, 'dd/MM/yyyy'));
+      } else {
+        // If parsing fails, pass an invalid Date object to react-hook-form.
+        // This will allow Zod to catch it and display a validation error.
         field.onChange(new Date('invalid'));
       }
     };
@@ -658,7 +669,7 @@ export function DocumentForm({
             placeholder="dd/mm/yyyy"
             value={inputValue}
             onChange={handleChange}
-            onBlur={handleBlur}
+            onBlur={handleBlur} // The magic happens on blur.
           />
         </FormControl>
         {description && <FormDescription>{description}</FormDescription>}
