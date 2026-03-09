@@ -396,7 +396,7 @@ export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | 
     elementoMedibleId: docData.elementoMedibleId,
     responsableNombre: docData.responsableNombre,
     responsableEmail: docData.responsableEmail,
-    fechaDocumento: docData.fechaDocumento ? Timestamp.fromDate(docData.fechaDocumento) : null,
+    fechaDocumento: docData.fechaDocumento ? Timestamp.fromDate(docData.fechaDocumento) : serverTimestamp(),
     hospitalId: docData.hospitalId,
     fileName: docData.fileName,
     fileExt: docData.fileExt,
@@ -407,18 +407,20 @@ export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | 
     createdByUid: docData.createdByUid,
     createdByEmail: docData.createdByEmail,
     isDeleted: false,
-    searchKeywords: docData.searchKeywords || [],
-    // Timestamps
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-    // Optional fields
+    
+    // Optional fields handled safely
     descripcion: docData.descripcion || "",
     servicioIds: docData.servicioIds || [],
     fechaVigenciaDesde: docData.fechaVigenciaDesde ? Timestamp.fromDate(docData.fechaVigenciaDesde) : null,
     fechaVigenciaHasta: docData.fechaVigenciaHasta ? Timestamp.fromDate(docData.fechaVigenciaHasta) : null,
     tags: docData.tags || [],
-    linkedDocumentId: docData.linkedDocumentId || "",
-    checksum: docData.checksum || "",
+    linkedDocumentId: docData.linkedDocumentId || null,
+    checksum: docData.checksum || null,
+    deletedAt: null,
+    deletedByUid: null,
+    searchKeywords: docData.searchKeywords || [],
   };
 
   try {
@@ -545,27 +547,34 @@ export async function updateDocument(docId: string, updates: Partial<Documento>)
   
   const dataToUpdate: Record<string, any> = { updatedAt: serverTimestamp() };
 
-  // Build the update object safely
-  for (const key of Object.keys(updates) as (keyof typeof updates)[]) {
-    const value = updates[key];
-    if (value !== undefined) {
-      if (value instanceof Date) {
-        dataToUpdate[key] = Timestamp.fromDate(value);
-      } else {
-        dataToUpdate[key] = value;
-      }
-    } else {
-      // Explicitly set undefined optional fields to null for Firestore
-      if (['fechaVigenciaDesde', 'fechaVigenciaHasta', 'deletedAt', 'linkedDocumentId', 'descripcion', 'checksum'].includes(key)) {
-        dataToUpdate[key] = null;
-      }
-    }
-  }
-
-  // Ensure isDeleted also sets deletedAt
-  if (updates.isDeleted) {
+  // Explicitly handle each possible field from the update object to prevent 'undefined'
+  if (updates.titulo !== undefined) dataToUpdate.titulo = updates.titulo;
+  if (updates.descripcion !== undefined) dataToUpdate.descripcion = updates.descripcion || "";
+  if (updates.tipoDocumentoId !== undefined) dataToUpdate.tipoDocumentoId = updates.tipoDocumentoId;
+  if (updates.version !== undefined) dataToUpdate.version = updates.version;
+  if (updates.estadoDocId !== undefined) dataToUpdate.estadoDocId = updates.estadoDocId;
+  if (updates.ambitoId !== undefined) dataToUpdate.ambitoId = updates.ambitoId;
+  if (updates.caracteristicaId !== undefined) dataToUpdate.caracteristicaId = updates.caracteristicaId;
+  if (updates.elementoMedibleId !== undefined) dataToUpdate.elementoMedibleId = updates.elementoMedibleId;
+  if (updates.servicioIds !== undefined) dataToUpdate.servicioIds = updates.servicioIds || [];
+  if (updates.responsableNombre !== undefined) dataToUpdate.responsableNombre = updates.responsableNombre;
+  if (updates.responsableEmail !== undefined) dataToUpdate.responsableEmail = updates.responsableEmail;
+  if (updates.fechaDocumento !== undefined) dataToUpdate.fechaDocumento = updates.fechaDocumento ? Timestamp.fromDate(updates.fechaDocumento) : null;
+  if (updates.fechaVigenciaDesde !== undefined) dataToUpdate.fechaVigenciaDesde = updates.fechaVigenciaDesde ? Timestamp.fromDate(updates.fechaVigenciaDesde) : null;
+  if (updates.fechaVigenciaHasta !== undefined) dataToUpdate.fechaVigenciaHasta = updates.fechaVigenciaHasta ? Timestamp.fromDate(updates.fechaVigenciaHasta) : null;
+  if (updates.tags !== undefined) dataToUpdate.tags = updates.tags || [];
+  if (updates.searchKeywords !== undefined) dataToUpdate.searchKeywords = updates.searchKeywords || [];
+  if (updates.linkedDocumentId !== undefined) dataToUpdate.linkedDocumentId = updates.linkedDocumentId || null;
+  
+  // Handle deletion fields specifically
+  if (updates.isDeleted === true) {
+    dataToUpdate.isDeleted = true;
     dataToUpdate.deletedAt = serverTimestamp();
-    dataToUpdate.deletedByUid = updates.deletedByUid || null;
+    if (updates.deletedByUid !== undefined) dataToUpdate.deletedByUid = updates.deletedByUid;
+  } else if (updates.isDeleted === false) {
+    dataToUpdate.isDeleted = false;
+    dataToUpdate.deletedAt = null;
+    dataToUpdate.deletedByUid = null;
   }
   
   try {
@@ -605,7 +614,7 @@ export async function createNewVersionAndUpdateDocument(
   };
 
   const parentUpdateData: Record<string, any> = {
-    // Build update data safely
+    // Build update data safely to prevent 'undefined'
     titulo: newData.titulo,
     descripcion: newData.descripcion || "",
     tipoDocumentoId: newData.tipoDocumentoId,
@@ -627,7 +636,7 @@ export async function createNewVersionAndUpdateDocument(
     storagePath: newData.storagePath,
     downloadUrl: newData.downloadUrl,
     tags: newData.tags || [],
-    linkedDocumentId: newData.linkedDocumentId || "",
+    linkedDocumentId: newData.linkedDocumentId || null,
     searchKeywords: newData.searchKeywords || [],
     updatedAt: serverTimestamp(),
   };
