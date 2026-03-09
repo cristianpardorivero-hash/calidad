@@ -125,10 +125,38 @@ export default function MisDocumentosPage() {
 
   const documentsForDisplay = useMemo(() => {
     if (selectedTab === 'todos') {
-        return filteredDocuments;
+        if (!catalogs) return filteredDocuments;
+        const sortedDocs = [...filteredDocuments].sort((a, b) => {
+            const ambitoA_orden = catalogs.ambitos.find(ambito => ambito.id === a.ambitoId)?.orden ?? Infinity;
+            const ambitoB_orden = catalogs.ambitos.find(ambito => ambito.id === b.ambitoId)?.orden ?? Infinity;
+            if (ambitoA_orden !== ambitoB_orden) {
+                return ambitoA_orden - ambitoB_orden;
+            }
+
+            const caracA_orden = catalogs.caracteristicas.find(c => c.id === a.caracteristicaId)?.orden ?? Infinity;
+            const caracB_orden = catalogs.caracteristicas.find(c => c.id === b.caracteristicaId)?.orden ?? Infinity;
+            if (caracA_orden !== caracB_orden) {
+                return caracA_orden - caracB_orden;
+            }
+
+            const elemA_orden = catalogs.elementosMedibles.find(e => e.id === a.elementoMedibleId)?.orden ?? Infinity;
+            const elemB_orden = catalogs.elementosMedibles.find(e => e.id === b.elementoMedibleId)?.orden ?? Infinity;
+            if (elemA_orden !== elemB_orden) {
+                return elemA_orden - elemB_orden;
+            }
+
+            const tipoA_orden = catalogs.tiposDocumento.find(t => t.id === a.tipoDocumentoId)?.orden ?? Infinity;
+            const tipoB_orden = catalogs.tiposDocumento.find(t => t.id === b.tipoDocumentoId)?.orden ?? Infinity;
+            if (tipoA_orden !== tipoB_orden) {
+                return tipoA_orden - tipoB_orden;
+            }
+            
+            return a.titulo.localeCompare(b.titulo);
+        });
+        return sortedDocs;
     }
     return filteredDocuments.filter(doc => doc.tipoDocumentoId === selectedTab);
-  }, [filteredDocuments, selectedTab]);
+  }, [filteredDocuments, selectedTab, catalogs]);
 
   const pageHeader = (
     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
