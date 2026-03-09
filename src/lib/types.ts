@@ -148,7 +148,7 @@ export interface AuditLog {
   action: AuditAction;
   docId?: string;
   timestamp: Date;
-  details: Record<string, any>;
+  details: Record<string, any> | string[];
 }
 
     
