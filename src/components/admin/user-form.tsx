@@ -238,11 +238,16 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
                                 <Checkbox
                                   checked={field.value?.includes(servicio.id)}
                                   onCheckedChange={(checked) => {
-                                    const currentValues = form.getValues("servicioIds") || [];
-                                    const newValues = checked
-                                      ? [...currentValues, servicio.id]
-                                      : currentValues.filter((id) => id !== servicio.id);
-                                    form.setValue("servicioIds", newValues, { shouldDirty: true, shouldValidate: true });
+                                    return checked
+                                      ? field.onChange([
+                                          ...(field.value || []),
+                                          servicio.id,
+                                        ])
+                                      : field.onChange(
+                                          (field.value || []).filter(
+                                            (value) => value !== servicio.id
+                                          )
+                                        );
                                   }}
                                 />
                               </FormControl>
@@ -293,11 +298,16 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
                               <Checkbox
                                 checked={field.value?.includes(page.id)}
                                 onCheckedChange={(checked) => {
-                                  const currentValues = form.getValues("allowedPages") || [];
-                                  const newValues = checked
-                                    ? [...currentValues, page.id]
-                                    : currentValues.filter((id) => id !== page.id);
-                                  form.setValue("allowedPages", newValues, { shouldDirty: true, shouldValidate: true });
+                                  return checked
+                                    ? field.onChange([
+                                        ...(field.value || []),
+                                        page.id,
+                                      ])
+                                    : field.onChange(
+                                        (field.value || []).filter(
+                                          (value) => value !== page.id
+                                        )
+                                      );
                                 }}
                               />
                             </FormControl>
