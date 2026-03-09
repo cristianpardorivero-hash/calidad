@@ -172,18 +172,30 @@ export default function ReportesPage() {
             return (b.fechaDocumento?.getTime() || 0) - (a.fechaDocumento?.getTime() || 0);
         });
 
-        tableHead = ["Título", "Tipo", "Versión", "Fecha Documento", "Vigencia", "Estado"];
+        tableHead = ["Título", "Tipo", "Ver.", "Fecha", "Vigencia", "Estado", "Clasificación"];
         tableBody = finalDocs.map(d => {
             const vigencia = d.fechaVigenciaDesde
                 ? `${format(d.fechaVigenciaDesde, "dd/MM/yy")} - ${d.fechaVigenciaHasta ? format(d.fechaVigenciaHasta, "dd/MM/yy") : 'Indef.'}`
                 : 'No aplica';
+
+            const ambitoName = getCatalogName('ambitos', d.ambitoId);
+            const caracteristicaData = catalogs.caracteristicas.find(c => c.id === d.caracteristicaId);
+            const elementoData = catalogs.elementosMedibles.find(e => e.id === d.elementoMedibleId);
+            
+            const clasificacion = [
+                `Ámbito: ${ambitoName}`,
+                `Caract: ${caracteristicaData?.codigo || ''} ${caracteristicaData?.nombre || ''}`.trim(),
+                `Elem. M.: ${elementoData?.codigo || ''} ${elementoData?.nombre || ''}`.trim()
+            ].join('\n');
+            
             return [
                 d.titulo,
                 getCatalogName('tiposDocumento', d.tipoDocumentoId),
                 d.version,
                 d.fechaDocumento ? format(d.fechaDocumento, 'dd/MM/yyyy') : 'N/A',
                 vigencia,
-                getCatalogName('estadosAcreditacionDoc', d.estadoDocId)
+                getCatalogName('estadosAcreditacionDoc', d.estadoDocId),
+                clasificacion
             ];
         });
     } else if (reportType === 'vencimiento') {
