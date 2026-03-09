@@ -65,22 +65,24 @@ export default function DocumentosHistoricosPage() {
                 });
 
                 const substitutedDocs: Documento[] = versionsSnapshot.docs.map(doc => {
-                    const data = doc.data() as DocumentVersion;
+                    const data = doc.data();
                     // Map DocumentVersion to a Documento object for table display
                     return {
                         ...data,
-                        id: data.id, // The unique ID of the version entry
-                        // Use version creation date for 'updatedAt' to sort correctly
-                        updatedAt: (data.createdAt as unknown as Timestamp)?.toDate(), 
-                        fechaDocumento: (data.fechaDocumento as unknown as Timestamp)?.toDate(),
-                        fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as unknown as Timestamp).toDate() : undefined,
-                        fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as unknown as Timestamp).toDate() : undefined,
+                        id: doc.id, // The unique ID of the version entry
+                        // Convert all timestamp fields to Date objects
+                        createdAt: (data.createdAt as Timestamp)?.toDate(),
+                        updatedAt: (data.updatedAt as Timestamp)?.toDate() || (data.createdAt as Timestamp)?.toDate(), // Fallback to createdAt
+                        fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
+                        fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
+                        fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
                         isDeleted: false,
                     } as Documento;
                 });
 
                 const allHistoricalDocs = [...historicalDocs, ...substitutedDocs];
-                allHistoricalDocs.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+                // Safe sort
+                allHistoricalDocs.sort((a, b) => (b.updatedAt?.getTime() || 0) - (a.updatedAt?.getTime() || 0));
 
                 setDocuments(allHistoricalDocs);
 
