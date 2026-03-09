@@ -205,6 +205,7 @@ export function UserManager({ initialUsers, catalogs, onUsersChange }: UserManag
           </DialogHeader>
           {userToEdit && (
             <UserForm 
+                key={userToEdit.uid}
                 user={userToEdit} 
                 catalogs={catalogs} 
                 onSave={() => {

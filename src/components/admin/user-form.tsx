@@ -103,7 +103,7 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
         allowedPages: [],
        });
     }
-  }, [user, form]);
+  }, [user]);
 
 
   async function onSubmit(values: EditFormValues | CreateFormValues) {
