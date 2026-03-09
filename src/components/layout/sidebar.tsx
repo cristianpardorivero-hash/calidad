@@ -23,6 +23,7 @@ import {
   FileHeart,
   FileClock,
   History,
+  AreaChart,
 } from "lucide-react";
 import Link from "next/link";
 import { useUser } from "@/hooks/use-user";
@@ -57,6 +58,12 @@ const menuItems = [
     icon: History,
     label: "Historial",
     roles: ["admin", "editor", "lector"],
+  },
+  {
+    href: "/reportes",
+    icon: AreaChart,
+    label: "Reportes",
+    roles: ["admin", "editor"],
   },
   {
     href: "/mis-documentos",
