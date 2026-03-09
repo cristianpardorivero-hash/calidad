@@ -604,7 +604,7 @@ export async function createNewVersionAndUpdateDocument(
   const oldVersionRef = doc(collection(db, "document_versions"));
   const parentDocRef = doc(db, "documents", originalDoc.id);
 
-  const versionData = {
+  const versionData: Omit<DocumentVersion, 'id' | 'createdAt'> = {
     docId: originalDoc.id,
     hospitalId: originalDoc.hospitalId,
     version: originalDoc.version,
@@ -613,8 +613,8 @@ export async function createNewVersionAndUpdateDocument(
     fileSize: originalDoc.fileSize,
     fileName: originalDoc.fileName,
     fileExt: originalDoc.fileExt,
-    createdAt: serverTimestamp(),
     createdByUid: userId,
+    estadoDocId: 'est-sus', // Estado "Sustituido"
   };
 
   const parentUpdateData: Record<string, any> = {
@@ -645,7 +645,10 @@ export async function createNewVersionAndUpdateDocument(
   };
 
   try {
-      await setDoc(oldVersionRef, versionData);
+      await setDoc(oldVersionRef, {
+        ...versionData,
+        createdAt: serverTimestamp(),
+      });
   } catch (error) {
       console.error("Failed to create document version history entry. The main document will still be updated.", error);
   }

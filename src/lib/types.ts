@@ -129,6 +129,7 @@ export interface DocumentVersion {
   createdByUid: string;
   fileName: string;
   fileExt: "pdf" | "docx" | "xlsx";
+  estadoDocId: string;
 }
 
 export type AuditAction = 

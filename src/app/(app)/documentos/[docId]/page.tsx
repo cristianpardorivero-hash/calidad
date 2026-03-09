@@ -250,6 +250,8 @@ export default function DocumentoDetailPage() {
                 <CardHeader><CardTitle className="flex items-center gap-2"><History className="h-5 w-5"/> Historial de Versiones</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
                 {versions.map(version => {
+                    const estadoNombre = getCatalogName("estadosAcreditacionDoc", version.estadoDocId) || '';
+
                     const handlePreviewClick = () => {
                       if (!document) return;
                       const previewDocForVersion: Documento = {
@@ -283,7 +285,10 @@ export default function DocumentoDetailPage() {
                           <div className="flex items-center gap-3">
                               <FileText className="h-5 w-5 text-muted-foreground"/>
                               <div className="flex flex-col">
-                                  <span className="font-medium text-sm">Versión {version.version}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-sm">Versión {version.version}</span>
+                                    {estadoNombre && <Badge variant="secondary" className="text-xs">{estadoNombre}</Badge>}
+                                  </div>
                                   <span className="text-xs text-muted-foreground">
                                       Archivado {format(version.createdAt, "d 'de' MMMM, yyyy", { locale: es })}
                                   </span>
