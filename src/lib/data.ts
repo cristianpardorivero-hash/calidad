@@ -604,7 +604,7 @@ export async function createNewVersionAndUpdateDocument(
   const oldVersionRef = doc(collection(db, "document_versions"));
   const parentDocRef = doc(db, "documents", originalDoc.id);
 
-  const versionData: Omit<DocumentVersion, 'id' | 'createdAt'> = {
+  const versionData: Omit<DocumentVersion, 'id' | 'createdAt' | 'updatedAt'> = {
     docId: originalDoc.id,
     hospitalId: originalDoc.hospitalId,
     version: originalDoc.version,
@@ -613,18 +613,27 @@ export async function createNewVersionAndUpdateDocument(
     fileSize: originalDoc.fileSize,
     fileName: originalDoc.fileName,
     fileExt: originalDoc.fileExt,
-    createdByUid: userId,
-    estadoDocId: 'est-sus', // Estado "Sustituido"
+    createdByUid: originalDoc.createdByUid,
+    createdByEmail: originalDoc.createdByEmail,
+    estadoDocId: 'est-sus',
 
-    // Denormalized fields from original document
     titulo: originalDoc.titulo,
+    descripcion: originalDoc.descripcion,
     tipoDocumentoId: originalDoc.tipoDocumentoId,
     ambitoId: originalDoc.ambitoId,
-    responsableNombre: originalDoc.responsableNombre,
     caracteristicaId: originalDoc.caracteristicaId,
     elementoMedibleId: originalDoc.elementoMedibleId,
     servicioIds: originalDoc.servicioIds,
+    responsableNombre: originalDoc.responsableNombre,
+    responsableEmail: originalDoc.responsableEmail,
     fechaDocumento: originalDoc.fechaDocumento,
+    fechaVigenciaDesde: originalDoc.fechaVigenciaDesde,
+    fechaVigenciaHasta: originalDoc.fechaVigenciaHasta,
+    mimeType: originalDoc.mimeType,
+    checksum: originalDoc.checksum,
+    tags: originalDoc.tags,
+    linkedDocumentId: originalDoc.linkedDocumentId,
+    searchKeywords: originalDoc.searchKeywords,
   };
 
   const parentUpdateData: Record<string, any> = {
@@ -658,6 +667,7 @@ export async function createNewVersionAndUpdateDocument(
       await setDoc(oldVersionRef, {
         ...versionData,
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
   } catch (error) {
       console.error("Failed to create document version history entry. The main document will still be updated.", error);
@@ -693,7 +703,10 @@ export async function getDocumentVersions(docId: string): Promise<DocumentVersio
             id: doc.id,
             ...data,
             createdAt: (data.createdAt as Timestamp)?.toDate(),
+            updatedAt: (data.updatedAt as Timestamp)?.toDate(),
             fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
+            fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
+            fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
         } as DocumentVersion;
     });
 }

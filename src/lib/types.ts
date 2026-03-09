@@ -125,22 +125,34 @@ export interface DocumentVersion {
   storagePath: string;
   downloadUrl: string;
   fileSize: number;
+  fileName: string;
+  fileExt: 'pdf' | 'docx' | 'xlsx';
+  estadoDocId: string;
   createdAt: Date;
   createdByUid: string;
-  fileName: string;
-  fileExt: "pdf" | "docx" | "xlsx";
-  estadoDocId: string;
-
-  // Denormalized fields for display
+  createdByEmail: string;
+  
+  // Denormalized fields for display consistency
   titulo: string;
+  descripcion?: string;
   tipoDocumentoId: string;
   ambitoId: string;
-  responsableNombre: string;
   caracteristicaId: string;
   elementoMedibleId: string;
   servicioIds?: string[];
+  responsableNombre: string;
+  responsableEmail: string;
   fechaDocumento: Date;
+  fechaVigenciaDesde?: Date;
+  fechaVigenciaHasta?: Date;
+  mimeType: string;
+  checksum?: string;
+  tags?: string[];
+  linkedDocumentId?: string;
+  searchKeywords: string[];
+  updatedAt: Date;
 }
+
 
 export type AuditAction = 
   | "UPLOAD" 
@@ -161,6 +173,3 @@ export interface AuditLog {
   timestamp: Date;
   details: Record<string, any> | string[];
 }
-
-    
-    

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useUser } from "@/hooks/use-user";
-import { onSnapshot, collection, query, where, Timestamp, getDocs, orderBy } from "firebase/firestore";
+import { collection, query, where, Timestamp, getDocs, orderBy } from "firebase/firestore";
 import { db } from "@/firebase/client";
 import type { Catalogs, Documento, DocumentVersion } from "@/lib/types";
 import { getCatalogs } from "@/lib/data";
@@ -26,60 +26,64 @@ export default function DocumentosHistoricosPage() {
             setLoading(true);
 
             try {
-                // Fetch catalogs first
                 const catalogsData = await getCatalogs(hospitalId);
                 setCatalogs(catalogsData);
 
-                // 1. Get latest docs that are 'histórico'
-                const docsRef = collection(db, "documents");
-                const historicalDocsQuery = query(
-                    docsRef,
+                // 1. Get documents from the main collection marked as 'histórico'
+                const mainDocsRef = collection(db, "documents");
+                const historicalQuery = query(
+                    mainDocsRef,
                     where("hospitalId", "==", hospitalId),
                     where("isDeleted", "==", false),
                     where("estadoDocId", "==", "est-hist")
                 );
-                const latestHistoricalSnapshot = await getDocs(historicalDocsQuery);
-                const latestHistoricalDocs = latestHistoricalSnapshot.docs.map(doc => {
+
+                // 2. Get all archived versions from the versions collection
+                const versionsRef = collection(db, "document_versions");
+                const versionsQuery = query(
+                    versionsRef,
+                    where("hospitalId", "==", hospitalId),
+                    orderBy("createdAt", "desc")
+                );
+                
+                const [historicalSnapshot, versionsSnapshot] = await Promise.all([
+                    getDocs(historicalQuery),
+                    getDocs(versionsQuery)
+                ]);
+
+                const historicalDocs: Documento[] = historicalSnapshot.docs.map(doc => {
                     const data = doc.data();
                     return {
                         id: doc.id,
                         ...data,
                         fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
-                        fechaVigenciaDesde: (data.fechaVigenciaDesde as Timestamp)?.toDate(),
-                        fechaVigenciaHasta: (data.fechaVigenciaHasta as Timestamp)?.toDate(),
+                        fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
+                        fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
                         createdAt: (data.createdAt as Timestamp)?.toDate(),
                         updatedAt: (data.updatedAt as Timestamp)?.toDate(),
                     } as Documento;
                 });
 
-                // 2. Get all archived versions (which have status 'sustituido')
-                const versionsRef = collection(db, "document_versions");
-                const archivedVersionsQuery = query(
-                    versionsRef,
-                    where("hospitalId", "==", hospitalId),
-                    orderBy("createdAt", "desc")
-                );
-                const archivedVersionsSnapshot = await getDocs(archivedVersionsQuery);
-                const archivedDocs = archivedVersionsSnapshot.docs.map(doc => {
+                const substitutedDocs: Documento[] = versionsSnapshot.docs.map(doc => {
                     const data = doc.data() as DocumentVersion;
-                    // Map DocumentVersion to a Documento-like object for the table
+                    // Map DocumentVersion to a Documento object for table display
                     return {
                         ...data,
-                        id: data.id, // Use the version's own unique ID for the key
-                        updatedAt: (data.createdAt as Timestamp)?.toDate(),
+                        id: data.id, // The unique ID of the version entry
+                        // Use version creation date for 'updatedAt' to sort correctly
+                        updatedAt: (data.createdAt as unknown as Timestamp)?.toDate(), 
+                        fechaDocumento: (data.fechaDocumento as unknown as Timestamp)?.toDate(),
+                        fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as unknown as Timestamp).toDate() : undefined,
+                        fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as unknown as Timestamp).toDate() : undefined,
                         isDeleted: false,
-                        searchKeywords: [data.titulo.toLowerCase()],
-                        // Filler props to satisfy the Documento type for the table
-                        createdByEmail: '',
-                        mimeType: '',
                     } as Documento;
                 });
 
-                // 3. Merge and sort results
-                const allDocs = [...latestHistoricalDocs, ...archivedDocs];
-                allDocs.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+                const allHistoricalDocs = [...historicalDocs, ...substitutedDocs];
+                allHistoricalDocs.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
-                setDocuments(allDocs);
+                setDocuments(allHistoricalDocs);
+
             } catch (error) {
                 console.error("Error fetching historical documents:", error);
             } finally {
