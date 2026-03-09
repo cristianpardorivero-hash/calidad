@@ -61,11 +61,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { storage } from "@/firebase/client";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { es } from "date-fns/locale";
-import { format } from "date-fns";
+import { format, parse, isValid } from "date-fns";
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = ["pdf", "docx", "xlsx"] as const;
@@ -456,14 +454,17 @@ export function DocumentForm({
   };
 
   async function onSubmit(values: FormValues) {
+    console.log("[SUBMIT_START] Iniciando proceso de envío...");
     if (!user || !firebaseUser) {
       toast({ variant: "destructive", title: "No autenticado", description: "Debes iniciar sesión para guardar un documento." });
+      console.error("[SUBMIT_ERROR] Usuario no autenticado.");
       return;
     }
     
     if (isCreation || isNewVersion) {
         if (!(values.file instanceof File)) {
             form.setError("file", { message: "Debes seleccionar un archivo válido." });
+            console.error("[SUBMIT_ERROR] Archivo no válido o no seleccionado.");
             return;
         }
     }
@@ -475,10 +476,12 @@ export function DocumentForm({
       let fileData: { downloadURL: string; storagePath: string; mimeType: string, fileExt: string, fileName: string, fileSize: number } | null = null;
       
       if ((isCreation || isNewVersion) && values.file instanceof File) {
+        console.log("[SUBMIT_INFO] Iniciando subida a Firebase Storage...");
         const uploadResult = await uploadFile(
           values.file,
           user.hospitalId,
         );
+        console.log("[SUBMIT_INFO] Subida a Firebase Storage completada.");
 
         fileData = {
             ...uploadResult,
@@ -496,6 +499,7 @@ export function DocumentForm({
         ...tagsArray.map(t => t.toLowerCase())
       ].filter(Boolean);
 
+      console.log("[SUBMIT_INFO] Preparando datos para guardar en Firestore...");
       if (isNewVersion && document && fileData) {
         const newData: Omit<Documento, 'id'> & {id: string} = {
           ...document,
@@ -524,6 +528,7 @@ export function DocumentForm({
           updatedAt: new Date(),
           searchKeywords: [...new Set(searchKeywords)],
         };
+        console.log("[SUBMIT_INFO] Llamando a createNewVersionAndUpdateDocument...");
         await createNewVersionAndUpdateDocument(document, newData, firebaseUser.uid);
         toast({ title: "Nueva versión creada", description: `Se ha creado la versión ${newData.version} de "${newData.titulo}".` });
         router.push(`/documentos/${document.id}`);
@@ -548,6 +553,7 @@ export function DocumentForm({
             searchKeywords: [...new Set(searchKeywords)],
             linkedDocumentId: values.linkedDocumentId || "",
          };
+        console.log("[SUBMIT_INFO] Llamando a updateDocument...");
         await updateDocument(document.id, dataToUpdate);
         toast({ title: "Documento actualizado", description: `El documento "${dataToUpdate.titulo}" ha sido guardado.` });
         router.push(`/documentos/${document.id}`);
@@ -583,17 +589,78 @@ export function DocumentForm({
           downloadUrl: fileData.downloadURL,
         };
         
+        console.log("[SUBMIT_INFO] Llamando a addDocument...");
         const savedDoc = await addDocument(docData);
         toast({ title: "Documento subido con éxito", description: `El documento "${savedDoc.titulo}" ha sido guardado.` });
         router.push(`/documentos/${savedDoc.id}`);
       }
-
+      console.log("[SUBMIT_SUCCESS] Proceso de envío completado.");
     } catch (e: any) {
+      console.error("[SUBMIT_FATAL]", e);
       toast({ variant: "destructive", title: "Error Inesperado", description: `Ocurrió un error. Revisa la consola para más detalles.` });
     } finally {
       setIsSubmitting(false);
     }
   }
+
+  const DateInputField = ({ field, label, description }: { field: any, label: string, description?: string }) => {
+    const [inputValue, setInputValue] = useState<string>(
+      field.value && isValid(field.value) ? format(field.value, 'dd/MM/yyyy') : ''
+    );
+  
+    useEffect(() => {
+      if (field.value && isValid(field.value)) {
+        const formatted = format(field.value, 'dd/MM/yyyy');
+        if (formatted !== inputValue) {
+          setInputValue(formatted);
+        }
+      } else if (!field.value && inputValue) {
+        setInputValue('');
+      }
+    }, [field.value]);
+  
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      setInputValue(val); // Update visual state immediately
+  
+      if (val === '') {
+        field.onChange(undefined);
+        return;
+      }
+  
+      if (val.length === 10) {
+        const parsedDate = parse(val, 'dd/MM/yyyy', new Date());
+        field.onChange(parsedDate); // Pass to RHF, Zod will validate
+      }
+    };
+
+    const handleBlur = () => {
+      // On blur, if the RHF value is a valid date, reformat the input
+      // This cleans up any weird partial input if the user clicks away
+      if (field.value && isValid(field.value)) {
+        setInputValue(format(field.value, 'dd/MM/yyyy'));
+      } else if (inputValue !== '') {
+        // If input is not empty and not a valid date, trigger validation by passing an invalid date
+        field.onChange(new Date('invalid'));
+      }
+    };
+  
+    return (
+      <FormItem>
+        <FormLabel>{label}</FormLabel>
+        <FormControl>
+          <Input
+            placeholder="dd/mm/yyyy"
+            value={inputValue}
+            onChange={handleChange}
+            onBlur={handleBlur}
+          />
+        </FormControl>
+        {description && <FormDescription>{description}</FormDescription>}
+        <FormMessage />
+      </FormItem>
+    );
+  };
 
   if (!isCreation) {
     return (
@@ -987,120 +1054,19 @@ export function DocumentForm({
               </CardHeader>
               <CardContent className="space-y-4">
                  <FormField
-                  control={form.control}
-                  name="fechaDocumento"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Fecha del documento</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: es })
-                              ) : (
-                                <span>Seleccione una fecha</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                    control={form.control}
+                    name="fechaDocumento"
+                    render={({ field }) => <DateInputField field={field} label="Fecha del documento" />}
                 />
-
                 <FormField
-                  control={form.control}
-                  name="fechaVigenciaDesde"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Vigencia Desde (Opcional)</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: es })
-                              ) : (
-                                <span>Seleccione una fecha</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                    control={form.control}
+                    name="fechaVigenciaDesde"
+                    render={({ field }) => <DateInputField field={field} label="Vigencia Desde (Opcional)" />}
                 />
-
                 <FormField
-                  control={form.control}
-                  name="fechaVigenciaHasta"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Vigencia Hasta (Opcional)</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: es })
-                              ) : (
-                                <span>Seleccione una fecha</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                    control={form.control}
+                    name="fechaVigenciaHasta"
+                    render={({ field }) => <DateInputField field={field} label="Vigencia Hasta (Opcional)" />}
                 />
               </CardContent>
             </Card>
@@ -1619,122 +1585,21 @@ export function DocumentForm({
                   <Separator className="my-4" />
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <FormField
-                  control={form.control}
-                  name="fechaDocumento"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Fecha del documento</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: es })
-                              ) : (
-                                <span>Seleccione una fecha</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="fechaVigenciaDesde"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Vigencia Desde (Opcional)</FormLabel>
-                       <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: es })
-                              ) : (
-                                <span>Seleccione una fecha</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="fechaVigenciaHasta"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Vigencia Hasta (Opcional)</FormLabel>
-                       <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: es })
-                              ) : (
-                                <span>Seleccione una fecha</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                        control={form.control}
+                        name="fechaDocumento"
+                        render={({ field }) => <DateInputField field={field} label="Fecha del documento" />}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="fechaVigenciaDesde"
+                        render={({ field }) => <DateInputField field={field} label="Vigencia Desde (Opcional)" />}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="fechaVigenciaHasta"
+                        render={({ field }) => <DateInputField field={field} label="Vigencia Hasta (Opcional)" />}
+                    />
                   </div>
                 </CardContent>
               </Card>
