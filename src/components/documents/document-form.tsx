@@ -179,16 +179,18 @@ const Stepper = ({ currentStep }: { currentStep: number }) => (
   </div>
 );
 
-const autoIncrementVersion = (version?: string | null) => {
-  if (!version) {
+const autoIncrementVersion = (version?: string | number | null) => {
+  const versionStr = String(version || '');
+  if (!versionStr) {
     return "1.0";
   }
-  const parts = version.split(".");
+
+  const parts = versionStr.split(".");
   if (parts.length > 0 && !isNaN(parseInt(parts[0], 10))) {
     const major = parseInt(parts[0], 10) + 1;
     return `${major}.0`;
   }
-  return version;
+  return String(version);
 };
 
 
@@ -589,7 +591,7 @@ export function DocumentForm({
           fileSize: fileData.fileSize,
           mimeType: fileData.mimeType,
           storagePath: fileData.storagePath,
-          downloadUrl: fileData.downloadURL,
+          downloadUrl: fileData.downloadUrl,
         };
         
         console.log("[SUBMIT_INFO] Llamando a addDocument...");
