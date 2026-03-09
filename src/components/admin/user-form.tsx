@@ -32,15 +32,27 @@ import { Checkbox } from "../ui/checkbox";
 import { ScrollArea } from "../ui/scroll-area";
 
 const availablePages = [
+  // General
   { id: "/dashboard", label: "Dashboard" },
-  { id: "/documentos", label: "Explorar Documentos" },
-  { id: "/documentos/nuevo", label: "Subir Documento" },
   { id: "/mis-documentos", label: "Mis Documentos" },
-  { id: "/admin/usuarios", label: "Gestión de Usuarios" },
-  { id: "/admin/catalogos", label: "Gestión de Catálogos" },
-  { id: "/admin/auditoria", label: "Auditoría" },
-  { id: "/admin/configuracion", label: "Parámetros" },
+  { id: "/perfil", label: "Mi Perfil" },
+  { id: "/ajustes", label: "Ajustes" },
+  // Documentos
+  { id: "/documentos", label: "Explorador de Documentos" },
+  { id: "/documentos/nuevo", label: "Subir Nuevo Documento" },
+  { id: "/documentos/vencimientos", label: "Control de Vencimientos" },
+  { id: "/documentos/historicos", label: "Historial de Documentos" },
+  // Reportes
+  { id: "/reportes", label: "Generación de Reportes" },
+  // Administración
+  { id: "/admin/usuarios", label: "Admin: Gestión de Usuarios" },
+  { id: "/admin/usuarios/nuevo", label: "Admin: Crear Nuevo Usuario" },
+  { id: "/admin/catalogos", label: "Admin: Gestión de Catálogos" },
+  { id: "/admin/catalogos/nuevo", label: "Admin: Crear Ítem de Catálogo" },
+  { id: "/admin/auditoria", label: "Admin: Auditoría" },
+  { id: "/admin/configuracion", label: "Admin: Parámetros" },
 ];
+
 
 const baseSchema = z.object({
   displayName: z.string().min(3, "El nombre debe tener al menos 3 caracteres."),
