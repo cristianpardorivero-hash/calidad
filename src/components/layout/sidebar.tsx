@@ -21,6 +21,7 @@ import {
   LifeBuoy,
   User as UserIcon,
   FileHeart,
+  FileClock,
 } from "lucide-react";
 import Link from "next/link";
 import { useUser } from "@/hooks/use-user";
@@ -42,6 +43,12 @@ const menuItems = [
     href: "/documentos",
     icon: FolderOpen,
     label: "Explorar Documentos",
+    roles: ["admin", "editor", "lector"],
+  },
+  {
+    href: "/documentos/vencimientos",
+    icon: FileClock,
+    label: "Vencimientos",
     roles: ["admin", "editor", "lector"],
   },
   {
