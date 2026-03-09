@@ -837,6 +837,7 @@ export function DocumentForm({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="">-- Cualquiera --</SelectItem>
                           {filteredCaracteristicas.map((c) => (
                             <SelectItem key={c.id} value={c.id}>
                               {c.codigo} - {c.nombre}
@@ -882,6 +883,7 @@ export function DocumentForm({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="">-- Cualquiera --</SelectItem>
                           {filteredElementos.map((e) => (
                             <SelectItem key={e.id} value={e.id}>
                               {e.codigo} - {e.nombre}
@@ -1414,6 +1416,7 @@ export function DocumentForm({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <SelectItem value="">-- Cualquiera --</SelectItem>
                             {filteredCaracteristicas.map((c) => (
                               <SelectItem key={c.id} value={c.id}>
                                 {c.codigo} - {c.nombre}
@@ -1463,6 +1466,7 @@ export function DocumentForm({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <SelectItem value="">-- Cualquiera --</SelectItem>
                             {filteredElementos.map((e) => (
                               <SelectItem key={e.id} value={e.id}>
                                 {e.codigo} - {e.nombre}
