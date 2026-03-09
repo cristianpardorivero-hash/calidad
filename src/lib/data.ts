@@ -385,26 +385,41 @@ export async function updateUser(
 export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | "updatedAt">): Promise<Documento> {
   const collRef = collection(db, "documents");
   
-  const dataToSave: Record<string, any> = {
+  const dataToSave = {
+    // Required fields
+    titulo: docData.titulo,
+    tipoDocumentoId: docData.tipoDocumentoId,
+    version: docData.version,
+    estadoDocId: docData.estadoDocId,
+    ambitoId: docData.ambitoId,
+    caracteristicaId: docData.caracteristicaId,
+    elementoMedibleId: docData.elementoMedibleId,
+    responsableNombre: docData.responsableNombre,
+    responsableEmail: docData.responsableEmail,
+    fechaDocumento: docData.fechaDocumento ? Timestamp.fromDate(docData.fechaDocumento) : null,
+    hospitalId: docData.hospitalId,
+    fileName: docData.fileName,
+    fileExt: docData.fileExt,
+    fileSize: docData.fileSize,
+    mimeType: docData.mimeType,
+    storagePath: docData.storagePath,
+    downloadUrl: docData.downloadUrl,
+    createdByUid: docData.createdByUid,
+    createdByEmail: docData.createdByEmail,
+    isDeleted: false,
+    searchKeywords: docData.searchKeywords || [],
+    // Timestamps
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
+    // Optional fields
+    descripcion: docData.descripcion || "",
+    servicioIds: docData.servicioIds || [],
+    fechaVigenciaDesde: docData.fechaVigenciaDesde ? Timestamp.fromDate(docData.fechaVigenciaDesde) : null,
+    fechaVigenciaHasta: docData.fechaVigenciaHasta ? Timestamp.fromDate(docData.fechaVigenciaHasta) : null,
+    tags: docData.tags || [],
+    linkedDocumentId: docData.linkedDocumentId || "",
+    checksum: docData.checksum || "",
   };
-
-  // Safely build the data object to avoid undefined values being sent to Firestore
-  for (const key in docData) {
-    const value = docData[key as keyof typeof docData];
-    if (value !== undefined) {
-        if (value instanceof Date) {
-            dataToSave[key] = Timestamp.fromDate(value);
-        } else {
-            dataToSave[key] = value;
-        }
-    }
-  }
-  // Ensure optional date fields are null if not provided, to match schema expectations
-  if (!dataToSave.fechaVigenciaDesde) dataToSave.fechaVigenciaDesde = null;
-  if (!dataToSave.fechaVigenciaHasta) dataToSave.fechaVigenciaHasta = null;
-
 
   try {
     const docRef = await addDoc(collRef, dataToSave);
@@ -530,24 +545,29 @@ export async function updateDocument(docId: string, updates: Partial<Documento>)
   
   const dataToUpdate: Record<string, any> = { updatedAt: serverTimestamp() };
 
-  for (const key in updates) {
-    const value = updates[key as keyof typeof updates];
+  // Build the update object safely
+  for (const key of Object.keys(updates) as (keyof typeof updates)[]) {
+    const value = updates[key];
     if (value !== undefined) {
-        if (value instanceof Date) {
-            dataToUpdate[key] = Timestamp.fromDate(value);
-        } else {
-            dataToUpdate[key] = value;
-        }
+      if (value instanceof Date) {
+        dataToUpdate[key] = Timestamp.fromDate(value);
+      } else {
+        dataToUpdate[key] = value;
+      }
+    } else {
+      // Explicitly set undefined optional fields to null for Firestore
+      if (['fechaVigenciaDesde', 'fechaVigenciaHasta', 'deletedAt', 'linkedDocumentId', 'descripcion', 'checksum'].includes(key)) {
+        dataToUpdate[key] = null;
+      }
     }
   }
-  
+
+  // Ensure isDeleted also sets deletedAt
   if (updates.isDeleted) {
     dataToUpdate.deletedAt = serverTimestamp();
+    dataToUpdate.deletedByUid = updates.deletedByUid || null;
   }
-  if (!updates.fechaVigenciaDesde) dataToUpdate.fechaVigenciaDesde = null;
-  if (!updates.fechaVigenciaHasta) dataToUpdate.fechaVigenciaHasta = null;
-
-
+  
   try {
     await updateDoc(docRef, dataToUpdate);
   } catch (error) {
@@ -584,20 +604,33 @@ export async function createNewVersionAndUpdateDocument(
     createdByUid: userId,
   };
 
-  const parentUpdateData: Record<string, any> = { updatedAt: serverTimestamp() };
-  for (const key in newData) {
-    const value = newData[key as keyof typeof newData];
-    if (value !== undefined && !['id', 'createdAt', 'createdByEmail', 'createdByUid'].includes(key)) {
-        if (value instanceof Date) {
-            parentUpdateData[key] = Timestamp.fromDate(value);
-        } else {
-            parentUpdateData[key] = value;
-        }
-    }
-  }
-  if (!parentUpdateData.fechaVigenciaDesde) parentUpdateData.fechaVigenciaDesde = null;
-  if (!parentUpdateData.fechaVigenciaHasta) parentUpdateData.fechaVigenciaHasta = null;
-
+  const parentUpdateData: Record<string, any> = {
+    // Build update data safely
+    titulo: newData.titulo,
+    descripcion: newData.descripcion || "",
+    tipoDocumentoId: newData.tipoDocumentoId,
+    version: newData.version,
+    estadoDocId: newData.estadoDocId,
+    ambitoId: newData.ambitoId,
+    caracteristicaId: newData.caracteristicaId,
+    elementoMedibleId: newData.elementoMedibleId,
+    servicioIds: newData.servicioIds || [],
+    responsableNombre: newData.responsableNombre,
+    responsableEmail: newData.responsableEmail,
+    fechaDocumento: newData.fechaDocumento ? Timestamp.fromDate(newData.fechaDocumento) : null,
+    fechaVigenciaDesde: newData.fechaVigenciaDesde ? Timestamp.fromDate(newData.fechaVigenciaDesde) : null,
+    fechaVigenciaHasta: newData.fechaVigenciaHasta ? Timestamp.fromDate(newData.fechaVigenciaHasta) : null,
+    fileName: newData.fileName,
+    fileExt: newData.fileExt,
+    fileSize: newData.fileSize,
+    mimeType: newData.mimeType,
+    storagePath: newData.storagePath,
+    downloadUrl: newData.downloadUrl,
+    tags: newData.tags || [],
+    linkedDocumentId: newData.linkedDocumentId || "",
+    searchKeywords: newData.searchKeywords || [],
+    updatedAt: serverTimestamp(),
+  };
 
   try {
       await setDoc(oldVersionRef, versionData);
