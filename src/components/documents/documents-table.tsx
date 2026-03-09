@@ -239,8 +239,7 @@ export function DocumentsTable({
                 } else {
                     switch (doc.estadoDocId) {
                         case 'est-vig': statusVariant = 'default'; break;
-                        case 'est-rev': statusVariant = 'secondary'; break;
-                        case 'est-obs': statusVariant = 'destructive'; break;
+                        case 'est-hist': statusVariant = 'secondary'; break;
                         case 'est-sus': statusVariant = 'outline'; break;
                         default: statusVariant = 'secondary';
                     }

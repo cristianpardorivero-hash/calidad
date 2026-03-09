@@ -77,8 +77,7 @@ export let seedCatalogs: Catalogs = {
   ],
   "estadosAcreditacionDoc": [
     { "id": "est-vig", "nombre": "Vigente" },
-    { "id": "est-rev", "nombre": "En revisión" },
-    { "id": "est-sus", "nombre": "Sustituido" },
-    { "id": "est-obs", "nombre": "Obsoleto" }
+    { "id": "est-hist", "nombre": "Histórico" },
+    { "id": "est-sus", "nombre": "Sustituido" }
   ]
 };

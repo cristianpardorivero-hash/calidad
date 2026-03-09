@@ -30,13 +30,13 @@ export default function DocumentosHistoricosPage() {
                 const catalogsData = await getCatalogs(hospitalId);
                 setCatalogs(catalogsData);
 
-                // 1. Get latest docs that are 'in review' or 'obsolete'
+                // 1. Get latest docs that are 'histórico'
                 const docsRef = collection(db, "documents");
                 const historicalDocsQuery = query(
                     docsRef,
                     where("hospitalId", "==", hospitalId),
                     where("isDeleted", "==", false),
-                    where("estadoDocId", "in", ["est-rev", "est-obs"])
+                    where("estadoDocId", "==", "est-hist")
                 );
                 const latestHistoricalSnapshot = await getDocs(historicalDocsQuery);
                 const latestHistoricalDocs = latestHistoricalSnapshot.docs.map(doc => {
@@ -95,7 +95,7 @@ export default function DocumentosHistoricosPage() {
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Historial de Documentos</h1>
                 <p className="text-muted-foreground">
-                    Documentos que han sido sustituidos, están en revisión o han quedado obsoletos.
+                    Documentos que han sido sustituidos o marcados como históricos.
                 </p>
             </div>
         </div>

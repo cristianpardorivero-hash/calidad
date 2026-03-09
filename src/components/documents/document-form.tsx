@@ -762,6 +762,7 @@ export function DocumentForm({
                       </FormControl>
                       <SelectContent>
                         {[...catalogs.estadosAcreditacionDoc]
+                          .filter((e) => e.id !== 'est-sus')
                           .sort((a, b) => a.nombre.localeCompare(b.nombre))
                           .map((estado) => (
                             <SelectItem key={estado.id} value={estado.id}>
@@ -1336,6 +1337,7 @@ export function DocumentForm({
                             </FormControl>
                             <SelectContent>
                               {[...catalogs.estadosAcreditacionDoc]
+                                .filter((e) => e.id !== 'est-sus')
                                 .sort((a, b) => a.nombre.localeCompare(b.nombre))
                                 .map((estado) => (
                                   <SelectItem key={estado.id} value={estado.id}>

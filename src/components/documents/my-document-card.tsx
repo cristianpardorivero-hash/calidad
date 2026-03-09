@@ -64,8 +64,7 @@ export function MyDocumentCard({ document, catalogs }: MyDocumentCardProps) {
     let variant: 'default' | 'secondary' | 'destructive' | 'outline' = 'secondary';
     switch (document.estadoDocId) {
       case 'est-vig': variant = 'default'; break;
-      case 'est-rev': variant = 'secondary'; break;
-      case 'est-obs': variant = 'destructive'; break;
+      case 'est-hist': variant = 'secondary'; break;
       case 'est-sus': variant = 'outline'; break;
       default: variant = 'secondary';
     }
