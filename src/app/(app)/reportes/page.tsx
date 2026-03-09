@@ -147,13 +147,19 @@ export default function ReportesPage() {
                 return a.titulo.localeCompare(b.titulo);
             });
 
-            const tableColumn = ["Título", "Tipo", "Versión", "Fecha Creación"];
-            const tableRows: (string | undefined)[][] = docsInCarac.map(d => ([
-                d.titulo,
-                getCatalogName('tiposDocumento', d.tipoDocumentoId),
-                d.version,
-                d.createdAt ? format(d.createdAt, 'dd/MM/yyyy') : 'N/A'
-            ]));
+            const tableColumn = ["Título", "Tipo", "Versión", "Fecha Documento", "Vigencia"];
+            const tableRows: (string | undefined)[][] = docsInCarac.map(d => {
+                const vigencia = d.fechaVigenciaDesde
+                    ? `${format(d.fechaVigenciaDesde, "dd/MM/yy")} - ${d.fechaVigenciaHasta ? format(d.fechaVigenciaHasta, "dd/MM/yy") : 'Indefinida'}`
+                    : 'No aplica';
+                return [
+                    d.titulo,
+                    getCatalogName('tiposDocumento', d.tipoDocumentoId),
+                    d.version,
+                    d.fechaDocumento ? format(d.fechaDocumento, 'dd/MM/yyyy') : 'N/A',
+                    vigencia
+                ];
+            });
 
             if (yPos > 250) {
                 doc.addPage();
