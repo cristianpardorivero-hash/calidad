@@ -130,6 +130,16 @@ export interface DocumentVersion {
   fileName: string;
   fileExt: "pdf" | "docx" | "xlsx";
   estadoDocId: string;
+
+  // Denormalized fields for display
+  titulo: string;
+  tipoDocumentoId: string;
+  ambitoId: string;
+  responsableNombre: string;
+  caracteristicaId: string;
+  elementoMedibleId: string;
+  servicioIds?: string[];
+  fechaDocumento: Date;
 }
 
 export type AuditAction = 

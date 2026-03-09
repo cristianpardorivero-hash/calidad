@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useUser } from "@/hooks/use-user";
-import { onSnapshot, collection, query, where, Timestamp } from "firebase/firestore";
+import { onSnapshot, collection, query, where, Timestamp, getDocs, orderBy } from "firebase/firestore";
 import { db } from "@/firebase/client";
-import type { Catalogs, Documento } from "@/lib/types";
+import type { Catalogs, Documento, DocumentVersion } from "@/lib/types";
 import { getCatalogs } from "@/lib/data";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DocumentsTable } from "@/components/documents/documents-table";
@@ -17,47 +17,78 @@ export default function DocumentosHistoricosPage() {
     const hospitalId = user?.hospitalId;
 
     useEffect(() => {
-        let unsubscribe = () => {};
-        if (!hospitalId || !user) {
+        if (!hospitalId) {
             setLoading(false);
             return;
         }
 
-        setLoading(true);
-        const docsRef = collection(db, "documents");
-        // Query for documents that are not "Vigente"
-        const historicalStatusIds = ["est-rev", "est-sus", "est-obs"];
-        const q = query(
-            docsRef,
-            where("hospitalId", "==", hospitalId),
-            where("isDeleted", "==", false),
-            where("estadoDocId", "in", historicalStatusIds)
-        );
+        async function fetchHistoricalData() {
+            setLoading(true);
 
-        unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedDocs = snapshot.docs.map(doc => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    ...data,
-                    fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
-                    fechaVigenciaDesde: (data.fechaVigenciaDesde as Timestamp)?.toDate(),
-                    fechaVigenciaHasta: (data.fechaVigenciaHasta as Timestamp)?.toDate(),
-                    createdAt: (data.createdAt as Timestamp)?.toDate(),
-                    updatedAt: (data.updatedAt as Timestamp)?.toDate(),
-                } as Documento;
-            });
-            setDocuments(fetchedDocs);
-            setLoading(false);
-        }, (error) => {
-            console.error("Error listening to historical documents:", error);
-            setLoading(false);
-        });
-        
-        getCatalogs(hospitalId).then(setCatalogs);
+            try {
+                // Fetch catalogs first
+                const catalogsData = await getCatalogs(hospitalId);
+                setCatalogs(catalogsData);
 
-        return () => unsubscribe();
-    }, [hospitalId, user]);
+                // 1. Get latest docs that are 'in review' or 'obsolete'
+                const docsRef = collection(db, "documents");
+                const historicalDocsQuery = query(
+                    docsRef,
+                    where("hospitalId", "==", hospitalId),
+                    where("isDeleted", "==", false),
+                    where("estadoDocId", "in", ["est-rev", "est-obs"])
+                );
+                const latestHistoricalSnapshot = await getDocs(historicalDocsQuery);
+                const latestHistoricalDocs = latestHistoricalSnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        ...data,
+                        fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
+                        fechaVigenciaDesde: (data.fechaVigenciaDesde as Timestamp)?.toDate(),
+                        fechaVigenciaHasta: (data.fechaVigenciaHasta as Timestamp)?.toDate(),
+                        createdAt: (data.createdAt as Timestamp)?.toDate(),
+                        updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+                    } as Documento;
+                });
+
+                // 2. Get all archived versions (which have status 'sustituido')
+                const versionsRef = collection(db, "document_versions");
+                const archivedVersionsQuery = query(
+                    versionsRef,
+                    where("hospitalId", "==", hospitalId),
+                    orderBy("createdAt", "desc")
+                );
+                const archivedVersionsSnapshot = await getDocs(archivedVersionsQuery);
+                const archivedDocs = archivedVersionsSnapshot.docs.map(doc => {
+                    const data = doc.data() as DocumentVersion;
+                    // Map DocumentVersion to a Documento-like object for the table
+                    return {
+                        ...data,
+                        id: data.id, // Use the version's own unique ID for the key
+                        updatedAt: (data.createdAt as Timestamp)?.toDate(),
+                        isDeleted: false,
+                        searchKeywords: [data.titulo.toLowerCase()],
+                        // Filler props to satisfy the Documento type for the table
+                        createdByEmail: '',
+                        mimeType: '',
+                    } as Documento;
+                });
+
+                // 3. Merge and sort results
+                const allDocs = [...latestHistoricalDocs, ...archivedDocs];
+                allDocs.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+
+                setDocuments(allDocs);
+            } catch (error) {
+                console.error("Error fetching historical documents:", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchHistoricalData();
+    }, [hospitalId]);
 
     const pageHeader = (
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">

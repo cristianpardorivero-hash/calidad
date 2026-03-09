@@ -615,6 +615,16 @@ export async function createNewVersionAndUpdateDocument(
     fileExt: originalDoc.fileExt,
     createdByUid: userId,
     estadoDocId: 'est-sus', // Estado "Sustituido"
+
+    // Denormalized fields from original document
+    titulo: originalDoc.titulo,
+    tipoDocumentoId: originalDoc.tipoDocumentoId,
+    ambitoId: originalDoc.ambitoId,
+    responsableNombre: originalDoc.responsableNombre,
+    caracteristicaId: originalDoc.caracteristicaId,
+    elementoMedibleId: originalDoc.elementoMedibleId,
+    servicioIds: originalDoc.servicioIds,
+    fechaDocumento: originalDoc.fechaDocumento,
   };
 
   const parentUpdateData: Record<string, any> = {
@@ -683,6 +693,7 @@ export async function getDocumentVersions(docId: string): Promise<DocumentVersio
             id: doc.id,
             ...data,
             createdAt: (data.createdAt as Timestamp)?.toDate(),
+            fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
         } as DocumentVersion;
     });
 }
