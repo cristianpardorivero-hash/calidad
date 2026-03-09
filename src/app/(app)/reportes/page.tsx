@@ -155,7 +155,21 @@ export default function ReportesPage() {
             const ambitoOrderA = catalogs.ambitos.find(am => am.id === a.ambitoId)?.orden ?? Infinity;
             const ambitoOrderB = catalogs.ambitos.find(am => am.id === b.ambitoId)?.orden ?? Infinity;
             if (ambitoOrderA !== ambitoOrderB) return ambitoOrderA - ambitoOrderB;
-            return (a.fechaDocumento?.getTime() || 0) - (b.fechaDocumento?.getTime() || 0);
+
+            const caracOrderA = catalogs.caracteristicas.find(c => c.id === a.caracteristicaId)?.orden ?? Infinity;
+            const caracOrderB = catalogs.caracteristicas.find(c => c.id === b.caracteristicaId)?.orden ?? Infinity;
+            if (caracOrderA !== caracOrderB) return caracOrderA - caracOrderB;
+
+            const elemOrderA = catalogs.elementosMedibles.find(e => e.id === a.elementoMedibleId)?.orden ?? Infinity;
+            const elemOrderB = catalogs.elementosMedibles.find(e => e.id === b.elementoMedibleId)?.orden ?? Infinity;
+            if (elemOrderA !== elemOrderB) return elemOrderA - elemOrderB;
+            
+            const tipoOrderA = catalogs.tiposDocumento.find(t => t.id === a.tipoDocumentoId)?.orden ?? Infinity;
+            const tipoOrderB = catalogs.tiposDocumento.find(t => t.id === b.tipoDocumentoId)?.orden ?? Infinity;
+            if (tipoOrderA !== tipoOrderB) return tipoOrderA - tipoOrderB;
+
+            // if tipo is the same, sort by date (most recent first)
+            return (b.fechaDocumento?.getTime() || 0) - (a.fechaDocumento?.getTime() || 0);
         });
 
         tableHead = ["Título", "Tipo", "Versión", "Fecha Documento", "Vigencia", "Estado"];
