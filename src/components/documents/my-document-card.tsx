@@ -102,7 +102,9 @@ export function MyDocumentCard({ document, catalogs }: MyDocumentCardProps) {
                 <Badge variant={statusVariant} className="text-xs">{statusName}</Badge>
             </div>
           <CardTitle className="text-base font-semibold leading-tight line-clamp-2 h-10">
-            {document.titulo}
+            <Link href={`/documentos/${document.id}`} className="hover:underline">
+              {document.titulo}
+            </Link>
           </CardTitle>
           <CardDescription className="text-xs pt-1">
             {format(document.fechaDocumento, "d 'de' MMMM, yyyy", { locale: es })}
@@ -164,7 +166,7 @@ export function MyDocumentCard({ document, catalogs }: MyDocumentCardProps) {
         <CardFooter>
           <Button variant="secondary" className="w-full" onClick={() => setDocForPreview(document)}>
             <Eye className="mr-2 h-4 w-4" />
-            Vista Rápida
+            Ver
           </Button>
         </CardFooter>
       </Card>
