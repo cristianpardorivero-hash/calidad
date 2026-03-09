@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Catalogs, Documento } from "@/lib/types";
@@ -32,7 +33,6 @@ import {
   Check,
   ArrowRight,
   ArrowLeft,
-  CalendarIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import React, { useState, useMemo, useEffect } from "react";
@@ -63,7 +63,6 @@ import {
 } from "@/components/ui/popover";
 import { storage } from "@/firebase/client";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { Calendar } from "../ui/calendar";
 import { es } from "date-fns/locale";
 import { format } from "date-fns";
 
@@ -396,7 +395,7 @@ export function DocumentForm({
               storagePath,
               mimeType: file.type || "application/octet-stream",
             });
-          } catch (error: any) {
+          } catch (error: any) => {
             reject(error);
           }
         }
@@ -1013,121 +1012,94 @@ export function DocumentForm({
                  <FormField
                   control={form.control}
                   name="fechaDocumento"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Fecha del documento</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: es })
-                              ) : (
-                                <span>Elige una fecha</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date > new Date() || date < new Date("1900-01-01")
-                            }
-                            initialFocus
+                  render={({ field }) => {
+                    const dateValue = field.value ? format(field.value, 'yyyy-MM-dd') : '';
+                    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                      if (e.target.value) {
+                        const [year, month, day] = e.target.value.split('-').map(Number);
+                        const localDate = new Date(year, month - 1, day, 12);
+                        field.onChange(localDate);
+                      } else {
+                        field.onChange(undefined);
+                      }
+                    };
+                    return (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Fecha del documento</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            value={dateValue}
+                            onChange={handleDateChange}
+                            className={cn(!field.value && "text-muted-foreground")}
                           />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
                 />
 
                 <FormField
                   control={form.control}
                   name="fechaVigenciaDesde"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Vigencia Desde (Opcional)</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: es })
-                              ) : (
-                                <span>Elige una fecha</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
+                  render={({ field }) => {
+                    const dateValue = field.value ? format(field.value, 'yyyy-MM-dd') : '';
+                    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                      if (e.target.value) {
+                        const [year, month, day] = e.target.value.split('-').map(Number);
+                        const localDate = new Date(year, month - 1, day, 12);
+                        field.onChange(localDate);
+                      } else {
+                        field.onChange(undefined);
+                      }
+                    };
+                    return (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Vigencia Desde (Opcional)</FormLabel>
+                        <FormControl>
+                           <Input
+                            type="date"
+                            value={dateValue}
+                            onChange={handleDateChange}
+                            className={cn(!field.value && "text-muted-foreground")}
                           />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
                 />
 
                 <FormField
                   control={form.control}
                   name="fechaVigenciaHasta"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Vigencia Hasta (Opcional)</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: es })
-                              ) : (
-                                <span>Elige una fecha</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
+                  render={({ field }) => {
+                    const dateValue = field.value ? format(field.value, 'yyyy-MM-dd') : '';
+                    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                      if (e.target.value) {
+                        const [year, month, day] = e.target.value.split('-').map(Number);
+                        const localDate = new Date(year, month - 1, day, 12);
+                        field.onChange(localDate);
+                      } else {
+                        field.onChange(undefined);
+                      }
+                    };
+                    return (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Vigencia Hasta (Opcional)</FormLabel>
+                         <FormControl>
+                           <Input
+                            type="date"
+                            value={dateValue}
+                            onChange={handleDateChange}
+                            className={cn(!field.value && "text-muted-foreground")}
                           />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
                 />
               </CardContent>
             </Card>
@@ -1649,121 +1621,94 @@ export function DocumentForm({
                   <FormField
                   control={form.control}
                   name="fechaDocumento"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Fecha del documento</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: es })
-                              ) : (
-                                <span>Elige una fecha</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date > new Date() || date < new Date("1900-01-01")
-                            }
-                            initialFocus
+                  render={({ field }) => {
+                    const dateValue = field.value ? format(field.value, 'yyyy-MM-dd') : '';
+                    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                      if (e.target.value) {
+                        const [year, month, day] = e.target.value.split('-').map(Number);
+                        const localDate = new Date(year, month - 1, day, 12);
+                        field.onChange(localDate);
+                      } else {
+                        field.onChange(undefined);
+                      }
+                    };
+                    return (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Fecha del documento</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            value={dateValue}
+                            onChange={handleDateChange}
+                            className={cn(!field.value && "text-muted-foreground")}
                           />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
                 />
 
                 <FormField
                   control={form.control}
                   name="fechaVigenciaDesde"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Vigencia Desde (Opcional)</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: es })
-                              ) : (
-                                <span>Elige una fecha</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
+                  render={({ field }) => {
+                    const dateValue = field.value ? format(field.value, 'yyyy-MM-dd') : '';
+                    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                      if (e.target.value) {
+                        const [year, month, day] = e.target.value.split('-').map(Number);
+                        const localDate = new Date(year, month - 1, day, 12);
+                        field.onChange(localDate);
+                      } else {
+                        field.onChange(undefined);
+                      }
+                    };
+                    return (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Vigencia Desde (Opcional)</FormLabel>
+                        <FormControl>
+                           <Input
+                            type="date"
+                            value={dateValue}
+                            onChange={handleDateChange}
+                            className={cn(!field.value && "text-muted-foreground")}
                           />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
                 />
 
                 <FormField
                   control={form.control}
                   name="fechaVigenciaHasta"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Vigencia Hasta (Opcional)</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: es })
-                              ) : (
-                                <span>Elige una fecha</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
+                  render={({ field }) => {
+                    const dateValue = field.value ? format(field.value, 'yyyy-MM-dd') : '';
+                    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                      if (e.target.value) {
+                        const [year, month, day] = e.target.value.split('-').map(Number);
+                        const localDate = new Date(year, month - 1, day, 12);
+                        field.onChange(localDate);
+                      } else {
+                        field.onChange(undefined);
+                      }
+                    };
+                    return (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Vigencia Hasta (Opcional)</FormLabel>
+                         <FormControl>
+                           <Input
+                            type="date"
+                            value={dateValue}
+                            onChange={handleDateChange}
+                            className={cn(!field.value && "text-muted-foreground")}
                           />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
                 />
                   </div>
                 </CardContent>
@@ -1916,3 +1861,4 @@ export function DocumentForm({
     </>
   );
 }
+
