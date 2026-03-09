@@ -19,7 +19,7 @@ import {
   FileCog,
   Shield,
   LifeBuoy,
-  Settings,
+  User as UserIcon,
   FileHeart,
 } from "lucide-react";
 import Link from "next/link";
@@ -161,9 +161,11 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Configuración">
-              <Settings />
-              <span>Configuración</span>
+            <SidebarMenuButton asChild tooltip="Perfil">
+                <Link href="/perfil">
+                    <UserIcon />
+                    <span>Perfil</span>
+                </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

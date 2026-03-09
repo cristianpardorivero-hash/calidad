@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   SidebarTrigger,
@@ -19,6 +19,7 @@ import { LogOut, Settings, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/firebase/client";
+import Link from "next/link";
 
 export function AppHeader() {
   const { isMobile } = useSidebar();
@@ -64,9 +65,11 @@ export function AppHeader() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              <span>Perfil</span>
+            <DropdownMenuItem asChild>
+              <Link href="/perfil">
+                <User className="mr-2 h-4 w-4" />
+                <span>Perfil</span>
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuItem>
               <Settings className="mr-2 h-4 w-4" />
