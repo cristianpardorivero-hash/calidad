@@ -118,44 +118,8 @@ export function DocumentsTable({
     return items.find((item) => item.id === id)?.nombre || "Desconocido";
   };
 
-  const filteredDocuments = React.useMemo(() => {
-    const query = searchParams.get("query");
-    const ambitoId = searchParams.get("ambitoId");
-    const caracteristicaId = searchParams.get("caracteristicaId");
-    const elementoMedibleId = searchParams.get("elementoMedibleId");
-    const tipoDocumentoId = searchParams.get("tipoDocumentoId");
-    const estadoDocId = searchParams.get("estadoDocId");
-    const servicioId = searchParams.get("servicioId");
-    const fromParam = searchParams.get("from");
-    const toParam = searchParams.get("to");
-
-    return documents.filter((doc) => {
-      const from = fromParam ? new Date(fromParam) : null;
-      const to = toParam ? new Date(toParam) : null;
-
-      if (query) {
-        const lowerQuery = query.toLowerCase();
-        if (!doc.searchKeywords?.some(keyword => keyword.includes(lowerQuery))) {
-            return false;
-        }
-      }
-
-      if (ambitoId && doc.ambitoId !== ambitoId) return false;
-      if (caracteristicaId && doc.caracteristicaId !== caracteristicaId) return false;
-      if (elementoMedibleId && doc.elementoMedibleId !== elementoMedibleId) return false;
-      if (tipoDocumentoId && doc.tipoDocumentoId !== tipoDocumentoId) return false;
-      if (estadoDocId && doc.estadoDocId !== estadoDocId) return false;
-      if (servicioId && (!doc.servicioIds || !doc.servicioIds.includes(servicioId))) return false;
-
-      if (from && doc.fechaDocumento < from) return false;
-      if (to && doc.fechaDocumento > to) return false;
-
-      return true;
-    });
-  }, [documents, searchParams]);
-
-  const totalPages = Math.ceil(filteredDocuments.length / ITEMS_PER_PAGE);
-  const paginatedDocuments = filteredDocuments.slice(
+  const totalPages = Math.ceil(documents.length / ITEMS_PER_PAGE);
+  const paginatedDocuments = documents.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -329,7 +293,7 @@ export function DocumentsTable({
             ) : (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center">
-                  No se encontraron documentos con los filtros aplicados.
+                  No se encontraron documentos.
                 </TableCell>
               </TableRow>
             )}

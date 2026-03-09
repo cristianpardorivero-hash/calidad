@@ -13,6 +13,7 @@ import { useUser } from "@/hooks/use-user";
 import type { Catalogs, Documento } from "@/lib/types";
 import { collection, query, where, onSnapshot, Timestamp } from "firebase/firestore";
 import { db } from "@/firebase/client";
+import { useSearchParams } from "next/navigation";
 
 export default function DocumentosPage() {
   const { user } = useUser();
@@ -24,6 +25,7 @@ export default function DocumentosPage() {
   const userRole = user?.role;
   const servicioIds = user?.servicioIds;
   const servicioIdsDependency = useMemo(() => servicioIds?.join(',') ?? '', [servicioIds]);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     let unsubscribe = () => {};
@@ -77,6 +79,42 @@ export default function DocumentosPage() {
     return () => unsubscribe();
   }, [hospitalId, userRole, servicioIdsDependency]);
   
+  const filteredDocuments = useMemo(() => {
+    const query = searchParams.get("query");
+    const ambitoId = searchParams.get("ambitoId");
+    const caracteristicaId = searchParams.get("caracteristicaId");
+    const elementoMedibleId = searchParams.get("elementoMedibleId");
+    const tipoDocumentoId = searchParams.get("tipoDocumentoId");
+    const estadoDocId = searchParams.get("estadoDocId");
+    const servicioId = searchParams.get("servicioId");
+    const fromParam = searchParams.get("from");
+    const toParam = searchParams.get("to");
+
+    return documents.filter((doc) => {
+      const from = fromParam ? new Date(fromParam) : null;
+      const to = toParam ? new Date(toParam) : null;
+
+      if (query) {
+        const lowerQuery = query.toLowerCase();
+        if (!doc.searchKeywords?.some(keyword => keyword.includes(lowerQuery))) {
+            return false;
+        }
+      }
+
+      if (ambitoId && doc.ambitoId !== ambitoId) return false;
+      if (caracteristicaId && doc.caracteristicaId !== caracteristicaId) return false;
+      if (elementoMedibleId && doc.elementoMedibleId !== elementoMedibleId) return false;
+      if (tipoDocumentoId && doc.tipoDocumentoId !== tipoDocumentoId) return false;
+      if (estadoDocId && doc.estadoDocId !== estadoDocId) return false;
+      if (servicioId && (!doc.servicioIds || !doc.servicioIds.includes(servicioId))) return false;
+
+      if (from && doc.fechaDocumento < from) return false;
+      if (to && doc.fechaDocumento > to) return false;
+
+      return true;
+    });
+  }, [documents, searchParams]);
+
   const canManage = user?.role === 'admin' || user?.role === 'editor';
 
   const pageHeader = (
@@ -114,7 +152,7 @@ export default function DocumentosPage() {
       {pageHeader}
       <DocumentsFilters catalogs={catalogs} />
       <DocumentsTable
-        documents={documents}
+        documents={filteredDocuments}
         catalogs={catalogs}
         user={user}
       />
