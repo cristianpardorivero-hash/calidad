@@ -1,10 +1,12 @@
 'use client';
 
 import { useTheme } from 'next-themes';
+import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Sun, Moon, Laptop } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Sun, Moon, Laptop, User, Bell, ArrowRight } from 'lucide-react';
 
 export default function AjustesPage() {
   const { theme, setTheme } = useTheme();
@@ -14,7 +16,7 @@ export default function AjustesPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Ajustes</h1>
         <p className="text-muted-foreground">
-          Personaliza la apariencia de la aplicación.
+          Personaliza la apariencia y configuración de la aplicación.
         </p>
       </div>
 
@@ -45,6 +47,40 @@ export default function AjustesPage() {
           </RadioGroup>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+            <CardTitle>Perfil y Cuenta</CardTitle>
+            <CardDescription>
+                Gestiona tu información personal y los detalles de tu cuenta.
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+            <Button asChild className="w-full justify-between">
+                <Link href="/perfil">
+                    <div className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        Ir a mi Perfil
+                    </div>
+                    <ArrowRight className="h-4 w-4" />
+                </Link>
+            </Button>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+            <CardTitle>Notificaciones</CardTitle>
+            <CardDescription>
+                Configura cómo y cuándo recibes las notificaciones (próximamente).
+            </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center text-center p-12 bg-muted/50 rounded-b-lg">
+            <Bell className="h-16 w-16 text-muted-foreground" />
+            <p className="mt-4 font-semibold">Ajustes de Notificaciones</p>
+        </CardContent>
+      </Card>
+
     </div>
   );
 }
