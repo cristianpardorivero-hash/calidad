@@ -9,11 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { FileDown, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
 
 // Extend jsPDF with autoTable
 declare module 'jspdf' {
   interface jsPDF {
     autoTable: (options: any) => jsPDF;
+    previousAutoTable: {
+        finalY: number;
+    };
   }
 }
 
@@ -67,7 +71,6 @@ export default function ReportesPage() {
     const { jsPDF } = await import('jspdf');
     await import('jspdf-autotable');
 
-    // Filter documents based on selection
     const filteredDocs = documents.filter(doc => {
         const ambitoMatch = !ambitoFilter || doc.ambitoId === ambitoFilter;
         const servicioMatch = !servicioFilter || doc.servicioIds?.includes(servicioFilter);
@@ -75,54 +78,105 @@ export default function ReportesPage() {
     });
 
     const doc = new jsPDF();
+    let yPos = 38;
 
-    // Add Title
     doc.setFontSize(18);
     doc.text('Reporte de Documentos del Sistema', 14, 22);
     doc.setFontSize(11);
     doc.setTextColor(100);
     doc.text(`Generado el: ${new Date().toLocaleDateString('es-CL')}`, 14, 30);
 
-    // Add filter criteria
     let filterText = 'Filtros aplicados: ';
-    if (ambitoFilter) {
-      filterText += `Ámbito: ${getCatalogName('ambitos', ambitoFilter)}. `;
-    }
-    if (servicioFilter) {
-      filterText += `Servicio: ${getCatalogName('servicios', servicioFilter)}.`;
-    }
-    if (!ambitoFilter && !servicioFilter) {
-      filterText += 'Ninguno.';
-    }
-    doc.text(filterText, 14, 36);
+    if (ambitoFilter) filterText += `Ámbito: ${getCatalogName('ambitos', ambitoFilter)}. `;
+    if (servicioFilter) filterText += `Servicio: ${getCatalogName('servicios', servicioFilter)}.`;
+    if (!ambitoFilter && !servicioFilter) filterText += 'Ninguno.';
+    doc.text(filterText, 14, yPos);
+    yPos += 15;
+    
+    const groupedByAmbito = filteredDocs.reduce((acc, doc) => {
+        const ambitoId = doc.ambitoId || 'sin-ambito';
+        if (!acc[ambitoId]) acc[ambitoId] = [];
+        acc[ambitoId].push(doc);
+        return acc;
+    }, {} as Record<string, Documento[]>);
 
-
-    // Prepare data for table
-    const tableColumn = ["Título", "Versión", "Tipo", "Estado"];
-    const tableRows: (string | undefined)[][] = [];
-
-    filteredDocs.forEach(doc => {
-        const docData = [
-            doc.titulo,
-            doc.version,
-            getCatalogName('tiposDocumento', doc.tipoDocumentoId),
-            getCatalogName('estadosAcreditacionDoc', doc.estadoDocId),
-        ];
-        tableRows.push(docData);
+    const sortedAmbitoIds = Object.keys(groupedByAmbito).sort((a,b) => {
+        const aOrder = catalogs.ambitos.find(am => am.id === a)?.orden ?? Infinity;
+        const bOrder = catalogs.ambitos.find(am => am.id === b)?.orden ?? Infinity;
+        return aOrder - bOrder;
     });
 
-    // Add table to PDF
-    doc.autoTable({
-        startY: 45,
-        head: [tableColumn],
-        body: tableRows,
-        theme: 'striped',
-        headStyles: { fillColor: [34, 113, 239] },
-    });
+    for (const ambitoId of sortedAmbitoIds) {
+        const ambitoName = getCatalogName('ambitos', ambitoId);
+        
+        const docsInAmbito = groupedByAmbito[ambitoId];
+        const groupedByCaracteristica = docsInAmbito.reduce((acc, doc) => {
+            const caracId = doc.caracteristicaId || 'sin-caracteristica';
+            if (!acc[caracId]) acc[caracId] = [];
+            acc[caracId].push(doc);
+            return acc;
+        }, {} as Record<string, Documento[]>);
 
-    // Save the PDF
+        const sortedCaracIds = Object.keys(groupedByCaracteristica).sort((a,b) => {
+            const aOrder = catalogs.caracteristicas.find(c => c.id === a)?.orden ?? Infinity;
+            const bOrder = catalogs.caracteristicas.find(c => c.id === b)?.orden ?? Infinity;
+            return aOrder - bOrder;
+        });
+        
+        if (yPos > 250) {
+            doc.addPage();
+            yPos = 20;
+        }
+
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text(ambitoName, 14, yPos);
+        yPos += 10;
+
+        for (const caracId of sortedCaracIds) {
+            const caracName = getCatalogName('caracteristicas', caracId);
+            const docsInCarac = groupedByCaracteristica[caracId];
+
+            docsInCarac.sort((a, b) => {
+                const tipoOrderA = catalogs.tiposDocumento.find(t => t.id === a.tipoDocumentoId)?.orden ?? Infinity;
+                const tipoOrderB = catalogs.tiposDocumento.find(t => t.id === b.tipoDocumentoId)?.orden ?? Infinity;
+                if(tipoOrderA !== tipoOrderB) return tipoOrderA - tipoOrderB;
+                return a.titulo.localeCompare(b.titulo);
+            });
+
+            const tableColumn = ["Título", "Tipo", "Versión", "Fecha Creación"];
+            const tableRows: (string | undefined)[][] = docsInCarac.map(d => ([
+                d.titulo,
+                getCatalogName('tiposDocumento', d.tipoDocumentoId),
+                d.version,
+                d.createdAt ? format(d.createdAt, 'dd/MM/yyyy') : 'N/A'
+            ]));
+
+            if (yPos > 250) {
+                doc.addPage();
+                yPos = 20;
+            }
+
+            doc.setFontSize(11);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(50);
+            doc.text(caracName, 14, yPos);
+            yPos += 7;
+            doc.setTextColor(0);
+
+            doc.autoTable({
+                startY: yPos,
+                head: [tableColumn],
+                body: tableRows,
+                theme: 'striped',
+                headStyles: { fillColor: [34, 113, 239], fontSize: 9 },
+                bodyStyles: { fontSize: 8 },
+            });
+            yPos = doc.previousAutoTable.finalY + 12;
+        }
+    }
+
     doc.save('reporte_documentos.pdf');
-
     setGenerating(false);
   };
 
