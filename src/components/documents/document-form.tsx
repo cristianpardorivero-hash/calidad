@@ -459,46 +459,60 @@ export function DocumentForm({
         }
     }
 
+    if (!values.fechaDocumento) {
+        toast({
+            variant: "destructive",
+            title: "Fecha inválida",
+            description: "Debes ingresar una fecha de documento válida.",
+        });
+        setIsSubmitting(false);
+        return;
+    }
+
+
     setIsSubmitting(true);
     setUploadProgress(0);
 
     try {
-      // --- File Upload (if applicable) ---
       let fileData: { downloadURL: string; storagePath: string; mimeType: string, fileExt: string, fileName: string, fileSize: number } | null = null;
-      if ((isCreation || isNewVersion) && values.file) {
-        const file = values.file as File;
+      if ((isCreation || isNewVersion) && values.file instanceof File) {
         const uploadResult = await uploadFile(
-          file,
+          values.file,
           user.hospitalId,
           (progress) => setUploadProgress(progress)
         );
         fileData = {
             ...uploadResult,
-            fileName: file.name,
-            fileExt: file.name.split(".").pop() as "pdf" | "docx" | "xlsx",
-            fileSize: file.size,
+            fileName: values.file.name,
+            fileExt: values.file.name.split(".").pop() as "pdf" | "docx" | "xlsx",
+            fileSize: values.file.size,
         };
       }
 
-      // --- Data Preparation ---
       const tagsArray = values.tags?.split(",").map((t) => t.trim()).filter(Boolean) || [];
 
-      const searchKeywords: string[] = [
-        values.titulo,
-        values.descripcion,
-        values.responsableNombre,
-        ...tagsArray
-      ]
-      .filter((kw): kw is string => typeof kw === 'string' && kw.trim().length > 0)
-      .map(kw => kw.toLowerCase());
+      const searchKeywords = [
+        values.titulo?.trim().toLowerCase(),
+        values.descripcion?.trim().toLowerCase(),
+        ...tagsArray.map(t => t.toLowerCase())
+      ].filter((kw): kw is string => Boolean(kw));
       
       const uniqueKeywords = [...new Set(searchKeywords)];
 
-      // --- Database Operation ---
       if (isNewVersion && document && fileData) {
          const newData: Omit<Documento, 'id'> & {id: string} = {
           ...document,
-          ...values,
+          titulo: values.titulo,
+          descripcion: values.descripcion || "",
+          tipoDocumentoId: values.tipoDocumentoId,
+          version: values.version,
+          estadoDocId: values.estadoDocId,
+          ambitoId: values.ambitoId,
+          caracteristicaId: values.caracteristicaId,
+          elementoMedibleId: values.elementoMedibleId,
+          servicioIds: values.servicioIds || [],
+          responsableNombre: values.responsableNombre,
+          responsableEmail: values.responsableEmail,
           fechaDocumento: values.fechaDocumento,
           fechaVigenciaDesde: values.fechaVigenciaDesde || null,
           fechaVigenciaHasta: values.fechaVigenciaHasta || null,
@@ -509,6 +523,7 @@ export function DocumentForm({
           storagePath: fileData.storagePath,
           downloadUrl: fileData.downloadURL,
           tags: tagsArray,
+          linkedDocumentId: values.linkedDocumentId || "",
           updatedAt: new Date(),
           searchKeywords: uniqueKeywords,
         };
@@ -518,22 +533,41 @@ export function DocumentForm({
 
       } else if (isEditing && document) {
          const dataToUpdate: Partial<Documento> = {
-            ...values,
+            titulo: values.titulo,
+            descripcion: values.descripcion || "",
+            tipoDocumentoId: values.tipoDocumentoId,
+            version: values.version,
+            estadoDocId: values.estadoDocId,
+            ambitoId: values.ambitoId,
+            caracteristicaId: values.caracteristicaId,
+            elementoMedibleId: values.elementoMedibleId,
+            servicioIds: values.servicioIds || [],
+            responsableNombre: values.responsableNombre,
+            responsableEmail: values.responsableEmail,
             fechaDocumento: values.fechaDocumento,
             fechaVigenciaDesde: values.fechaVigenciaDesde || null,
             fechaVigenciaHasta: values.fechaVigenciaHasta || null,
             tags: tagsArray,
-            searchKeywords: uniqueKeywords
+            searchKeywords: uniqueKeywords,
+            linkedDocumentId: values.linkedDocumentId || "",
          };
-         delete dataToUpdate.file; // Don't try to update the file
         await updateDocument(document.id, dataToUpdate);
         toast({ title: "Documento actualizado", description: `El documento "${dataToUpdate.titulo}" ha sido guardado.` });
         router.push(`/documentos/${document.id}`);
 
       } else if (isCreation && fileData) {
-        const { file: ignoredFile, ...restValues } = values;
         const docData: Omit<Documento, "id" | "createdAt" | "updatedAt"> = {
-          ...restValues,
+          titulo: values.titulo,
+          descripcion: values.descripcion || "",
+          tipoDocumentoId: values.tipoDocumentoId,
+          version: values.version,
+          estadoDocId: values.estadoDocId,
+          ambitoId: values.ambitoId,
+          caracteristicaId: values.caracteristicaId,
+          elementoMedibleId: values.elementoMedibleId,
+          servicioIds: values.servicioIds || [],
+          responsableNombre: values.responsableNombre,
+          responsableEmail: values.responsableEmail,
           fechaDocumento: values.fechaDocumento,
           fechaVigenciaDesde: values.fechaVigenciaDesde || null,
           fechaVigenciaHasta: values.fechaVigenciaHasta || null,
@@ -549,6 +583,7 @@ export function DocumentForm({
           createdByEmail: firebaseUser.email || "N/A",
           isDeleted: false,
           searchKeywords: uniqueKeywords,
+          linkedDocumentId: values.linkedDocumentId || "",
         };
         
         const savedDoc = await addDocument(docData);
@@ -1595,126 +1630,125 @@ export function DocumentForm({
                   <Separator className="my-4" />
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                     <FormField
-                        control={form.control}
-                        name="fechaDocumento"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                            <FormLabel>Fecha del documento</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                      "w-full pl-3 text-left font-normal",
-                                      !field.value && "text-muted-foreground"
-                                    )}
-                                  >
-                                    {field.value ? (
-                                      format(field.value, "PPP", { locale: es })
-                                    ) : (
-                                      <span>Elige una fecha</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={field.value}
-                                  onSelect={field.onChange}
-                                  disabled={(date) =>
-                                    date > new Date() || date < new Date("1900-01-01")
-                                  }
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                  <FormField
+                  control={form.control}
+                  name="fechaDocumento"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Fecha del documento</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP", { locale: es })
+                              ) : (
+                                <span>Elige una fecha</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) =>
+                              date > new Date() || date < new Date("1900-01-01")
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                     <FormField
-                        control={form.control}
-                        name="fechaVigenciaDesde"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                            <FormLabel>Vigencia Desde</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                      "w-full pl-3 text-left font-normal",
-                                      !field.value && "text-muted-foreground"
-                                    )}
-                                  >
-                                    {field.value ? (
-                                      format(field.value, "PPP", { locale: es })
-                                    ) : (
-                                      <span>Elige una fecha</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={field.value}
-                                  onSelect={field.onChange}
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
-                            <FormDescription>Calculado automáticamente.</FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    <FormField
-                        control={form.control}
-                        name="fechaVigenciaHasta"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                            <FormLabel>Vigencia Hasta</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                      "w-full pl-3 text-left font-normal",
-                                      !field.value && "text-muted-foreground"
-                                    )}
-                                  >
-                                    {field.value ? (
-                                      format(field.value, "PPP", { locale: es })
-                                    ) : (
-                                      <span>Elige una fecha</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={field.value}
-                                  onSelect={field.onChange}
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
-                            <FormDescription>Calculado a +5 años.</FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                <FormField
+                  control={form.control}
+                  name="fechaVigenciaDesde"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Vigencia Desde (Opcional)</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP", { locale: es })
+                              ) : (
+                                <span>Elige una fecha</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="fechaVigenciaHasta"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Vigencia Hasta (Opcional)</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP", { locale: es })
+                              ) : (
+                                <span>Elige una fecha</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                   </div>
                 </CardContent>
               </Card>

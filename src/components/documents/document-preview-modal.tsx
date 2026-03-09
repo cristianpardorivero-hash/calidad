@@ -31,94 +31,53 @@ export function DocumentPreviewModal({
   isOpen,
   onOpenChange,
 }: DocumentPreviewModalProps) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isOpen || !documento) {
-      setLoading(false);
-      setError(null);
-      setPreviewUrl(null);
-      return;
-    }
-
-    const ext = documento.fileExt?.toLowerCase();
-    if (ext !== "pdf") {
-      setPreviewUrl(null);
-      setError(null);
-      setLoading(false);
-      return;
-    }
-    
-    const isValidUrl = documento.downloadUrl && (documento.downloadUrl.startsWith('http://') || documento.downloadUrl.startsWith('https://'));
-
-    if (!isValidUrl) {
-      setPreviewUrl(null);
-      setError(`La URL de descarga del documento no es válida (${documento.downloadUrl}). Es posible que este documento tenga datos incorrectos.`);
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    let objectUrl: string | null = null;
-
-    const loadPdfAsBlob = async () => {
-      try {
-        setLoading(true);
+    useEffect(() => {
+        if (!isOpen || !documento) {
+            setIsLoading(true);
+            setError(null);
+            setPreviewUrl(null);
+            return;
+        }
+        
+        setIsLoading(true);
         setError(null);
         setPreviewUrl(null);
+        
+        const ext = documento.fileExt?.toLowerCase();
+        const isValidUrl = documento.downloadUrl && (documento.downloadUrl.startsWith('http://') || documento.downloadUrl.startsWith('https://'));
 
-        const response = await fetch(documento.downloadUrl);
-        if (!response.ok) {
-          throw new Error(`No se pudo descargar el PDF (${response.status} ${response.statusText}).`);
+        if (!isValidUrl) {
+            setError(`La URL del documento es inválida o está ausente. No se puede previsualizar.`);
+            setIsLoading(false);
+            return;
         }
 
-        const blob = await response.blob();
-
-        if (blob.type && !blob.type.includes("pdf")) {
-             console.warn("El contenido recibido no parece ser un PDF. Content-Type:", blob.type);
-             throw new Error("El contenido descargado no es un archivo PDF. Puede ser un error de autenticación o una URL incorrecta.");
+        if (ext === "pdf") {
+            const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(documento.downloadUrl)}&embedded=true`;
+            setPreviewUrl(googleViewerUrl);
+            // We can't know for sure when the iframe finishes loading, but we can stop our own loader.
+            setIsLoading(false);
+        } else {
+            // For non-PDFs, just show the info card.
+            setIsLoading(false);
         }
 
-        objectUrl = URL.createObjectURL(blob);
-
-        if (!cancelled) {
-          setPreviewUrl(objectUrl);
-        }
-      } catch (e: any) {
-        console.error("Error cargando PDF como blob:", e);
-        if (!cancelled) {
-          setError("No se pudo cargar el PDF dentro del visor. Puedes intentar abrirlo en una pestaña nueva.");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadPdfAsBlob();
-
-    return () => {
-      cancelled = true;
-      if (objectUrl) {
-          URL.revokeObjectURL(objectUrl);
-      }
-    };
   }, [isOpen, documento]);
 
-  const handleOpenPdf = () => {
+  const handleOpenNewTab = () => {
     if (!documento?.downloadUrl) return;
     window.open(documento.downloadUrl, "_blank", "noopener,noreferrer");
   };
 
   const handleDownload = () => {
     if (!documento?.downloadUrl) return;
-
     const link = document.createElement("a");
     link.href = documento.downloadUrl;
-    link.download = documento.fileName || "documento.pdf";
+    link.download = documento.fileName || "documento";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -126,32 +85,20 @@ export function DocumentPreviewModal({
 
   const renderContent = () => {
     if (!documento) return null;
-
-    if (documento.fileExt?.toLowerCase() !== "pdf") {
-      return (
-        <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-lg h-[70vh]">
-          <FileText className="h-16 w-16 text-muted-foreground" />
-          <p className="mt-4 font-semibold">Este visor solo admite PDF</p>
-          <p className="text-muted-foreground text-sm mt-1">
-            El archivo actual es <strong>.{documento.fileExt}</strong>.
-          </p>
-        </div>
-      );
-    }
-
-    if (loading) {
+    
+    if (isLoading) {
       return (
         <div className="flex h-[70vh] items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       );
     }
-
+    
     if (error) {
       return (
         <Alert variant="destructive" className="h-full">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Error de previsualización</AlertTitle>
+          <AlertTitle>Error de Previsualización</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       );
@@ -159,24 +106,26 @@ export function DocumentPreviewModal({
 
     if (previewUrl) {
       return (
-        <div className="h-[70vh] w-full rounded-md border overflow-hidden bg-white">
+        <div className="h-[70vh] w-full rounded-md border overflow-hidden bg-background">
           <iframe
             src={previewUrl}
             title={documento.titulo || "Vista previa PDF"}
             className="w-full h-full"
+            onLoad={() => setIsLoading(false)} // This helps for some cases but might not be perfect
           />
         </div>
       );
     }
-
+    
+    // Fallback for non-PDFs or other cases
     return (
-      <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-lg h-[70vh]">
-        <FileText className="h-16 w-16 text-muted-foreground" />
-        <p className="mt-4 font-semibold">Documento PDF listo</p>
-        <p className="text-muted-foreground text-sm mt-1">
-          Usa los botones para abrirlo o descargarlo.
-        </p>
-      </div>
+        <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-lg h-[70vh]">
+            <FileText className="h-16 w-16 text-muted-foreground" />
+            <p className="mt-4 font-semibold">Previsualización no disponible</p>
+            <p className="text-muted-foreground text-sm mt-1">
+                Solo los archivos PDF pueden ser previsualizados. El archivo actual es <strong>.{documento.fileExt}</strong>.
+            </p>
+        </div>
     );
   };
 
@@ -188,7 +137,7 @@ export function DocumentPreviewModal({
         <DialogHeader>
           <DialogTitle className="truncate pr-8">{documento?.titulo}</DialogTitle>
           <DialogDescription>
-            Previsualización del documento PDF.
+            {documento?.fileExt === 'pdf' ? 'Previsualización del documento PDF.' : `Archivo: ${documento?.fileName}`}
           </DialogDescription>
         </DialogHeader>
 
@@ -203,7 +152,7 @@ export function DocumentPreviewModal({
 
             <Button
               variant="outline"
-              onClick={handleOpenPdf}
+              onClick={handleOpenNewTab}
               disabled={!isUrlValid}
             >
               <ExternalLink className="mr-2 h-4 w-4" />
