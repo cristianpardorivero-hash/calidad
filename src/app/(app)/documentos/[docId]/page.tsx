@@ -1,7 +1,7 @@
 'use client';
 
 import { getCatalogs, getDocumentById, getLinkedDocuments, getDocumentVersions } from "@/lib/data";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
+  ArrowLeft,
   Download,
   Edit,
   FileText,
@@ -45,6 +46,7 @@ const DocumentPreviewModal = dynamic(
 
 export default function DocumentoDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const docId = params.docId as string;
   const { user } = useUser();
   const hospitalId = user?.hospitalId;
@@ -202,12 +204,16 @@ export default function DocumentoDetailPage() {
     <>
       <div className="mx-auto max-w-7xl space-y-8">
         {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-1">
             <h1 className="text-3xl font-bold tracking-tight">{document.titulo}</h1>
             <p className="max-w-prose text-muted-foreground">{document.descripcion}</p>
           </div>
-          <div className="flex flex-shrink-0 gap-2">
+          <div className="flex flex-shrink-0 flex-wrap justify-end gap-2">
+            <Button variant="outline" onClick={() => router.back()}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Volver
+            </Button>
             <Button variant="outline" onClick={() => setDocumentToPreview(document)}>
               <Eye className="mr-2 h-4 w-4" /> Ver
             </Button>
