@@ -52,6 +52,13 @@ export function MyDocumentCard({ document, catalogs }: MyDocumentCardProps) {
     if (!catalogs || !document.estadoDocId) {
       return { statusName: '', statusVariant: 'secondary' as const };
     }
+
+    const isExpired = document.estadoDocId === 'est-vig' && document.fechaVigenciaHasta && document.fechaVigenciaHasta < new Date();
+
+    if (isExpired) {
+        return { statusName: 'Vencido', statusVariant: 'destructive' as const };
+    }
+
     const status = catalogs.estadosAcreditacionDoc.find(s => s.id === document.estadoDocId);
     
     let variant: 'default' | 'secondary' | 'destructive' | 'outline' = 'secondary';
@@ -60,9 +67,10 @@ export function MyDocumentCard({ document, catalogs }: MyDocumentCardProps) {
       case 'est-rev': variant = 'secondary'; break;
       case 'est-obs': variant = 'destructive'; break;
       case 'est-sus': variant = 'outline'; break;
+      default: variant = 'secondary';
     }
     return { statusName: status?.nombre || 'Desconocido', statusVariant: variant };
-  }, [document.estadoDocId, catalogs]);
+  }, [document, catalogs]);
 
   const { ambitoName, caracteristicaName } = useMemo(() => {
     if (!catalogs) return { ambitoName: '', caracteristicaName: '' };

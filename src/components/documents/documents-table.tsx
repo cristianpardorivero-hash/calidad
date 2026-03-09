@@ -209,16 +209,6 @@ export function DocumentsTable({
       )
     );
   };
-  
-  const getStatusVariant = (statusId: string) => {
-    switch (statusId) {
-        case 'est-vig': return 'default';
-        case 'est-rev': return 'secondary';
-        case 'est-obs': return 'destructive';
-        case 'est-sus': return 'outline';
-        default: return 'secondary';
-    }
-  }
 
   return (
     <>
@@ -239,86 +229,104 @@ export function DocumentsTable({
           </TableHeader>
           <TableBody>
             {paginatedDocuments.length > 0 ? (
-              paginatedDocuments.map((doc) => (
-                <TableRow key={doc.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
-                        <div className="flex flex-col">
-                            <Link href={`/documentos/${doc.id}`} className="hover:underline font-semibold max-w-[200px] sm:max-w-[300px] truncate">
-                                {doc.titulo}
-                            </Link>
-                            <span className="text-xs text-muted-foreground">{getCatalogName("tiposDocumento", doc.tipoDocumentoId)}</span>
-                        </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell truncate max-w-[150px]">
-                    {getCatalogName("ambitos", doc.ambitoId)}
-                  </TableCell>
-                   <TableCell className="hidden md:table-cell">{doc.responsableNombre}</TableCell>
-                   <TableCell className="hidden md:table-cell"><Badge variant="outline">v{doc.version}</Badge></TableCell>
-                   <TableCell className="hidden sm:table-cell">
-                    <Badge variant={getStatusVariant(doc.estadoDocId)}>
-                      {getCatalogName("estadosAcreditacionDoc", doc.estadoDocId)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {doc.updatedAt
-                      ? formatDistanceToNow(doc.updatedAt, {
-                          addSuffix: true,
-                          locale: es,
-                        })
-                      : "N/A"}
-                  </TableCell>
-                  <TableCell>
-                    {loadingStates[doc.id] ? (
-                      <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                    ) : (
-                      <DropdownMenu modal={false}>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={() => setDocToPreview(doc)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Ver
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <a href={doc.downloadUrl} download={doc.fileName}>
-                              <Download className="mr-2 h-4 w-4" />
-                              Descargar
-                            </a>
-                          </DropdownMenuItem>
-                          {canManage && (
-                            <>
-                              <DropdownMenuItem asChild>
-                                <Link href={`/documentos/${doc.id}/editar`}>
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  Editar
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                onSelect={(e) => {
-                                  e.preventDefault();
-                                  setDocToDelete(doc);
-                                }}
-                              >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Eliminar
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
+              paginatedDocuments.map((doc) => {
+                const isExpired = doc.estadoDocId === 'est-vig' && doc.fechaVigenciaHasta && doc.fechaVigenciaHasta < new Date();
+                const statusName = isExpired ? 'Vencido' : getCatalogName("estadosAcreditacionDoc", doc.estadoDocId);
+                
+                let statusVariant: 'default' | 'secondary' | 'destructive' | 'outline' = 'secondary';
+                if (isExpired) {
+                    statusVariant = 'destructive';
+                } else {
+                    switch (doc.estadoDocId) {
+                        case 'est-vig': statusVariant = 'default'; break;
+                        case 'est-rev': statusVariant = 'secondary'; break;
+                        case 'est-obs': statusVariant = 'destructive'; break;
+                        case 'est-sus': statusVariant = 'outline'; break;
+                        default: statusVariant = 'secondary';
+                    }
+                }
+
+                return (
+                  <TableRow key={doc.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+                          <div className="flex flex-col">
+                              <Link href={`/documentos/${doc.id}`} className="hover:underline font-semibold max-w-[200px] sm:max-w-[300px] truncate">
+                                  {doc.titulo}
+                              </Link>
+                              <span className="text-xs text-muted-foreground">{getCatalogName("tiposDocumento", doc.tipoDocumentoId)}</span>
+                          </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell truncate max-w-[150px]">
+                      {getCatalogName("ambitos", doc.ambitoId)}
+                    </TableCell>
+                     <TableCell className="hidden md:table-cell">{doc.responsableNombre}</TableCell>
+                     <TableCell className="hidden md:table-cell"><Badge variant="outline">v{doc.version}</Badge></TableCell>
+                     <TableCell className="hidden sm:table-cell">
+                      <Badge variant={statusVariant}>
+                        {statusName}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {doc.updatedAt
+                        ? formatDistanceToNow(doc.updatedAt, {
+                            addSuffix: true,
+                            locale: es,
+                          })
+                        : "N/A"}
+                    </TableCell>
+                    <TableCell>
+                      {loadingStates[doc.id] ? (
+                        <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                      ) : (
+                        <DropdownMenu modal={false}>
+                          <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Toggle menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => setDocToPreview(doc)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Ver
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <a href={doc.downloadUrl} download={doc.fileName}>
+                                <Download className="mr-2 h-4 w-4" />
+                                Descargar
+                              </a>
+                            </DropdownMenuItem>
+                            {canManage && (
+                              <>
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/documentos/${doc.id}/editar`}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Editar
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    setDocToDelete(doc);
+                                  }}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Eliminar
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center">

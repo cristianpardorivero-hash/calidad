@@ -143,6 +143,9 @@ export default function DocumentoDetailPage() {
     catalogs[catalog as keyof typeof catalogs]
       // @ts-ignore
       .find((item: any) => item.id === id)?.nombre || "N/A";
+      
+  const isExpired = document.estadoDocId === 'est-vig' && document.fechaVigenciaHasta && document.fechaVigenciaHasta < new Date();
+  const displayStatusName = isExpired ? 'Vencido' : getCatalogName("estadosAcreditacionDoc", document.estadoDocId);
   
   const getServicioNames = (servicioIds: string[] | undefined) => {
     if (!servicioIds || servicioIds.length === 0) return "No especificado";
@@ -151,7 +154,7 @@ export default function DocumentoDetailPage() {
 
   const detailItems = [
     { icon: GitBranch, label: "Versión", value: document.version },
-    { icon: ShieldCheck, label: "Estado", value: getCatalogName("estadosAcreditacionDoc", document.estadoDocId) },
+    { icon: ShieldCheck, label: "Estado", value: displayStatusName },
     { icon: ClipboardList, label: "Tipo", value: getCatalogName("tiposDocumento", document.tipoDocumentoId) },
     { icon: User, label: "Responsable", value: `${document.responsableNombre} (${document.responsableEmail})` },
     { icon: Building, label: "Servicios", value: getServicioNames(document.servicioIds) },
