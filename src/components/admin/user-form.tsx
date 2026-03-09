@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronsUpDown, Loader2, Save } from "lucide-react";
 import { addUser, updateUser } from "@/lib/data";
@@ -104,6 +104,10 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: defaultValues as any,
   });
+
+  useEffect(() => {
+    form.reset(defaultValues as any);
+  }, [defaultValues, form]);
 
 
   async function onSubmit(values: EditFormValues | CreateFormValues) {
@@ -206,10 +210,11 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Servicios/Unidades (Opcional)</FormLabel>
-                  <Popover>
+                  <Popover modal={false}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
+                          type="button"
                           variant="outline"
                           role="combobox"
                           className={cn(
@@ -226,35 +231,29 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <PopoverContent align="start" className="w-[--radix-popover-trigger-width] p-0 z-50">
                       <ScrollArea className="h-48">
                         <div className="space-y-1 p-2">
                           {catalogs.servicios.map((servicio) => (
-                            <FormItem
-                              key={servicio.id}
-                              className="flex flex-row items-center space-x-3 space-y-0"
-                            >
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value?.includes(servicio.id)}
-                                  onCheckedChange={(checked) => {
-                                    return checked
-                                      ? field.onChange([
-                                          ...(field.value || []),
-                                          servicio.id,
-                                        ])
-                                      : field.onChange(
-                                          (field.value || []).filter(
-                                            (value) => value !== servicio.id
-                                          )
-                                        );
-                                  }}
-                                />
-                              </FormControl>
-                              <FormLabel className="font-normal">
+                            <div key={servicio.id} className="flex items-center space-x-3 rounded-md px-2 py-2 hover:bg-muted">
+                              <Checkbox
+                                id={`servicio-${servicio.id}`}
+                                checked={field.value?.includes(servicio.id)}
+                                onCheckedChange={(checked) => {
+                                  const currentValues = field.value || [];
+                                  if (checked) {
+                                    field.onChange([...currentValues, servicio.id]);
+                                  } else {
+                                    field.onChange(
+                                      currentValues.filter((value) => value !== servicio.id)
+                                    );
+                                  }
+                                }}
+                              />
+                              <label htmlFor={`servicio-${servicio.id}`} className="text-sm font-normal cursor-pointer w-full">
                                 {servicio.nombre}
-                              </FormLabel>
-                            </FormItem>
+                              </label>
+                            </div>
                           ))}
                         </div>
                       </ScrollArea>
@@ -272,10 +271,11 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Permisos de Página Específicos (Opcional)</FormLabel>
-                <Popover>
+                <Popover modal={false}>
                   <PopoverTrigger asChild>
                     <FormControl>
                       <Button
+                        type="button"
                         variant="outline"
                         role="combobox"
                         className={cn("w-full justify-between", !field.value?.length && "text-muted-foreground")}
@@ -289,30 +289,27 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                  <PopoverContent align="start" className="w-[--radix-popover-trigger-width] p-0 z-50">
                     <ScrollArea className="h-48">
                       <div className="p-2 space-y-1">
                         {availablePages.map((page) => (
-                          <FormItem key={page.id} className="flex flex-row items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value?.includes(page.id)}
-                                onCheckedChange={(checked) => {
-                                  return checked
-                                    ? field.onChange([
-                                        ...(field.value || []),
-                                        page.id,
-                                      ])
-                                    : field.onChange(
-                                        (field.value || []).filter(
-                                          (value) => value !== page.id
-                                        )
-                                      );
-                                }}
-                              />
-                            </FormControl>
-                            <FormLabel className="font-normal">{page.label}</FormLabel>
-                          </FormItem>
+                           <div key={page.id} className="flex items-center space-x-3 rounded-md px-2 py-2 hover:bg-muted">
+                            <Checkbox
+                              id={`page-${page.id}`}
+                              checked={field.value?.includes(page.id)}
+                              onCheckedChange={(checked) => {
+                                const currentValues = field.value || [];
+                                if (checked) {
+                                  field.onChange([...currentValues, page.id]);
+                                } else {
+                                  field.onChange(
+                                    currentValues.filter((value) => value !== page.id)
+                                  );
+                                }
+                              }}
+                            />
+                            <label htmlFor={`page-${page.id}`} className="text-sm font-normal cursor-pointer w-full">{page.label}</label>
+                          </div>
                         ))}
                       </div>
                     </ScrollArea>
