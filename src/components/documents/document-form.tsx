@@ -497,12 +497,20 @@ export function DocumentForm({
       }
       
       const tagsArray = values.tags?.split(",").map((t) => t.trim()).filter(Boolean) || [];
+      
+      const caracteristica = catalogs.caracteristicas.find(c => c.id === values.caracteristicaId);
+      const elementoMedible = catalogs.elementosMedibles.find(e => e.id === values.elementoMedibleId);
+
       const searchKeywords = [
         values.titulo?.toLowerCase(),
         values.descripcion?.toLowerCase(),
         values.responsableNombre?.toLowerCase(),
+        caracteristica?.codigo?.toLowerCase(),
+        elementoMedible?.codigo?.toLowerCase(),
         ...tagsArray.map(t => t.toLowerCase())
-      ].filter(Boolean);
+      ].filter(Boolean) as string[];
+
+      const uniqueSearchKeywords = [...new Set(searchKeywords)];
 
       console.log("[SUBMIT_INFO] Preparando datos para guardar en Firestore...");
       if (isNewVersion && document && fileData) {
@@ -531,7 +539,7 @@ export function DocumentForm({
           tags: tagsArray,
           linkedDocumentId: values.linkedDocumentId || "",
           updatedAt: new Date(),
-          searchKeywords: [...new Set(searchKeywords)],
+          searchKeywords: uniqueSearchKeywords,
         };
         console.log("[SUBMIT_INFO] Llamando a createNewVersionAndUpdateDocument...");
         await createNewVersionAndUpdateDocument(document, newData, firebaseUser.uid);
@@ -555,7 +563,7 @@ export function DocumentForm({
             fechaVigenciaDesde: values.fechaVigenciaDesde || null,
             fechaVigenciaHasta: values.fechaVigenciaHasta || null,
             tags: tagsArray,
-            searchKeywords: [...new Set(searchKeywords)],
+            searchKeywords: uniqueSearchKeywords,
             linkedDocumentId: values.linkedDocumentId || "",
          };
         console.log("[SUBMIT_INFO] Llamando a updateDocument...");
@@ -584,7 +592,7 @@ export function DocumentForm({
           fechaVigenciaDesde: values.fechaVigenciaDesde || null,
           fechaVigenciaHasta: values.fechaVigenciaHasta || null,
           tags: tagsArray,
-          searchKeywords: [...new Set(searchKeywords)],
+          searchKeywords: uniqueSearchKeywords,
           linkedDocumentId: values.linkedDocumentId || "",
           fileName: fileData.fileName,
           fileExt: fileData.fileExt as any,

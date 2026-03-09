@@ -81,7 +81,7 @@ export function DocumentsFilters({ catalogs }: { catalogs: Catalogs }) {
         <div className="flex items-center gap-4 w-full">
           <Search className="h-5 w-5 text-muted-foreground" />
           <Input
-            placeholder="Buscar por título, descripción, tag, responsable..."
+            placeholder="Buscar por título, código, tag, responsable..."
             className="h-9 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
             value={filters.query}
             onChange={(e) => handleFilterChange('query', e.target.value)}

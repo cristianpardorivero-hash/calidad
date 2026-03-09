@@ -99,7 +99,7 @@ export default function MisDocumentosPage() {
 
       if (queryParam) {
         const lowerQuery = queryParam.toLowerCase();
-        if (!doc.searchKeywords?.some(keyword => keyword.toLowerCase().includes(lowerQuery))) {
+        if (!doc.searchKeywords?.some(keyword => keyword.includes(lowerQuery))) {
             return false;
         }
       }
