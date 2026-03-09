@@ -1,4 +1,3 @@
-
 "use client";
 
 import { DocumentsTable } from "@/components/documents/documents-table";
@@ -14,12 +13,14 @@ import type { Catalogs, Documento } from "@/lib/types";
 import { collection, query, where, onSnapshot, Timestamp } from "firebase/firestore";
 import { db } from "@/firebase/client";
 import { useSearchParams } from "next/navigation";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function DocumentosPage() {
   const { user } = useUser();
   const [documents, setDocuments] = useState<Documento[]>([]);
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedTab, setSelectedTab] = useState("todos");
 
   const hospitalId = user?.hospitalId;
   const userRole = user?.role;
@@ -80,7 +81,7 @@ export default function DocumentosPage() {
   }, [hospitalId, userRole, servicioIdsDependency]);
   
   const filteredDocuments = useMemo(() => {
-    const query = searchParams.get("query");
+    const queryParam = searchParams.get("query");
     const ambitoId = searchParams.get("ambitoId");
     const caracteristicaId = searchParams.get("caracteristicaId");
     const elementoMedibleId = searchParams.get("elementoMedibleId");
@@ -94,8 +95,8 @@ export default function DocumentosPage() {
       const from = fromParam ? new Date(fromParam) : null;
       const to = toParam ? new Date(toParam) : null;
 
-      if (query) {
-        const lowerQuery = query.toLowerCase();
+      if (queryParam) {
+        const lowerQuery = queryParam.toLowerCase();
         if (!doc.searchKeywords?.some(keyword => keyword.includes(lowerQuery))) {
             return false;
         }
@@ -114,6 +115,18 @@ export default function DocumentosPage() {
       return true;
     });
   }, [documents, searchParams]);
+
+  const sortedTiposDocumento = useMemo(() => {
+    if (!catalogs) return [];
+    return [...catalogs.tiposDocumento].sort((a, b) => a.orden - b.orden);
+  }, [catalogs]);
+
+  const documentsForDisplay = useMemo(() => {
+    if (selectedTab === 'todos') {
+        return filteredDocuments;
+    }
+    return filteredDocuments.filter(doc => doc.tipoDocumentoId === selectedTab);
+  }, [filteredDocuments, selectedTab]);
 
   const canManage = user?.role === 'admin' || user?.role === 'editor';
 
@@ -142,6 +155,7 @@ export default function DocumentosPage() {
       <div className="space-y-8">
         {pageHeader}
         <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-10 w-full" />
         <Skeleton className="h-[400px] w-full" />
       </div>
     );
@@ -151,8 +165,18 @@ export default function DocumentosPage() {
     <div className="space-y-8">
       {pageHeader}
       <DocumentsFilters catalogs={catalogs} />
+      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+        <TabsList className="h-auto flex-wrap justify-start">
+          <TabsTrigger value="todos">Todos</TabsTrigger>
+          {sortedTiposDocumento.map((tipo) => (
+            <TabsTrigger key={tipo.id} value={tipo.id}>
+              {tipo.nombre}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
       <DocumentsTable
-        documents={filteredDocuments}
+        documents={documentsForDisplay}
         catalogs={catalogs}
         user={user}
       />
