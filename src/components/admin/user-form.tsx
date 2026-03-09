@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronsUpDown, Loader2, Save } from "lucide-react";
 import { addUser, updateUser } from "@/lib/data";
@@ -79,31 +79,31 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
 
   const formSchema = isEditing ? baseSchema : createSchema;
 
-  const form = useForm<EditFormValues | CreateFormValues>({
-    resolver: zodResolver(formSchema),
-  });
-
-  // This effect will re-sync the form if the `user` prop changes.
-  useEffect(() => {
-    if (user) {
-      form.reset({
+  const defaultValues = useMemo(() => {
+    if (isEditing && user) {
+      return {
         displayName: user.displayName || "",
         email: user.email || "",
         role: user.role || "lector",
         servicioIds: user.servicioIds || [],
         allowedPages: user.allowedPages || [],
-      });
-    } else {
-       form.reset({
-        displayName: "",
-        email: "",
-        role: "lector",
-        servicioIds: [],
-        password: "",
-        allowedPages: [],
-       });
+      };
     }
-  }, [user]);
+    return {
+      displayName: "",
+      email: "",
+      role: "lector",
+      servicioIds: [],
+      password: "",
+      allowedPages: [],
+    };
+  }, [user, isEditing]);
+
+
+  const form = useForm<EditFormValues | CreateFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: defaultValues as any,
+  });
 
 
   async function onSubmit(values: EditFormValues | CreateFormValues) {
