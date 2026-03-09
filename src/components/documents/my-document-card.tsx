@@ -21,6 +21,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Skeleton } from "../ui/skeleton";
 import { Separator } from "../ui/separator";
+import { cn } from "@/lib/utils";
 
 const DocumentPreviewModal = dynamic(
   () => import('./document-preview-modal').then(mod => mod.DocumentPreviewModal),
@@ -73,10 +74,21 @@ export function MyDocumentCard({ document, catalogs }: MyDocumentCardProps) {
     };
   }, [document.ambitoId, document.caracteristicaId, catalogs]);
 
+  const ambitoClassMap: { [key: string]: string } = {
+    "amb-dp": "bg-ambito-dp-bg hover:border-ambito-dp-border-hover",
+    "amb-gcl": "bg-ambito-gcl-bg hover:border-ambito-gcl-border-hover",
+    "amb-reg": "bg-ambito-reg-bg hover:border-ambito-reg-border-hover",
+  };
+
+  const cardColorClasses = ambitoClassMap[document.ambitoId] || "bg-card hover:border-primary/50";
+
 
   return (
     <>
-      <Card className="flex flex-col transition-shadow duration-300 hover:shadow-xl border-transparent hover:border-primary/50 bg-card">
+      <Card className={cn(
+          "flex flex-col transition-shadow duration-300 hover:shadow-xl border border-transparent",
+          cardColorClasses
+        )}>
         <CardHeader className="pb-3">
             <div className="flex items-center gap-2 mb-2">
                 <Badge variant="outline" className="text-xs">v{document.version}</Badge>

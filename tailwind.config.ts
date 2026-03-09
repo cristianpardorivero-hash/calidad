@@ -72,6 +72,14 @@ export default {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
         },
+        ambito: {
+          'dp-bg': 'hsl(var(--ambito-dp-bg))',
+          'dp-border-hover': 'hsl(var(--ambito-dp-border-hover))',
+          'gcl-bg': 'hsl(var(--ambito-gcl-bg))',
+          'gcl-border-hover': 'hsl(var(--ambito-gcl-border-hover))',
+          'reg-bg': 'hsl(var(--ambito-reg-bg))',
+          'reg-border-hover': 'hsl(var(--ambito-reg-border-hover))',
+        }
       },
       borderRadius: {
         lg: 'var(--radius)',
