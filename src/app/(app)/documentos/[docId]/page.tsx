@@ -30,7 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useUser } from "@/hooks/use-user";
 import type { Catalogs, Documento, DocumentVersion } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -102,6 +102,41 @@ export default function DocumentoDetailPage() {
   }, [hospitalId, docId]);
 
   const canManage = user?.role === 'admin' || user?.role === 'editor';
+
+  const groupedAndSortedLinkedDocuments = useMemo(() => {
+    if (!linkedDocuments || linkedDocuments.length === 0 || !catalogs) {
+      return [];
+    }
+
+    // Group documents by tipoDocumentoId
+    const grouped = linkedDocuments.reduce((acc, doc) => {
+      const tipoId = doc.tipoDocumentoId;
+      if (!acc[tipoId]) {
+        acc[tipoId] = [];
+      }
+      acc[tipoId].push(doc);
+      return acc;
+    }, {} as Record<string, Documento[]>);
+
+    // Sort documents within each group and prepare for rendering
+    const sortedAndNamedGroups = Object.keys(grouped).map(tipoId => {
+      const tipoDoc = catalogs.tiposDocumento.find(t => t.id === tipoId);
+      const sortedDocs = grouped[tipoId].sort((a, b) => {
+        const dateA = a.fechaDocumento?.getTime() || 0;
+        const dateB = b.fechaDocumento?.getTime() || 0;
+        return dateB - dateA;
+      });
+      return {
+        typeName: tipoDoc?.nombre || "Sin Tipo",
+        typeOrder: tipoDoc?.orden || Infinity,
+        documents: sortedDocs
+      };
+    });
+
+    // Sort the groups themselves by the order defined in the catalog
+    return sortedAndNamedGroups.sort((a, b) => a.typeOrder - b.typeOrder);
+
+  }, [linkedDocuments, catalogs]);
 
   if (loading) {
     return (
@@ -309,34 +344,43 @@ export default function DocumentoDetailPage() {
               </Card>
             )}
 
-            {linkedDocuments.length > 0 && (
+            {groupedAndSortedLinkedDocuments.length > 0 && (
               <Card>
                 <CardHeader><CardTitle className="flex items-center gap-2"><LinkIcon className="h-5 w-5"/> Documentos Vinculados</CardTitle></CardHeader>
-                <CardContent className="space-y-2">
-                {linkedDocuments.map(linkedDoc => (
-                    <div key={linkedDoc.id} className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
-                        <div className="flex items-center gap-3">
-                            <FileText className="h-5 w-5 text-muted-foreground"/>
-                            <div className="flex flex-col">
-                                <Link href={`/documentos/${linkedDoc.id}`} className="font-medium hover:underline text-sm">
-                                    {linkedDoc.titulo}
-                                </Link>
-                                <span className="text-xs text-muted-foreground">v{linkedDoc.version}</span>
+                <CardContent className="space-y-4">
+                {groupedAndSortedLinkedDocuments.map(group => (
+                  <div key={group.typeName}>
+                    <h4 className="font-semibold text-sm mb-2">{group.typeName}</h4>
+                    <div className="space-y-2">
+                      {group.documents.map(linkedDoc => (
+                        <div key={linkedDoc.id} className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                                <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0"/>
+                                <div className="flex flex-col overflow-hidden">
+                                    <Link href={`/documentos/${linkedDoc.id}`} className="font-medium hover:underline text-sm truncate">
+                                        {linkedDoc.titulo}
+                                    </Link>
+                                    <span className="text-xs text-muted-foreground truncate">
+                                        v{linkedDoc.version} - {linkedDoc.fechaDocumento ? format(linkedDoc.fechaDocumento, "d MMM, yyyy", { locale: es }) : ''}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="flex items-center flex-shrink-0">
+                                <Button variant="ghost" size="icon" asChild>
+                                    <Link href={`/documentos/${linkedDoc.id}`} title="Ver documento">
+                                        <Eye className="h-4 w-4" />
+                                    </Link>
+                                </Button>
+                                <Button variant="ghost" size="icon" asChild>
+                                    <a href={linkedDoc.downloadUrl} download={linkedDoc.fileName} title="Descargar archivo">
+                                        <Download className="h-4 w-4" />
+                                    </a>
+                                </Button>
                             </div>
                         </div>
-                        <div className="flex items-center">
-                            <Button variant="ghost" size="icon" asChild>
-                                <Link href={`/documentos/${linkedDoc.id}`} title="Ver documento">
-                                    <Eye className="h-4 w-4" />
-                                </Link>
-                            </Button>
-                            <Button variant="ghost" size="icon" asChild>
-                                <a href={linkedDoc.downloadUrl} download={linkedDoc.fileName} title="Descargar archivo">
-                                    <Download className="h-4 w-4" />
-                                </a>
-                            </Button>
-                        </div>
+                      ))}
                     </div>
+                  </div>
                 ))}
                 </CardContent>
               </Card>
