@@ -244,7 +244,7 @@ export function DocumentForm({
   const fechaDocumento = form.watch("fechaDocumento");
 
   useEffect(() => {
-    if (fechaDocumento && (!isEditing || isNewVersion)) {
+    if (fechaDocumento && isValid(fechaDocumento) && (!isEditing || isNewVersion)) {
       form.setValue("fechaVigenciaDesde", fechaDocumento, {
         shouldValidate: true,
       });
