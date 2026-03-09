@@ -9,8 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { FileDown, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
 
 // Extend jsPDF with autoTable
 declare module 'jspdf' {
@@ -50,8 +48,10 @@ export default function ReportesPage() {
           console.error('Failed to fetch data:', error);
           setLoading(false);
         });
+    } else if (!user) {
+      setLoading(false);
     }
-  }, [hospitalId, userRole, servicioIdsDependency]);
+  }, [hospitalId, userRole, servicioIdsDependency, user]);
   
   const getCatalogName = (catalogKey: keyof Catalogs, id: string): string => {
     if (!catalogs || !id) return 'N/A';
@@ -60,9 +60,12 @@ export default function ReportesPage() {
   };
 
 
-  const handleGeneratePdf = () => {
+  const handleGeneratePdf = async () => {
     if (!catalogs) return;
     setGenerating(true);
+
+    const { jsPDF } = await import('jspdf');
+    await import('jspdf-autotable');
 
     // Filter documents based on selection
     const filteredDocs = documents.filter(doc => {
