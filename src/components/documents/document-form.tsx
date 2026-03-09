@@ -190,7 +190,7 @@ const autoIncrementVersion = (version?: string | number | null) => {
     const major = parseInt(parts[0], 10) + 1;
     return `${major}.0`;
   }
-  return String(version);
+  return versionStr;
 };
 
 
@@ -725,6 +725,7 @@ export function DocumentForm({
                       </FormControl>
                       <SelectContent>
                         {[...catalogs.tiposDocumento]
+                          .filter((item) => item.id && item.id.trim() !== "")
                           .sort((a, b) => a.nombre.localeCompare(b.nombre))
                           .map((tipo) => (
                             <SelectItem key={tipo.id} value={tipo.id}>
@@ -767,6 +768,7 @@ export function DocumentForm({
                       </FormControl>
                       <SelectContent>
                         {[...catalogs.estadosAcreditacionDoc]
+                          .filter((item) => item.id && item.id.trim() !== "")
                           .filter((e) => e.id !== 'est-sus')
                           .sort((a, b) => a.nombre.localeCompare(b.nombre))
                           .map((estado) => (
@@ -810,6 +812,7 @@ export function DocumentForm({
                         </FormControl>
                         <SelectContent>
                           {[...catalogs.ambitos]
+                            .filter((item) => item.id && item.id.trim() !== "")
                             .sort((a, b) => a.orden - b.orden)
                             .map((a) => (
                               <SelectItem key={a.id} value={a.id}>
@@ -830,7 +833,8 @@ export function DocumentForm({
                       <FormLabel>Característica</FormLabel>
                       <Select
                         onValueChange={(value) => {
-                          field.onChange(value);
+                          const newValue = value === "__ANY__" ? "" : value;
+                          field.onChange(newValue);
                           form.setValue("elementoMedibleId", "");
                         }}
                         value={field.value || ""}
@@ -842,8 +846,10 @@ export function DocumentForm({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">-- Cualquiera --</SelectItem>
-                          {filteredCaracteristicas.map((c) => (
+                          <SelectItem value="__ANY__">-- Cualquiera --</SelectItem>
+                          {filteredCaracteristicas
+                            .filter((item) => item.id && item.id.trim() !== "")
+                            .map((c) => (
                             <SelectItem key={c.id} value={c.id}>
                               {c.codigo} - {c.nombre}
                             </SelectItem>
@@ -864,21 +870,22 @@ export function DocumentForm({
                     <FormItem>
                       <FormLabel>Elemento medible</FormLabel>
                       <Select
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                          const selectedElemento = catalogs.elementosMedibles.find(
-                            (e) => e.id === value
-                          );
-                          if (selectedElemento?.servicioIds) {
-                            form.setValue("servicioIds", selectedElemento.servicioIds, {
-                              shouldValidate: true,
-                            });
-                          } else {
-                            form.setValue("servicioIds", [], {
-                              shouldValidate: true,
-                            });
-                          }
-                        }}
+                         onValueChange={(value) => {
+                            const newValue = value === "__ANY__" ? "" : value;
+                            field.onChange(newValue);
+                            const selectedElemento = catalogs.elementosMedibles.find(
+                              (e) => e.id === newValue
+                            );
+                            if (selectedElemento?.servicioIds) {
+                              form.setValue("servicioIds", selectedElemento.servicioIds, {
+                                shouldValidate: true,
+                              });
+                            } else {
+                              form.setValue("servicioIds", [], {
+                                shouldValidate: true,
+                              });
+                            }
+                          }}
                         value={field.value || ""}
                         disabled={!caracteristicaId}
                       >
@@ -888,8 +895,10 @@ export function DocumentForm({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">-- Cualquiera --</SelectItem>
-                          {filteredElementos.map((e) => (
+                          <SelectItem value="__ANY__">-- Cualquiera --</SelectItem>
+                          {filteredElementos
+                            .filter((item) => item.id && item.id.trim() !== "")
+                            .map((e) => (
                             <SelectItem key={e.id} value={e.id}>
                               {e.codigo} - {e.nombre}
                             </SelectItem>
@@ -937,7 +946,9 @@ export function DocumentForm({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {linkableDocuments.map((doc) => (
+                          {linkableDocuments
+                            .filter((item) => item.id && item.id.trim() !== "")
+                            .map((doc) => (
                             <SelectItem key={doc.id} value={doc.id}>
                               {doc.titulo} (v{doc.version})
                             </SelectItem>
@@ -988,6 +999,7 @@ export function DocumentForm({
                           <ScrollArea className="h-48">
                             <div className="p-2 space-y-1">
                               {[...catalogs.servicios]
+                                .filter((item) => item.id && item.id.trim() !== "")
                                 .sort((a, b) => a.nombre.localeCompare(b.nombre))
                                 .map((servicio) => (
                                   <FormItem
@@ -1314,6 +1326,7 @@ export function DocumentForm({
                             </FormControl>
                             <SelectContent>
                               {[...catalogs.tiposDocumento]
+                                .filter((item) => item.id && item.id.trim() !== "")
                                 .sort((a, b) => a.nombre.localeCompare(b.nombre))
                                 .map((tipo) => (
                                   <SelectItem key={tipo.id} value={tipo.id}>
@@ -1344,6 +1357,7 @@ export function DocumentForm({
                             </FormControl>
                             <SelectContent>
                               {[...catalogs.estadosAcreditacionDoc]
+                                .filter((item) => item.id && item.id.trim() !== "")
                                 .filter((e) => e.id !== 'est-sus')
                                 .sort((a, b) => a.nombre.localeCompare(b.nombre))
                                 .map((estado) => (
@@ -1382,6 +1396,7 @@ export function DocumentForm({
                           </FormControl>
                           <SelectContent>
                             {[...catalogs.ambitos]
+                              .filter((item) => item.id && item.id.trim() !== "")
                               .sort((a, b) => a.orden - b.orden)
                               .map((a) => (
                                 <SelectItem key={a.id} value={a.id}>
@@ -1403,7 +1418,8 @@ export function DocumentForm({
                         <FormLabel>Característica</FormLabel>
                         <Select
                           onValueChange={(value) => {
-                            field.onChange(value);
+                            const newValue = value === "__ANY__" ? "" : value;
+                            field.onChange(newValue);
                             form.setValue("elementoMedibleId", "");
                           }}
                           value={field.value || ""}
@@ -1421,8 +1437,10 @@ export function DocumentForm({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">-- Cualquiera --</SelectItem>
-                            {filteredCaracteristicas.map((c) => (
+                            <SelectItem value="__ANY__">-- Cualquiera --</SelectItem>
+                            {filteredCaracteristicas
+                              .filter((item) => item.id && item.id.trim() !== "")
+                              .map((c) => (
                               <SelectItem key={c.id} value={c.id}>
                                 {c.codigo} - {c.nombre}
                               </SelectItem>
@@ -1441,10 +1459,11 @@ export function DocumentForm({
                       <FormItem>
                         <FormLabel>Elemento medible</FormLabel>
                         <Select
-                          onValueChange={(value) => {
-                            field.onChange(value);
+                           onValueChange={(value) => {
+                            const newValue = value === "__ANY__" ? "" : value;
+                            field.onChange(newValue);
                             const selectedElemento = catalogs.elementosMedibles.find(
-                              (e) => e.id === value
+                              (e) => e.id === newValue
                             );
                             if (selectedElemento?.servicioIds) {
                               form.setValue("servicioIds", selectedElemento.servicioIds, {
@@ -1471,8 +1490,10 @@ export function DocumentForm({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">-- Cualquiera --</SelectItem>
-                            {filteredElementos.map((e) => (
+                            <SelectItem value="__ANY__">-- Cualquiera --</SelectItem>
+                            {filteredElementos
+                              .filter((item) => item.id && item.id.trim() !== "")
+                              .map((e) => (
                               <SelectItem key={e.id} value={e.id}>
                                 {e.codigo} - {e.nombre}
                               </SelectItem>
@@ -1555,6 +1576,7 @@ export function DocumentForm({
                             <ScrollArea className="h-48">
                               <div className="p-2 space-y-1">
                                 {[...catalogs.servicios]
+                                  .filter((item) => item.id && item.id.trim() !== "")
                                   .sort((a, b) => a.nombre.localeCompare(b.nombre))
                                   .map((servicio) => (
                                     <FormItem
@@ -1678,7 +1700,9 @@ export function DocumentForm({
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {linkableDocuments.map((doc) => (
+                                {linkableDocuments
+                                  .filter((item) => item.id && item.id.trim() !== "")
+                                  .map((doc) => (
                                   <SelectItem key={doc.id} value={doc.id}>
                                     {doc.titulo} (v{doc.version})
                                   </SelectItem>

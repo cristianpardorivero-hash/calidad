@@ -99,27 +99,27 @@ export function DocumentsFilters({ catalogs }: { catalogs: Catalogs }) {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Select value={filters.ambitoId} onValueChange={(v) => handleFilterChange('ambitoId', v)}>
             <SelectTrigger><SelectValue placeholder="Ámbito" /></SelectTrigger>
-            <SelectContent>{catalogs.ambitos.map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent>
+            <SelectContent>{catalogs.ambitos.filter(i => i.id).map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={filters.caracteristicaId} onValueChange={(v) => handleFilterChange('caracteristicaId', v)} disabled={!filters.ambitoId}>
             <SelectTrigger><SelectValue placeholder="Característica" /></SelectTrigger>
-            <SelectContent>{catalogs.caracteristicas.filter(c => c.ambitoId === filters.ambitoId).map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent>
+            <SelectContent>{catalogs.caracteristicas.filter(c => c.ambitoId === filters.ambitoId).filter(i => i.id).map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={filters.elementoMedibleId} onValueChange={(v) => handleFilterChange('elementoMedibleId', v)} disabled={!filters.caracteristicaId}>
             <SelectTrigger><SelectValue placeholder="Elemento Medible" /></SelectTrigger>
-            <SelectContent>{catalogs.elementosMedibles.filter(e => e.caracteristicaId === filters.caracteristicaId).map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent>
+            <SelectContent>{catalogs.elementosMedibles.filter(e => e.caracteristicaId === filters.caracteristicaId).filter(i => i.id).map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={filters.tipoDocumentoId} onValueChange={(v) => handleFilterChange('tipoDocumentoId', v)}>
             <SelectTrigger><SelectValue placeholder="Tipo de Documento" /></SelectTrigger>
-            <SelectContent>{catalogs.tiposDocumento.map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent>
+            <SelectContent>{catalogs.tiposDocumento.filter(i => i.id).map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={filters.estadoDocId} onValueChange={(v) => handleFilterChange('estadoDocId', v)}>
             <SelectTrigger><SelectValue placeholder="Estado" /></SelectTrigger>
-            <SelectContent>{catalogs.estadosAcreditacionDoc.map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent>
+            <SelectContent>{catalogs.estadosAcreditacionDoc.filter(i => i.id).map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={filters.servicioId} onValueChange={(v) => handleFilterChange('servicioId', v)}>
             <SelectTrigger><SelectValue placeholder="Servicio" /></SelectTrigger>
-            <SelectContent>{catalogs.servicios.map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent>
+            <SelectContent>{catalogs.servicios.filter(i => i.id).map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent>
           </Select>
           <DateRangePicker />
         </div>
