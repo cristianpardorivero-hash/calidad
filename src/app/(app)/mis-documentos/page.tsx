@@ -13,6 +13,7 @@ import type { Catalogs, Documento } from "@/lib/types";
 import { collection, query, where, onSnapshot, Timestamp } from "firebase/firestore";
 import { db } from "@/firebase/client";
 import { useSearchParams } from "next/navigation";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 
 export default function MisDocumentosPage() {
@@ -20,6 +21,7 @@ export default function MisDocumentosPage() {
   const [documents, setDocuments] = useState<Documento[]>([]);
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedTab, setSelectedTab] = useState("todos");
   const searchParams = useSearchParams();
 
   const hospitalId = user?.hospitalId;
@@ -116,6 +118,18 @@ export default function MisDocumentosPage() {
     });
   }, [documents, searchParams]);
 
+  const sortedTiposDocumento = useMemo(() => {
+    if (!catalogs) return [];
+    return [...catalogs.tiposDocumento].sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [catalogs]);
+
+  const documentsForDisplay = useMemo(() => {
+    if (selectedTab === 'todos') {
+        return filteredDocuments;
+    }
+    return filteredDocuments.filter(doc => doc.tipoDocumentoId === selectedTab);
+  }, [filteredDocuments, selectedTab]);
+
   const pageHeader = (
     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
       <div>
@@ -152,16 +166,28 @@ export default function MisDocumentosPage() {
     <div className="space-y-8">
       {pageHeader}
       <DocumentsFilters catalogs={catalogs} />
-      {filteredDocuments.length > 0 ? (
+      
+      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+        <TabsList className="h-auto flex-wrap justify-start">
+          <TabsTrigger value="todos">Todos</TabsTrigger>
+          {sortedTiposDocumento.map((tipo) => (
+            <TabsTrigger key={tipo.id} value={tipo.id}>
+              {tipo.nombre}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
+      {documentsForDisplay.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {filteredDocuments.map(doc => (
+            {documentsForDisplay.map(doc => (
                 <MyDocumentCard key={doc.id} document={doc} catalogs={catalogs} />
             ))}
         </div>
       ) : (
         <div className="text-center py-24 bg-muted/50 rounded-lg">
             <p className="text-lg font-semibold">No se encontraron documentos</p>
-            <p className="text-muted-foreground mt-1">Prueba a cambiar los filtros o a subir un nuevo documento.</p>
+            <p className="text-muted-foreground mt-1">Prueba a cambiar los filtros o la pestaña seleccionada.</p>
         </div>
       )}
     </div>
