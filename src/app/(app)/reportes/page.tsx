@@ -134,7 +134,10 @@ export default function ReportesPage() {
         yPos += 10;
 
         for (const caracId of sortedCaracIds) {
-            const caracName = getCatalogName('caracteristicas', caracId);
+            const caracteristica = catalogs.caracteristicas.find(c => c.id === caracId);
+            if (!caracteristica) continue;
+            
+            const caracNameWithCode = `${caracteristica.codigo} - ${caracteristica.nombre}`;
             const docsInCarac = groupedByCaracteristica[caracId];
 
             docsInCarac.sort((a, b) => {
@@ -160,7 +163,7 @@ export default function ReportesPage() {
             doc.setFontSize(11);
             doc.setFont(undefined, 'bold');
             doc.setTextColor(50);
-            doc.text(caracName, 14, yPos);
+            doc.text(caracNameWithCode, 14, yPos);
             yPos += 7;
             doc.setTextColor(0);
 
