@@ -385,6 +385,7 @@ export function DocumentForm({
           onProgress(progress);
         },
         (error) => {
+          console.error("[UPLOAD_FILE_ERROR] Error de Firebase Storage:", error.code, error.message, error);
           reject(error);
         },
         async () => {
@@ -450,37 +451,34 @@ export function DocumentForm({
       toast({ variant: "destructive", title: "No autenticado", description: "Debes iniciar sesión para guardar un documento." });
       return;
     }
+
+    console.log("[SUBMIT_START] Proceso de subida iniciado.");
     
     if (isCreation || isNewVersion) {
         if (!(values.file instanceof File)) {
+            console.error("[SUBMIT_ERROR] No se seleccionó un archivo válido.");
             form.setError("file", { message: "Debes seleccionar un archivo válido." });
-            setIsSubmitting(false);
             return;
         }
     }
-
-    if (!values.fechaDocumento) {
-        toast({
-            variant: "destructive",
-            title: "Fecha inválida",
-            description: "Debes ingresar una fecha de documento válida.",
-        });
-        setIsSubmitting(false);
-        return;
-    }
-
 
     setIsSubmitting(true);
     setUploadProgress(0);
 
     try {
       let fileData: { downloadURL: string; storagePath: string; mimeType: string, fileExt: string, fileName: string, fileSize: number } | null = null;
+      
+      console.log("[SUBMIT_STEP] Preparando para subir archivo...");
+
       if ((isCreation || isNewVersion) && values.file instanceof File) {
+        console.log(`[SUBMIT_STEP] Llamando a uploadFile para: ${values.file.name}`);
         const uploadResult = await uploadFile(
           values.file,
           user.hospitalId,
           (progress) => setUploadProgress(progress)
         );
+        console.log("[SUBMIT_SUCCESS] Archivo subido. URL de descarga obtenida:", uploadResult.downloadURL);
+
         fileData = {
             ...uploadResult,
             fileName: values.file.name,
@@ -488,12 +486,18 @@ export function DocumentForm({
             fileSize: values.file.size,
         };
       }
-
+      
+      console.log("[SUBMIT_STEP] Preparando metadatos para Firestore...");
       const tagsArray = values.tags?.split(",").map((t) => t.trim()).filter(Boolean) || [];
-      const searchKeywords = [values.titulo.toLowerCase(), values.responsableNombre.toLowerCase(), ...tagsArray.map(t => t.toLowerCase())].filter(Boolean);
+      const searchKeywords = [
+        values.titulo?.toLowerCase(),
+        values.descripcion?.toLowerCase(),
+        values.responsableNombre?.toLowerCase(),
+        ...tagsArray.map(t => t.toLowerCase())
+      ].filter(Boolean);
 
       if (isNewVersion && document && fileData) {
-         const newData: Omit<Documento, 'id'> & {id: string} = {
+        const newData: Omit<Documento, 'id'> & {id: string} = {
           ...document,
           titulo: values.titulo,
           descripcion: values.descripcion || "",
@@ -520,7 +524,9 @@ export function DocumentForm({
           updatedAt: new Date(),
           searchKeywords: [...new Set(searchKeywords)],
         };
+        console.log("[SUBMIT_STEP] Llamando a createNewVersionAndUpdateDocument para guardar metadatos.");
         await createNewVersionAndUpdateDocument(document, newData, firebaseUser.uid);
+        console.log("[SUBMIT_SUCCESS] Nueva versión creada en Firestore.");
         toast({ title: "Nueva versión creada", description: `Se ha creado la versión ${newData.version} de "${newData.titulo}".` });
         router.push(`/documentos/${document.id}`);
 
@@ -544,12 +550,18 @@ export function DocumentForm({
             searchKeywords: [...new Set(searchKeywords)],
             linkedDocumentId: values.linkedDocumentId || "",
          };
+        console.log("[SUBMIT_STEP] Llamando a updateDocument para guardar metadatos.");
         await updateDocument(document.id, dataToUpdate);
+        console.log("[SUBMIT_SUCCESS] Documento actualizado en Firestore.");
         toast({ title: "Documento actualizado", description: `El documento "${dataToUpdate.titulo}" ha sido guardado.` });
         router.push(`/documentos/${document.id}`);
 
       } else if (isCreation && fileData) {
         const docData: Omit<Documento, "id" | "createdAt" | "updatedAt"> = {
+          hospitalId: user.hospitalId,
+          createdByUid: firebaseUser.uid,
+          createdByEmail: firebaseUser.email || "N/A",
+          isDeleted: false,
           titulo: values.titulo,
           descripcion: values.descripcion || "",
           tipoDocumentoId: values.tipoDocumentoId,
@@ -564,34 +576,45 @@ export function DocumentForm({
           fechaDocumento: values.fechaDocumento,
           fechaVigenciaDesde: values.fechaVigenciaDesde || null,
           fechaVigenciaHasta: values.fechaVigenciaHasta || null,
-          hospitalId: user.hospitalId,
+          tags: tagsArray,
+          searchKeywords: [...new Set(searchKeywords)],
+          linkedDocumentId: values.linkedDocumentId || "",
           fileName: fileData.fileName,
           fileExt: fileData.fileExt as any,
           fileSize: fileData.fileSize,
           mimeType: fileData.mimeType,
           storagePath: fileData.storagePath,
           downloadUrl: fileData.downloadURL,
-          tags: tagsArray,
-          createdByUid: firebaseUser.uid,
-          createdByEmail: firebaseUser.email || "N/A",
-          isDeleted: false,
-          searchKeywords: [...new Set(searchKeywords)],
-          linkedDocumentId: values.linkedDocumentId || "",
         };
         
+        console.log("[SUBMIT_STEP] Llamando a addDocument para guardar metadatos.");
         const savedDoc = await addDocument(docData);
+        console.log("[SUBMIT_SUCCESS] Documento creado en Firestore con ID:", savedDoc.id);
         toast({ title: "Documento subido con éxito", description: `El documento "${savedDoc.titulo}" ha sido guardado.` });
         router.push(`/documentos/${savedDoc.id}`);
       }
 
     } catch (e: any) {
-      console.error("Error en onSubmit:", e);
-      toast({
-        variant: "destructive",
-        title: "Error al guardar",
-        description: e?.message || e?.code || "No se pudo completar la operación.",
-      });
+      console.error("[SUBMIT_ERROR] Ocurrió un error en el proceso de subida:", e);
+      if (e.code) {
+        switch (e.code) {
+          case 'storage/unauthorized':
+            toast({ variant: "destructive", title: "Error de Permiso", description: "No tienes permiso para subir archivos. Revisa los permisos de Storage." });
+            break;
+          case 'storage/canceled':
+            toast({ variant: "destructive", title: "Subida Cancelada", description: "La subida del archivo fue cancelada." });
+            break;
+          case 'storage/unknown':
+            toast({ variant: "destructive", title: "Error Desconocido de Storage", description: "Ocurrió un error desconocido en el almacenamiento. Revisa la consola." });
+            break;
+          default:
+             toast({ variant: "destructive", title: "Error al guardar", description: e.message || "No se pudo completar la operación." });
+        }
+      } else {
+        toast({ variant: "destructive", title: "Error Inesperado", description: `Ocurrió un error. Revisa la consola del navegador para más detalles.` });
+      }
     } finally {
+      console.log("[SUBMIT_END] Proceso de subida finalizado (con éxito o error).");
       setIsSubmitting(false);
     }
   }
