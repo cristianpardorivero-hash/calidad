@@ -490,14 +490,7 @@ export function DocumentForm({
       }
 
       const tagsArray = values.tags?.split(",").map((t) => t.trim()).filter(Boolean) || [];
-
-      const searchKeywords = [
-        values.titulo?.trim().toLowerCase(),
-        values.descripcion?.trim().toLowerCase(),
-        ...tagsArray.map(t => t.toLowerCase())
-      ].filter((kw): kw is string => Boolean(kw));
-      
-      const uniqueKeywords = [...new Set(searchKeywords)];
+      const searchKeywords = [values.titulo.toLowerCase(), values.responsableNombre.toLowerCase(), ...tagsArray.map(t => t.toLowerCase())].filter(Boolean);
 
       if (isNewVersion && document && fileData) {
          const newData: Omit<Documento, 'id'> & {id: string} = {
@@ -525,7 +518,7 @@ export function DocumentForm({
           tags: tagsArray,
           linkedDocumentId: values.linkedDocumentId || "",
           updatedAt: new Date(),
-          searchKeywords: uniqueKeywords,
+          searchKeywords: [...new Set(searchKeywords)],
         };
         await createNewVersionAndUpdateDocument(document, newData, firebaseUser.uid);
         toast({ title: "Nueva versión creada", description: `Se ha creado la versión ${newData.version} de "${newData.titulo}".` });
@@ -548,7 +541,7 @@ export function DocumentForm({
             fechaVigenciaDesde: values.fechaVigenciaDesde || null,
             fechaVigenciaHasta: values.fechaVigenciaHasta || null,
             tags: tagsArray,
-            searchKeywords: uniqueKeywords,
+            searchKeywords: [...new Set(searchKeywords)],
             linkedDocumentId: values.linkedDocumentId || "",
          };
         await updateDocument(document.id, dataToUpdate);
@@ -582,7 +575,7 @@ export function DocumentForm({
           createdByUid: firebaseUser.uid,
           createdByEmail: firebaseUser.email || "N/A",
           isDeleted: false,
-          searchKeywords: uniqueKeywords,
+          searchKeywords: [...new Set(searchKeywords)],
           linkedDocumentId: values.linkedDocumentId || "",
         };
         

@@ -386,17 +386,20 @@ export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | 
   const collRef = collection(db, "documents");
   
   const dataToSave = {
-    // Required fields
     titulo: docData.titulo,
+    descripcion: docData.descripcion || "",
     tipoDocumentoId: docData.tipoDocumentoId,
     version: docData.version,
     estadoDocId: docData.estadoDocId,
     ambitoId: docData.ambitoId,
     caracteristicaId: docData.caracteristicaId,
     elementoMedibleId: docData.elementoMedibleId,
+    servicioIds: docData.servicioIds || [],
     responsableNombre: docData.responsableNombre,
     responsableEmail: docData.responsableEmail,
-    fechaDocumento: docData.fechaDocumento ? Timestamp.fromDate(docData.fechaDocumento) : serverTimestamp(),
+    fechaDocumento: Timestamp.fromDate(docData.fechaDocumento),
+    fechaVigenciaDesde: docData.fechaVigenciaDesde ? Timestamp.fromDate(docData.fechaVigenciaDesde) : null,
+    fechaVigenciaHasta: docData.fechaVigenciaHasta ? Timestamp.fromDate(docData.fechaVigenciaHasta) : null,
     hospitalId: docData.hospitalId,
     fileName: docData.fileName,
     fileExt: docData.fileExt,
@@ -404,19 +407,13 @@ export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | 
     mimeType: docData.mimeType,
     storagePath: docData.storagePath,
     downloadUrl: docData.downloadUrl,
+    tags: docData.tags || [],
     createdByUid: docData.createdByUid,
     createdByEmail: docData.createdByEmail,
     isDeleted: false,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-    
-    // Optional fields handled safely
-    descripcion: docData.descripcion || "",
-    servicioIds: docData.servicioIds || [],
-    fechaVigenciaDesde: docData.fechaVigenciaDesde ? Timestamp.fromDate(docData.fechaVigenciaDesde) : null,
-    fechaVigenciaHasta: docData.fechaVigenciaHasta ? Timestamp.fromDate(docData.fechaVigenciaHasta) : null,
-    tags: docData.tags || [],
-    linkedDocumentId: docData.linkedDocumentId || null,
+    linkedDocumentId: docData.linkedDocumentId || "",
     checksum: docData.checksum || null,
     deletedAt: null,
     deletedByUid: null,
@@ -547,7 +544,7 @@ export async function updateDocument(docId: string, updates: Partial<Documento>)
   
   const dataToUpdate: Record<string, any> = { updatedAt: serverTimestamp() };
 
-  // Explicitly handle each possible field from the update object to prevent 'undefined'
+  // Explicitly handle each possible field from the update object
   if (updates.titulo !== undefined) dataToUpdate.titulo = updates.titulo;
   if (updates.descripcion !== undefined) dataToUpdate.descripcion = updates.descripcion || "";
   if (updates.tipoDocumentoId !== undefined) dataToUpdate.tipoDocumentoId = updates.tipoDocumentoId;
@@ -559,14 +556,13 @@ export async function updateDocument(docId: string, updates: Partial<Documento>)
   if (updates.servicioIds !== undefined) dataToUpdate.servicioIds = updates.servicioIds || [];
   if (updates.responsableNombre !== undefined) dataToUpdate.responsableNombre = updates.responsableNombre;
   if (updates.responsableEmail !== undefined) dataToUpdate.responsableEmail = updates.responsableEmail;
-  if (updates.fechaDocumento !== undefined) dataToUpdate.fechaDocumento = updates.fechaDocumento ? Timestamp.fromDate(updates.fechaDocumento) : null;
-  if (updates.fechaVigenciaDesde !== undefined) dataToUpdate.fechaVigenciaDesde = updates.fechaVigenciaDesde ? Timestamp.fromDate(updates.fechaVigenciaDesde) : null;
-  if (updates.fechaVigenciaHasta !== undefined) dataToUpdate.fechaVigenciaHasta = updates.fechaVigenciaHasta ? Timestamp.fromDate(updates.fechaVigenciaHasta) : null;
+  if (updates.fechaDocumento) dataToUpdate.fechaDocumento = Timestamp.fromDate(updates.fechaDocumento);
+  dataToUpdate.fechaVigenciaDesde = updates.fechaVigenciaDesde ? Timestamp.fromDate(updates.fechaVigenciaDesde) : null;
+  dataToUpdate.fechaVigenciaHasta = updates.fechaVigenciaHasta ? Timestamp.fromDate(updates.fechaVigenciaHasta) : null;
   if (updates.tags !== undefined) dataToUpdate.tags = updates.tags || [];
   if (updates.searchKeywords !== undefined) dataToUpdate.searchKeywords = updates.searchKeywords || [];
-  if (updates.linkedDocumentId !== undefined) dataToUpdate.linkedDocumentId = updates.linkedDocumentId || null;
+  if (updates.linkedDocumentId !== undefined) dataToUpdate.linkedDocumentId = updates.linkedDocumentId || "";
   
-  // Handle deletion fields specifically
   if (updates.isDeleted === true) {
     dataToUpdate.isDeleted = true;
     dataToUpdate.deletedAt = serverTimestamp();
@@ -614,7 +610,6 @@ export async function createNewVersionAndUpdateDocument(
   };
 
   const parentUpdateData: Record<string, any> = {
-    // Build update data safely to prevent 'undefined'
     titulo: newData.titulo,
     descripcion: newData.descripcion || "",
     tipoDocumentoId: newData.tipoDocumentoId,
@@ -626,7 +621,7 @@ export async function createNewVersionAndUpdateDocument(
     servicioIds: newData.servicioIds || [],
     responsableNombre: newData.responsableNombre,
     responsableEmail: newData.responsableEmail,
-    fechaDocumento: newData.fechaDocumento ? Timestamp.fromDate(newData.fechaDocumento) : null,
+    fechaDocumento: Timestamp.fromDate(newData.fechaDocumento),
     fechaVigenciaDesde: newData.fechaVigenciaDesde ? Timestamp.fromDate(newData.fechaVigenciaDesde) : null,
     fechaVigenciaHasta: newData.fechaVigenciaHasta ? Timestamp.fromDate(newData.fechaVigenciaHasta) : null,
     fileName: newData.fileName,
@@ -636,7 +631,7 @@ export async function createNewVersionAndUpdateDocument(
     storagePath: newData.storagePath,
     downloadUrl: newData.downloadUrl,
     tags: newData.tags || [],
-    linkedDocumentId: newData.linkedDocumentId || null,
+    linkedDocumentId: newData.linkedDocumentId || "",
     searchKeywords: newData.searchKeywords || [],
     updatedAt: serverTimestamp(),
   };
