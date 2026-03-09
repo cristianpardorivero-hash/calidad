@@ -25,13 +25,11 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronsUpDown, Loader2, Save } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 import { addUser, updateUser } from "@/lib/data";
 import { useUser } from "@/hooks/use-user";
-import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
 import { Checkbox } from "../ui/checkbox";
 import { ScrollArea } from "../ui/scroll-area";
-import { cn } from "@/lib/utils";
 
 const availablePages = [
   { id: "/dashboard", label: "Dashboard" },
@@ -183,146 +181,105 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
                 )}
             />
         )}
-
-
-        <div className="grid gap-4 md:grid-cols-2">
-            <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Rol</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Seleccione un rol" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                            <SelectItem value="admin">Administrador</SelectItem>
-                            <SelectItem value="editor">Editor</SelectItem>
-                            <SelectItem value="lector">Lector</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    </FormItem>
-                )}
-            />
-            <FormField
-              control={form.control}
-              name="servicioIds"
-              render={({ field }) => (
+        
+        <FormField
+            control={form.control}
+            name="role"
+            render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Servicios/Unidades (Opcional)</FormLabel>
-                  <Popover modal={false}>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          role="combobox"
-                          className={cn(
-                            "w-full justify-between",
-                            !field.value?.length && "text-muted-foreground"
-                          )}
-                        >
-                          <span className="truncate">
-                            {field.value && field.value.length > 0
-                              ? `${field.value.length} servicio(s) seleccionado(s)`
-                              : "Seleccionar servicios"}
-                          </span>
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="w-[--radix-popover-trigger-width] p-0 z-50">
-                      <ScrollArea className="h-48">
-                        <div className="space-y-1 p-2">
-                          {catalogs.servicios.map((servicio) => (
-                            <div key={servicio.id} className="flex items-center space-x-3 rounded-md px-2 py-2 hover:bg-muted">
-                              <Checkbox
-                                id={`servicio-${servicio.id}`}
-                                checked={field.value?.includes(servicio.id)}
-                                onCheckedChange={(checked) => {
-                                  const currentValues = field.value || [];
-                                  if (checked) {
-                                    field.onChange([...currentValues, servicio.id]);
-                                  } else {
-                                    field.onChange(
-                                      currentValues.filter((value) => value !== servicio.id)
-                                    );
-                                  }
-                                }}
-                              />
-                              <label htmlFor={`servicio-${servicio.id}`} className="text-sm font-normal cursor-pointer w-full">
-                                {servicio.nombre}
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
+                <FormLabel>Rol</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Seleccione un rol" /></SelectTrigger></FormControl>
+                    <SelectContent>
+                        <SelectItem value="admin">Administrador</SelectItem>
+                        <SelectItem value="editor">Editor</SelectItem>
+                        <SelectItem value="lector">Lector</SelectItem>
+                    </SelectContent>
+                </Select>
+                <FormMessage />
                 </FormItem>
-              )}
-            />
-        </div>
-        <div className="grid grid-cols-1">
+            )}
+        />
+       
+        <div className="grid gap-6 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="servicioIds"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Servicios/Unidades (Opcional)</FormLabel>
+                <ScrollArea className="rounded-md border h-40 p-4">
+                  {catalogs.servicios.map((servicio) => (
+                    <FormItem
+                      key={servicio.id}
+                      className="flex flex-row items-center space-x-3 space-y-0 mb-3"
+                    >
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value?.includes(servicio.id)}
+                          onCheckedChange={(checked) => {
+                            return checked
+                              ? field.onChange([...(field.value || []), servicio.id])
+                              : field.onChange(
+                                (field.value || []).filter(
+                                  (value) => value !== servicio.id
+                                )
+                              );
+                          }}
+                        />
+                      </FormControl>
+                      <FormLabel className="font-normal text-sm">
+                        {servicio.nombre}
+                      </FormLabel>
+                    </FormItem>
+                  ))}
+                </ScrollArea>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <FormField
             control={form.control}
             name="allowedPages"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Permisos de Página Específicos (Opcional)</FormLabel>
-                <Popover modal={false}>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        role="combobox"
-                        className={cn("w-full justify-between", !field.value?.length && "text-muted-foreground")}
-                      >
-                        <span className="truncate">
-                          {field.value && field.value.length > 0
-                            ? `${field.value.length} página(s) seleccionada(s)`
-                            : "Seleccionar páginas"}
-                        </span>
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent align="start" className="w-[--radix-popover-trigger-width] p-0 z-50">
-                    <ScrollArea className="h-48">
-                      <div className="p-2 space-y-1">
-                        {availablePages.map((page) => (
-                           <div key={page.id} className="flex items-center space-x-3 rounded-md px-2 py-2 hover:bg-muted">
-                            <Checkbox
-                              id={`page-${page.id}`}
-                              checked={field.value?.includes(page.id)}
-                              onCheckedChange={(checked) => {
-                                const currentValues = field.value || [];
-                                if (checked) {
-                                  field.onChange([...currentValues, page.id]);
-                                } else {
-                                  field.onChange(
-                                    currentValues.filter((value) => value !== page.id)
-                                  );
-                                }
-                              }}
-                            />
-                            <label htmlFor={`page-${page.id}`} className="text-sm font-normal cursor-pointer w-full">{page.label}</label>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </PopoverContent>
-                </Popover>
-                <FormDescription>
-                  Si se seleccionan páginas, se ignorarán los permisos del rol. Dejar en blanco para usar los permisos del rol.
+                <ScrollArea className="rounded-md border h-40 p-4">
+                  {availablePages.map((page) => (
+                    <FormItem
+                      key={page.id}
+                      className="flex flex-row items-center space-x-3 space-y-0 mb-3"
+                    >
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value?.includes(page.id)}
+                          onCheckedChange={(checked) => {
+                            return checked
+                              ? field.onChange([...(field.value || []), page.id])
+                              : field.onChange(
+                                (field.value || []).filter(
+                                  (value) => value !== page.id
+                                )
+                              );
+                          }}
+                        />
+                      </FormControl>
+                      <FormLabel className="font-normal text-sm">
+                        {page.label}
+                      </FormLabel>
+                    </FormItem>
+                  ))}
+                </ScrollArea>
+                 <FormDescription>
+                  Si se seleccionan páginas, se ignorarán los permisos del rol.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
+
         <div className="flex justify-end gap-4 pt-4">
             <Button type="button" variant="outline" onClick={onCancel || (() => router.back())} disabled={isSubmitting}>
                 Cancelar
