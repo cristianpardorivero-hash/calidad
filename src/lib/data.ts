@@ -385,21 +385,18 @@ export async function updateUser(
 export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | "updatedAt">): Promise<Documento> {
   const collRef = collection(db, "documents");
   
-  const dataToSave = {
+  const dataToSave: { [key: string]: any } = {
+    // Required fields
     titulo: docData.titulo,
-    descripcion: docData.descripcion || "",
     tipoDocumentoId: docData.tipoDocumentoId,
     version: docData.version,
     estadoDocId: docData.estadoDocId,
     ambitoId: docData.ambitoId,
     caracteristicaId: docData.caracteristicaId,
     elementoMedibleId: docData.elementoMedibleId,
-    servicioIds: docData.servicioIds || [],
     responsableNombre: docData.responsableNombre,
     responsableEmail: docData.responsableEmail,
     fechaDocumento: Timestamp.fromDate(docData.fechaDocumento),
-    fechaVigenciaDesde: docData.fechaVigenciaDesde ? Timestamp.fromDate(docData.fechaVigenciaDesde) : null,
-    fechaVigenciaHasta: docData.fechaVigenciaHasta ? Timestamp.fromDate(docData.fechaVigenciaHasta) : null,
     hospitalId: docData.hospitalId,
     fileName: docData.fileName,
     fileExt: docData.fileExt,
@@ -407,18 +404,29 @@ export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | 
     mimeType: docData.mimeType,
     storagePath: docData.storagePath,
     downloadUrl: docData.downloadUrl,
-    tags: docData.tags || [],
     createdByUid: docData.createdByUid,
     createdByEmail: docData.createdByEmail,
     isDeleted: false,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
+
+    // Optional fields with safe defaults based on successful examples
+    descripcion: docData.descripcion || "",
     linkedDocumentId: docData.linkedDocumentId || "",
-    checksum: docData.checksum || null,
-    deletedAt: null,
-    deletedByUid: null,
+    servicioIds: docData.servicioIds || [],
+    tags: docData.tags || [],
     searchKeywords: docData.searchKeywords || [],
   };
+
+  // Optional fields that should be ABSENT if not provided, or NULL if that's the valid state
+  dataToSave.fechaVigenciaDesde = docData.fechaVigenciaDesde ? Timestamp.fromDate(docData.fechaVigenciaDesde) : null;
+  dataToSave.fechaVigenciaHasta = docData.fechaVigenciaHasta ? Timestamp.fromDate(docData.fechaVigenciaHasta) : null;
+  
+  if (docData.checksum) {
+    dataToSave.checksum = docData.checksum;
+  }
+  
+  // Explicitly DO NOT add deletedAt or deletedByUid on creation, as they are absent in the successful examples.
 
   try {
     const docRef = await addDoc(collRef, dataToSave);
