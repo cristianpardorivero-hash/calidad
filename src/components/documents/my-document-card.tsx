@@ -71,13 +71,14 @@ export function MyDocumentCard({ document, catalogs }: MyDocumentCardProps) {
     return { statusName: status?.nombre || 'Desconocido', statusVariant: variant };
   }, [document, catalogs]);
 
-  const { ambitoName, caracteristicaName } = useMemo(() => {
-    if (!catalogs) return { ambitoName: '', caracteristicaName: '' };
+  const { ambitoName, caracteristicaName, caracteristicaCodigo } = useMemo(() => {
+    if (!catalogs) return { ambitoName: '', caracteristicaName: '', caracteristicaCodigo: '' };
     const ambito = catalogs.ambitos.find(a => a.id === document.ambitoId);
     const caracteristica = catalogs.caracteristicas.find(c => c.id === document.caracteristicaId);
     return {
         ambitoName: ambito?.nombre || 'N/A',
-        caracteristicaName: caracteristica?.nombre || 'N/A'
+        caracteristicaName: caracteristica?.nombre || 'N/A',
+        caracteristicaCodigo: caracteristica?.codigo || '',
     };
   }, [document.ambitoId, document.caracteristicaId, catalogs]);
 
@@ -96,12 +97,17 @@ export function MyDocumentCard({ document, catalogs }: MyDocumentCardProps) {
           "flex flex-col transition-shadow duration-300 hover:shadow-xl border border-transparent",
           cardColorClasses
         )}>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 relative">
+            {caracteristicaCodigo && (
+                <div className="absolute top-3 right-3">
+                    <Badge variant="outline">{caracteristicaCodigo}</Badge>
+                </div>
+            )}
             <div className="flex items-center gap-2 mb-2">
                 <Badge variant="outline" className="text-xs">v{document.version}</Badge>
                 <Badge variant={statusVariant} className="text-xs">{statusName}</Badge>
             </div>
-          <CardTitle className="text-base font-semibold leading-tight line-clamp-2 h-10">
+          <CardTitle className="text-base font-semibold leading-tight line-clamp-2 h-10 pr-10">
             <Link href={`/documentos/${document.id}`} className="hover:underline">
               {document.titulo}
             </Link>
