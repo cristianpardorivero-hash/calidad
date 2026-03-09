@@ -15,8 +15,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import {
@@ -204,7 +204,7 @@ export function UserManager({ initialUsers, catalogs, onUsersChange }: UserManag
             </DialogDescription>
           </DialogHeader>
           {userToEdit && (
-            <UserForm 
+            <UserForm
                 key={userToEdit.uid}
                 user={userToEdit} 
                 catalogs={catalogs} 
