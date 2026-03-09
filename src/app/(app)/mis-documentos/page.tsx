@@ -151,7 +151,7 @@ export default function MisDocumentosPage() {
                 return tipoA_orden - tipoB_orden;
             }
             
-            return a.titulo.localeCompare(b.titulo);
+            return (b.fechaDocumento?.getTime() || 0) - (a.fechaDocumento?.getTime() || 0);
         });
         return sortedDocs;
     }
