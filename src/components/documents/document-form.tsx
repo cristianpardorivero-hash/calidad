@@ -179,6 +179,18 @@ const Stepper = ({ currentStep }: { currentStep: number }) => (
   </div>
 );
 
+const autoIncrementVersion = (version?: string | null) => {
+  if (!version) {
+    return "1.0";
+  }
+  const parts = version.split(".");
+  if (parts.length > 0 && !isNaN(parseInt(parts[0], 10))) {
+    const major = parseInt(parts[0], 10) + 1;
+    return `${major}.0`;
+  }
+  return version;
+};
+
 
 export function DocumentForm({
   catalogs,
@@ -199,15 +211,6 @@ export function DocumentForm({
   const isCreation = !isEditing && !isNewVersion;
 
   const formSchema = getFormSchema(isEditing, isNewVersion);
-
-  const autoIncrementVersion = (version: string) => {
-    const parts = version.split(".");
-    if (parts.length > 0 && !isNaN(parseInt(parts[0], 10))) {
-      const major = parseInt(parts[0], 10) + 1;
-      return `${major}.0`;
-    }
-    return version;
-  };
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -244,7 +247,7 @@ export function DocumentForm({
   const fechaDocumento = form.watch("fechaDocumento");
 
   useEffect(() => {
-    if (fechaDocumento && isValid(fechaDocumento) && (!isEditing || isNewVersion)) {
+    if (fechaDocumento && isValid(fechaDocumento) && isCreation) {
       form.setValue("fechaVigenciaDesde", fechaDocumento, {
         shouldValidate: true,
       });
@@ -254,7 +257,7 @@ export function DocumentForm({
         shouldValidate: true,
       });
     }
-  }, [fechaDocumento, isEditing, isNewVersion, form]);
+  }, [fechaDocumento, isCreation, form]);
 
   const tipoDocumentoId = form.watch("tipoDocumentoId");
   const ambitoId = form.watch("ambitoId");
@@ -617,7 +620,7 @@ export function DocumentForm({
       } else if (!field.value && inputValue) {
         setInputValue('');
       }
-    }, [field.value]);
+    }, [field.value, inputValue]);
   
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
