@@ -302,16 +302,16 @@ export function DocumentForm({
 
     if (!hasClassification) return [];
 
-    if (ambitoId) filtered = filtered.filter((doc) => doc.ambitoId === ambitoId);
-    if (caracteristicaId) {
-      filtered = filtered.filter(
-        (doc) => doc.caracteristicaId === caracteristicaId
-      );
-    }
     if (elementoMedibleId) {
       filtered = filtered.filter(
         (doc) => doc.elementoMedibleId === elementoMedibleId
       );
+    } else if (caracteristicaId) {
+      filtered = filtered.filter(
+        (doc) => doc.caracteristicaId === caracteristicaId
+      );
+    } else if (ambitoId) {
+      filtered = filtered.filter((doc) => doc.ambitoId === ambitoId);
     }
 
     if (isEditing && document) {
