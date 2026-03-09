@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Catalogs, Documento } from "@/lib/types";
@@ -384,7 +383,6 @@ export function DocumentForm({
           onProgress(progress);
         },
         (error) => {
-          console.error("[UPLOAD_FILE_ERROR] Error de Firebase Storage:", error.code, error.message, error);
           reject(error);
         },
         async () => {
@@ -395,7 +393,7 @@ export function DocumentForm({
               storagePath,
               mimeType: file.type || "application/octet-stream",
             });
-          } catch (error: any) => {
+          } catch (error: any) {
             reject(error);
           }
         }
@@ -1861,4 +1859,3 @@ export function DocumentForm({
     </>
   );
 }
-
