@@ -622,7 +622,7 @@ export function DocumentForm({
       } else if (!field.value && inputValue) {
         setInputValue('');
       }
-    }, [field.value, inputValue]);
+    }, [field.value]);
   
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
