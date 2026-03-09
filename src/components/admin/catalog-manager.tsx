@@ -121,7 +121,7 @@ export function CatalogManager({ catalogs }: { catalogs: Catalogs }) {
     { value: "elementosMedibles", label: "Elementos Medibles", data: [...catalogs.elementosMedibles].sort((a, b) => a.orden - b.orden), headers: [{key: 'codigo', label: 'Código'}, {key: 'nombre', label: 'Nombre'}, {key: 'caracteristicaId', label: 'ID Característica'}] },
     { value: "tiposDocumento", label: "Tipos de Documento", data: [...catalogs.tiposDocumento].sort((a, b) => a.orden - b.orden), headers: [{key: 'nombre', label: 'Nombre'}, {key: 'orden', label: 'Orden'}] },
     { value: "servicios", label: "Servicios", data: [...catalogs.servicios].sort((a,b) => a.nombre.localeCompare(b.nombre)), headers: [{key: 'nombre', label: 'Nombre'}] },
-    { value: "estadosAcreditacionDoc", label: "Estados de Documento", data: [...catalogs.estadosAcreditacionDoc].sort((a,b) => a.nombre.localeCompare(b.nombre)), headers: [{key: 'nombre', label: 'Nombre'}] },
+    { value: "estadosAcreditacionDoc", label: "Estados de Documento", data: [...catalogs.estadosAcreditacionDoc].sort((a,b) => a.orden - b.orden), headers: [{key: 'nombre', label: 'Nombre'}, {key: 'orden', label: 'Orden'}] },
   ];
 
   const handleEdit = (item: CatalogItem, type: string) => {
@@ -219,3 +219,5 @@ export function CatalogManager({ catalogs }: { catalogs: Catalogs }) {
     </>
   );
 }
+
+    

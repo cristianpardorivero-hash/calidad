@@ -63,6 +63,7 @@ export interface Servicio {
 export interface EstadoAcreditacionDoc {
   id: string;
   nombre: string;
+  orden: number;
 }
 
 export interface Catalogs {
@@ -174,3 +175,5 @@ export interface AuditLog {
   timestamp: Date;
   details: Record<string, any> | string[];
 }
+
+    
