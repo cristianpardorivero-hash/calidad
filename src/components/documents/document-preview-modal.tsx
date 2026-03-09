@@ -36,7 +36,12 @@ export function DocumentPreviewModal({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isOpen || !documento) return;
+    if (!isOpen || !documento) {
+      setLoading(false);
+      setError(null);
+      setPreviewUrl(null);
+      return;
+    }
 
     const ext = documento.fileExt?.toLowerCase();
     if (ext !== "pdf") {
@@ -45,10 +50,12 @@ export function DocumentPreviewModal({
       setLoading(false);
       return;
     }
+    
+    const isValidUrl = documento.downloadUrl && (documento.downloadUrl.startsWith('http://') || documento.downloadUrl.startsWith('https://'));
 
-    if (!documento.downloadUrl) {
+    if (!isValidUrl) {
       setPreviewUrl(null);
-      setError("El documento no tiene URL de descarga.");
+      setError(`La URL de descarga del documento no es válida (${documento.downloadUrl}). Es posible que este documento tenga datos incorrectos.`);
       setLoading(false);
       return;
     }
@@ -64,13 +71,14 @@ export function DocumentPreviewModal({
 
         const response = await fetch(documento.downloadUrl);
         if (!response.ok) {
-          throw new Error(`No se pudo descargar el PDF (${response.status}).`);
+          throw new Error(`No se pudo descargar el PDF (${response.status} ${response.statusText}).`);
         }
 
         const blob = await response.blob();
 
         if (blob.type && !blob.type.includes("pdf")) {
-          console.warn("Blob recibido con content-type:", blob.type);
+             console.warn("El contenido recibido no parece ser un PDF. Content-Type:", blob.type);
+             throw new Error("El contenido descargado no es un archivo PDF. Puede ser un error de autenticación o una URL incorrecta.");
         }
 
         objectUrl = URL.createObjectURL(blob);
@@ -81,7 +89,7 @@ export function DocumentPreviewModal({
       } catch (e: any) {
         console.error("Error cargando PDF como blob:", e);
         if (!cancelled) {
-          setError("No se pudo cargar el PDF dentro del visor. Puedes abrirlo en una pestaña nueva.");
+          setError("No se pudo cargar el PDF dentro del visor. Puedes intentar abrirlo en una pestaña nueva.");
         }
       } finally {
         if (!cancelled) {
@@ -94,7 +102,9 @@ export function DocumentPreviewModal({
 
     return () => {
       cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+      }
     };
   }, [isOpen, documento]);
 
@@ -170,6 +180,8 @@ export function DocumentPreviewModal({
     );
   };
 
+  const isUrlValid = documento?.downloadUrl && (documento.downloadUrl.startsWith('http://') || documento.downloadUrl.startsWith('https://'));
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
@@ -184,8 +196,7 @@ export function DocumentPreviewModal({
           {renderContent()}
         </div>
 
-        <DialogFooter className="pt-4">
-          <div className="flex gap-2 flex-wrap">
+        <DialogFooter className="pt-4 flex-wrap sm:justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cerrar
             </Button>
@@ -193,20 +204,19 @@ export function DocumentPreviewModal({
             <Button
               variant="outline"
               onClick={handleOpenPdf}
-              disabled={!documento?.downloadUrl}
+              disabled={!isUrlValid}
             >
               <ExternalLink className="mr-2 h-4 w-4" />
-              Abrir PDF
+              Abrir en Pestaña
             </Button>
 
             <Button
               onClick={handleDownload}
-              disabled={!documento?.downloadUrl}
+              disabled={!isUrlValid}
             >
               <Download className="mr-2 h-4 w-4" />
               Descargar
             </Button>
-          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
