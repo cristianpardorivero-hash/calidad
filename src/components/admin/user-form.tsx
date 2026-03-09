@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronsUpDown, Loader2, Save } from "lucide-react";
 import { addUser, updateUser } from "@/lib/data";
@@ -97,6 +97,29 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
     },
   });
 
+  // This effect will re-sync the form if the `user` prop changes.
+  useEffect(() => {
+    if (user) {
+      form.reset({
+        displayName: user.displayName || "",
+        email: user.email || "",
+        role: user.role || "lector",
+        servicioIds: user.servicioIds || [],
+        allowedPages: user.allowedPages || [],
+      });
+    } else {
+       form.reset({
+        displayName: "",
+        email: "",
+        role: "lector",
+        servicioIds: [],
+        password: "",
+        allowedPages: [],
+       });
+    }
+  }, [user, form]);
+
+
   async function onSubmit(values: EditFormValues | CreateFormValues) {
     if (!currentUser) return;
     setIsSubmitting(true);
@@ -149,7 +172,7 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
             render={({ field }) => (
                 <FormItem>
                 <FormLabel>Correo Electrónico</FormLabel>
-                <FormControl><Input type="email" placeholder="ej: j.perez@hospital.cl" {...field} /></FormControl>
+                <FormControl><Input type="email" placeholder="ej: j.perez@hospital.cl" {...field} disabled={isEditing} /></FormControl>
                 <FormMessage />
                 </FormItem>
             )}
@@ -230,16 +253,13 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
                                   checked={field.value?.includes(servicio.id)}
                                   onCheckedChange={(checked) => {
                                     const currentValues = field.value || [];
-                                    return checked
-                                      ? field.onChange([
-                                          ...currentValues,
-                                          servicio.id,
-                                        ])
-                                      : field.onChange(
-                                          currentValues.filter(
-                                            (id) => id !== servicio.id
-                                          )
-                                        );
+                                    if (checked) {
+                                      field.onChange([...currentValues, servicio.id]);
+                                    } else {
+                                      field.onChange(currentValues.filter(
+                                        (id) => id !== servicio.id
+                                      ));
+                                    }
                                   }}
                                 />
                               </FormControl>
@@ -291,9 +311,11 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
                                 checked={field.value?.includes(page.id)}
                                 onCheckedChange={(checked) => {
                                   const currentValues = field.value || [];
-                                  return checked
-                                    ? field.onChange([...currentValues, page.id])
-                                    : field.onChange(currentValues.filter((id) => id !== page.id));
+                                  if (checked) {
+                                    field.onChange([...currentValues, page.id]);
+                                  } else {
+                                    field.onChange(currentValues.filter((id) => id !== page.id));
+                                  }
                                 }}
                               />
                             </FormControl>
