@@ -81,20 +81,6 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
 
   const form = useForm<EditFormValues | CreateFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: isEditing ? {
-      displayName: user?.displayName || "",
-      email: user?.email || "",
-      role: user?.role || "lector",
-      servicioIds: user?.servicioIds || [],
-      allowedPages: user?.allowedPages || [],
-    } : {
-      displayName: "",
-      email: "",
-      role: "lector",
-      servicioIds: [],
-      password: "",
-      allowedPages: [],
-    },
   });
 
   // This effect will re-sync the form if the `user` prop changes.
@@ -252,14 +238,11 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
                                 <Checkbox
                                   checked={field.value?.includes(servicio.id)}
                                   onCheckedChange={(checked) => {
-                                    const currentValues = field.value || [];
-                                    if (checked) {
-                                      field.onChange([...currentValues, servicio.id]);
-                                    } else {
-                                      field.onChange(currentValues.filter(
-                                        (id) => id !== servicio.id
-                                      ));
-                                    }
+                                    const currentValues = form.getValues("servicioIds") || [];
+                                    const newValues = checked
+                                      ? [...currentValues, servicio.id]
+                                      : currentValues.filter((id) => id !== servicio.id);
+                                    form.setValue("servicioIds", newValues, { shouldDirty: true, shouldValidate: true });
                                   }}
                                 />
                               </FormControl>
@@ -310,12 +293,11 @@ export function UserForm({ user, catalogs, onSave, onCancel }: UserFormProps) {
                               <Checkbox
                                 checked={field.value?.includes(page.id)}
                                 onCheckedChange={(checked) => {
-                                  const currentValues = field.value || [];
-                                  if (checked) {
-                                    field.onChange([...currentValues, page.id]);
-                                  } else {
-                                    field.onChange(currentValues.filter((id) => id !== page.id));
-                                  }
+                                  const currentValues = form.getValues("allowedPages") || [];
+                                  const newValues = checked
+                                    ? [...currentValues, page.id]
+                                    : currentValues.filter((id) => id !== page.id);
+                                  form.setValue("allowedPages", newValues, { shouldDirty: true, shouldValidate: true });
                                 }}
                               />
                             </FormControl>
