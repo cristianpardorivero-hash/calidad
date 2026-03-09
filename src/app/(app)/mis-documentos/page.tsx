@@ -120,7 +120,7 @@ export default function MisDocumentosPage() {
 
   const sortedTiposDocumento = useMemo(() => {
     if (!catalogs) return [];
-    return [...catalogs.tiposDocumento].sort((a, b) => a.nombre.localeCompare(b.nombre));
+    return [...catalogs.tiposDocumento].sort((a, b) => a.orden - b.orden);
   }, [catalogs]);
 
   const documentsForDisplay = useMemo(() => {

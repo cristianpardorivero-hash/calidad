@@ -47,7 +47,7 @@ const formSchema = z.discriminatedUnion("catalogType", [
     z.object({ catalogType: z.literal("ambitos"), nombre: z.string().min(2, "Mínimo 2 caracteres"), orden: z.coerce.number().min(1, "Debe ser > 0") }),
     z.object({ catalogType: z.literal("caracteristicas"), nombre: z.string().min(2, "Mínimo 2 caracteres"), orden: z.coerce.number().min(1, "Debe ser > 0"), ambitoId: z.string({ required_error: "Requerido."}), codigo: z.string().min(1, "Requerido"), umbralCumplimiento: z.string().optional() }),
     z.object({ catalogType: z.literal("elementosMedibles"), nombre: z.string().min(2, "Mínimo 2 caracteres"), orden: z.coerce.number().min(1, "Debe ser > 0"), codigo: z.string().min(1, "Requerido"), caracteristicaId: z.string({ required_error: "Requerido."}), servicioIds: z.array(z.string()).optional() }),
-    z.object({ catalogType: z.literal("tiposDocumento"), nombre: z.string().min(2, "Mínimo 2 caracteres") }),
+    z.object({ catalogType: z.literal("tiposDocumento"), nombre: z.string().min(2, "Mínimo 2 caracteres"), orden: z.coerce.number().min(1, "Debe ser > 0") }),
     z.object({ catalogType: z.literal("servicios"), nombre: z.string().min(2, "Mínimo 2 caracteres") }),
     z.object({ catalogType: z.literal("estadosAcreditacionDoc"), nombre: z.string().min(2, "Mínimo 2 caracteres") }),
 ]);
@@ -179,7 +179,7 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
         
         {catalogType === 'caracteristicas' && <FormField control={form.control} name="umbralCumplimiento" render={({ field }) => (<FormItem><FormLabel>Umbral de Cumplimiento (Opcional)</FormLabel><FormControl><Input placeholder="Ej: >= 66%" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />}
 
-        {(catalogType === 'ambitos' || catalogType === 'caracteristicas' || catalogType === 'elementosMedibles') && <FormField control={form.control} name="orden" render={({ field }) => (<FormItem><FormLabel>Orden</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />}
+        {(catalogType === 'ambitos' || catalogType === 'caracteristicas' || catalogType === 'elementosMedibles' || catalogType === 'tiposDocumento') && <FormField control={form.control} name="orden" render={({ field }) => (<FormItem><FormLabel>Orden</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />}
 
         {(catalogType === 'caracteristicas' || catalogType === 'elementosMedibles') && <FormField control={form.control} name="ambitoId" render={({ field }) => (<FormItem><FormLabel>Ámbito</FormLabel><Select onValueChange={v => { field.onChange(v); if(catalogType === 'elementosMedibles') { form.setValue("caracteristicaId" as any, undefined); }}} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un ámbito" /></SelectTrigger></FormControl><SelectContent>{[...catalogs.ambitos].sort((a,b) => a.orden - b.orden).map(i => <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
         

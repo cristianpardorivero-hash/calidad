@@ -246,12 +246,17 @@
         "nombre": {
           "type": "string",
           "description": "The name of the document type (e.g., 'Protocolo', 'Registro', 'Acta', 'Pauta de Cotejo')."
+        },
+        "orden": {
+          "type": "number",
+          "description": "The display order of this 'Tipo de Documento' within its hospital's catalog."
         }
       },
       "required": [
         "id",
         "hospitalId",
-        "nombre"
+        "nombre",
+        "orden"
       ]
     },
     "Servicio": {

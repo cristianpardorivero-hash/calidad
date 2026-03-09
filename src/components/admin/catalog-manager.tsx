@@ -116,12 +116,12 @@ export function CatalogManager({ catalogs }: { catalogs: Catalogs }) {
   const { user: authUser } = useUser();
   
   const catalogTabs = [
-    { value: "ambitos", label: "Ámbitos", data: catalogs.ambitos, headers: [{key: 'nombre', label: 'Nombre'}, {key: 'orden', label: 'Orden'}] },
-    { value: "caracteristicas", label: "Características", data: catalogs.caracteristicas, headers: [{key: 'codigo', label: 'Código'}, {key: 'nombre', label: 'Nombre'}, {key: 'ambitoId', label: 'ID Ámbito'}, {key: 'orden', label: 'Orden'}] },
-    { value: "elementosMedibles", label: "Elementos Medibles", data: catalogs.elementosMedibles, headers: [{key: 'codigo', label: 'Código'}, {key: 'nombre', label: 'Nombre'}, {key: 'caracteristicaId', label: 'ID Característica'}] },
-    { value: "tiposDocumento", label: "Tipos de Documento", data: catalogs.tiposDocumento, headers: [{key: 'nombre', label: 'Nombre'}] },
-    { value: "servicios", label: "Servicios", data: catalogs.servicios, headers: [{key: 'nombre', label: 'Nombre'}] },
-    { value: "estadosAcreditacionDoc", label: "Estados de Documento", data: catalogs.estadosAcreditacionDoc, headers: [{key: 'nombre', label: 'Nombre'}] },
+    { value: "ambitos", label: "Ámbitos", data: [...catalogs.ambitos].sort((a, b) => a.orden - b.orden), headers: [{key: 'nombre', label: 'Nombre'}, {key: 'orden', label: 'Orden'}] },
+    { value: "caracteristicas", label: "Características", data: [...catalogs.caracteristicas].sort((a, b) => a.orden - b.orden), headers: [{key: 'codigo', label: 'Código'}, {key: 'nombre', label: 'Nombre'}, {key: 'ambitoId', label: 'ID Ámbito'}, {key: 'orden', label: 'Orden'}] },
+    { value: "elementosMedibles", label: "Elementos Medibles", data: [...catalogs.elementosMedibles].sort((a, b) => a.orden - b.orden), headers: [{key: 'codigo', label: 'Código'}, {key: 'nombre', label: 'Nombre'}, {key: 'caracteristicaId', label: 'ID Característica'}] },
+    { value: "tiposDocumento", label: "Tipos de Documento", data: [...catalogs.tiposDocumento].sort((a, b) => a.orden - b.orden), headers: [{key: 'nombre', label: 'Nombre'}, {key: 'orden', label: 'Orden'}] },
+    { value: "servicios", label: "Servicios", data: [...catalogs.servicios].sort((a,b) => a.nombre.localeCompare(b.nombre)), headers: [{key: 'nombre', label: 'Nombre'}] },
+    { value: "estadosAcreditacionDoc", label: "Estados de Documento", data: [...catalogs.estadosAcreditacionDoc].sort((a,b) => a.nombre.localeCompare(b.nombre)), headers: [{key: 'nombre', label: 'Nombre'}] },
   ];
 
   const handleEdit = (item: CatalogItem, type: string) => {

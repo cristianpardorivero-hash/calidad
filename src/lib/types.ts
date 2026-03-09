@@ -52,6 +52,7 @@ export interface ElementoMedible {
 export interface TipoDocumento {
   id: string;
   nombre: string;
+  orden: number;
 }
 
 export interface Servicio {

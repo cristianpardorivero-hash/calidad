@@ -669,7 +669,7 @@ export function DocumentForm({
             placeholder="dd/mm/yyyy"
             value={inputValue}
             onChange={handleChange}
-            onBlur={handleBlur} // The magic happens on blur.
+            onBlur={handleBlur}
           />
         </FormControl>
         {description && <FormDescription>{description}</FormDescription>}
@@ -737,7 +737,7 @@ export function DocumentForm({
                       <SelectContent>
                         {[...catalogs.tiposDocumento]
                           .filter((item) => item.id && item.id.trim() !== "")
-                          .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                          .sort((a, b) => a.orden - b.orden)
                           .map((tipo) => (
                             <SelectItem key={tipo.id} value={tipo.id}>
                               {tipo.nombre}
@@ -1338,7 +1338,7 @@ export function DocumentForm({
                             <SelectContent>
                               {[...catalogs.tiposDocumento]
                                 .filter((item) => item.id && item.id.trim() !== "")
-                                .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                                .sort((a, b) => a.orden - b.orden)
                                 .map((tipo) => (
                                   <SelectItem key={tipo.id} value={tipo.id}>
                                     {tipo.nombre}
