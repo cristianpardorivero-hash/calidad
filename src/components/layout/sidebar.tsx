@@ -22,6 +22,7 @@ import {
   User as UserIcon,
   FileHeart,
   FileClock,
+  History,
 } from "lucide-react";
 import Link from "next/link";
 import { useUser } from "@/hooks/use-user";
@@ -49,6 +50,12 @@ const menuItems = [
     href: "/documentos/vencimientos",
     icon: FileClock,
     label: "Vencimientos",
+    roles: ["admin", "editor", "lector"],
+  },
+  {
+    href: "/documentos/historicos",
+    icon: History,
+    label: "Historial",
     roles: ["admin", "editor", "lector"],
   },
   {
