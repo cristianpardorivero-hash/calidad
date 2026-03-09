@@ -10,6 +10,10 @@ import { Button } from '@/components/ui/button';
 import { FileDown, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { useSearchParams } from 'next/navigation';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { Separator } from '@/components/ui/separator';
 
 // Extend jsPDF with autoTable
 declare module 'jspdf' {
@@ -23,6 +27,7 @@ declare module 'jspdf' {
 
 export default function ReportesPage() {
   const { user } = useUser();
+  const searchParams = useSearchParams();
   const hospitalId = user?.hospitalId;
   const userRole = user?.role;
   const servicioIds = user?.servicioIds;
@@ -32,8 +37,13 @@ export default function ReportesPage() {
   const [documents, setDocuments] = useState<Documento[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Report config states
+  const [reportType, setReportType] = useState('general');
   const [ambitoFilter, setAmbitoFilter] = useState('');
+  const [caracteristicaFilter, setCaracteristicaFilter] = useState('');
+  const [elementoMedibleFilter, setElementoMedibleFilter] = useState('');
   const [servicioFilter, setServicioFilter] = useState('');
+  const [estadoFilter, setEstadoFilter] = useState('');
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
@@ -56,6 +66,16 @@ export default function ReportesPage() {
       setLoading(false);
     }
   }, [hospitalId, userRole, servicioIdsDependency, user]);
+
+  const filteredCaracteristicas = useMemo(() => {
+    if (!ambitoFilter || !catalogs) return [];
+    return catalogs.caracteristicas.filter(c => c.ambitoId === ambitoFilter).sort((a,b) => a.orden - b.orden);
+  }, [ambitoFilter, catalogs]);
+
+  const filteredElementosMedibles = useMemo(() => {
+    if (!caracteristicaFilter || !catalogs) return [];
+    return catalogs.elementosMedibles.filter(e => e.caracteristicaId === caracteristicaFilter).sort((a,b) => a.orden - b.orden);
+  }, [caracteristicaFilter, catalogs]);
   
   const getCatalogName = (catalogKey: keyof Catalogs, id: string): string => {
     if (!catalogs || !id) return 'N/A';
@@ -63,137 +83,149 @@ export default function ReportesPage() {
     return catalog.find((item) => item.id === id)?.nombre || 'Desconocido';
   };
 
-
   const handleGeneratePdf = async () => {
-    if (!catalogs) return;
+    if (!catalogs || !user) return;
     setGenerating(true);
 
     const { jsPDF } = await import('jspdf');
     await import('jspdf-autotable');
 
+    // 1. Filter documents based on UI state
+    const fromParam = searchParams.get("from");
+    const toParam = searchParams.get("to");
+    const fromDate = fromParam ? new Date(fromParam) : null;
+    const toDate = toParam ? new Date(toParam) : null;
+    if (toDate) toDate.setHours(23, 59, 59, 999); // Include the whole day
+
     const filteredDocs = documents.filter(doc => {
         const ambitoMatch = !ambitoFilter || doc.ambitoId === ambitoFilter;
+        const caracteristicaMatch = !caracteristicaFilter || doc.caracteristicaId === caracteristicaFilter;
+        const elementoMedibleMatch = !elementoMedibleFilter || doc.elementoMedibleId === elementoMedibleFilter;
         const servicioMatch = !servicioFilter || doc.servicioIds?.includes(servicioFilter);
-        return ambitoMatch && servicioMatch;
+        const estadoMatch = !estadoFilter || doc.estadoDocId === estadoFilter;
+        const dateMatch = (!fromDate || (doc.fechaDocumento && doc.fechaDocumento >= fromDate)) &&
+                          (!toDate || (doc.fechaDocumento && doc.fechaDocumento <= toDate));
+        
+        return ambitoMatch && caracteristicaMatch && elementoMedibleMatch && servicioMatch && estadoMatch && dateMatch;
     });
 
     const doc = new jsPDF();
-    let yPos = 38;
+    const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
+    const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
 
+    // 2. Add Cover Page
     doc.setFontSize(18);
-    doc.text('Reporte de Documentos del Sistema', 14, 22);
-    doc.setFontSize(11);
-    doc.setTextColor(100);
-    doc.text(`Generado el: ${new Date().toLocaleDateString('es-CL')}`, 14, 30);
-
-    let filterText = 'Filtros aplicados: ';
-    if (ambitoFilter) filterText += `Ámbito: ${getCatalogName('ambitos', ambitoFilter)}. `;
-    if (servicioFilter) filterText += `Servicio: ${getCatalogName('servicios', servicioFilter)}.`;
-    if (!ambitoFilter && !servicioFilter) filterText += 'Ninguno.';
-    doc.text(filterText, 14, yPos);
-    yPos += 15;
+    doc.text('Reporte de Documentos', pageWidth / 2, 40, { align: 'center' });
+    doc.setFontSize(12);
+    doc.text(`Hospital: ${user.hospitalId}`, pageWidth / 2, 50, { align: 'center' });
+    doc.text(`Generado el: ${new Date().toLocaleString('es-CL')}`, pageWidth / 2, 60, { align: 'center' });
+    doc.text(`Tipo de Reporte: ${reportType === 'general' ? 'Listado Maestro de Documentos' : 'Reporte de Vencimientos'}`, pageWidth / 2, 70, { align: 'center' });
     
-    const groupedByAmbito = filteredDocs.reduce((acc, doc) => {
-        const ambitoId = doc.ambitoId || 'sin-ambito';
-        if (!acc[ambitoId]) acc[ambitoId] = [];
-        acc[ambitoId].push(doc);
-        return acc;
-    }, {} as Record<string, Documento[]>);
+    let yPos = 90;
+    doc.setFontSize(11);
+    doc.text('Filtros Aplicados:', 14, yPos);
+    yPos += 7;
 
-    const sortedAmbitoIds = Object.keys(groupedByAmbito).sort((a,b) => {
-        const aOrder = catalogs.ambitos.find(am => am.id === a)?.orden ?? Infinity;
-        const bOrder = catalogs.ambitos.find(am => am.id === b)?.orden ?? Infinity;
-        return aOrder - bOrder;
+    const addFilterLine = (label: string, value: string | null | undefined) => {
+        if (value) {
+            doc.text(`- ${label}: ${value}`, 20, yPos);
+            yPos += 7;
+        }
+    };
+
+    addFilterLine('Ámbito', getCatalogName('ambitos', ambitoFilter));
+    addFilterLine('Característica', getCatalogName('caracteristicas', caracteristicaFilter));
+    addFilterLine('Elemento Medible', getCatalogName('elementosMedibles', elementoMedibleFilter));
+    addFilterLine('Servicio', getCatalogName('servicios', servicioFilter));
+    addFilterLine('Estado', getCatalogName('estadosAcreditacionDoc', estadoFilter));
+    addFilterLine('Fecha Desde', fromParam);
+    addFilterLine('Fecha Hasta', toParam);
+    
+    doc.text(`Total de Documentos: ${filteredDocs.length}`, 14, yPos + 10);
+    
+    doc.addPage();
+
+    // 3. Generate content based on report type
+    let finalDocs = filteredDocs;
+    let tableHead: string[] = [];
+    let tableBody: (string | undefined)[][] = [];
+
+    if (reportType === 'general') {
+        finalDocs.sort((a, b) => {
+            const ambitoOrderA = catalogs.ambitos.find(am => am.id === a.ambitoId)?.orden ?? Infinity;
+            const ambitoOrderB = catalogs.ambitos.find(am => am.id === b.ambitoId)?.orden ?? Infinity;
+            if (ambitoOrderA !== ambitoOrderB) return ambitoOrderA - ambitoOrderB;
+            return (a.fechaDocumento?.getTime() || 0) - (b.fechaDocumento?.getTime() || 0);
+        });
+
+        tableHead = ["Título", "Tipo", "Versión", "Fecha Documento", "Vigencia", "Estado"];
+        tableBody = finalDocs.map(d => {
+            const vigencia = d.fechaVigenciaDesde
+                ? `${format(d.fechaVigenciaDesde, "dd/MM/yy")} - ${d.fechaVigenciaHasta ? format(d.fechaVigenciaHasta, "dd/MM/yy") : 'Indef.'}`
+                : 'No aplica';
+            return [
+                d.titulo,
+                getCatalogName('tiposDocumento', d.tipoDocumentoId),
+                d.version,
+                d.fechaDocumento ? format(d.fechaDocumento, 'dd/MM/yyyy') : 'N/A',
+                vigencia,
+                getCatalogName('estadosAcreditacionDoc', d.estadoDocId)
+            ];
+        });
+    } else if (reportType === 'vencimiento') {
+        const now = new Date();
+        const ninetyDays = new Date();
+        ninetyDays.setDate(now.getDate() + 90);
+        finalDocs = filteredDocs
+            .filter(d => d.fechaVigenciaHasta && d.fechaVigenciaHasta <= ninetyDays)
+            .sort((a,b) => (a.fechaVigenciaHasta?.getTime() || 0) - (b.fechaVigenciaHasta?.getTime() || 0));
+
+        tableHead = ["Título", "Versión", "Responsable", "Fecha Vencimiento", "Estado"];
+        tableBody = finalDocs.map(d => {
+            const isExpired = d.fechaVigenciaHasta! < now;
+            return [
+                d.titulo,
+                d.version,
+                d.responsableNombre,
+                d.fechaVigenciaHasta ? format(d.fechaVigenciaHasta, 'dd/MM/yyyy') : 'N/A',
+                isExpired ? 'Vencido' : 'Por Vencer'
+            ];
+        });
+    }
+    
+    doc.autoTable({
+        head: [tableHead],
+        body: tableBody,
+        startY: 20,
+        theme: 'striped',
+        headStyles: { fillColor: [34, 113, 239], fontSize: 9 },
+        bodyStyles: { fontSize: 8 },
+        didDrawPage: (data) => {
+            // Header
+            doc.setFontSize(10);
+            doc.setTextColor(40);
+            doc.text(`Reporte - Hospital ${user.hospitalId}`, data.settings.margin.left, 15);
+        }
     });
 
-    for (const ambitoId of sortedAmbitoIds) {
-        const ambitoName = getCatalogName('ambitos', ambitoId);
-        
-        const docsInAmbito = groupedByAmbito[ambitoId];
-        const groupedByCaracteristica = docsInAmbito.reduce((acc, doc) => {
-            const caracId = doc.caracteristicaId || 'sin-caracteristica';
-            if (!acc[caracId]) acc[caracId] = [];
-            acc[caracId].push(doc);
-            return acc;
-        }, {} as Record<string, Documento[]>);
-
-        const sortedCaracIds = Object.keys(groupedByCaracteristica).sort((a,b) => {
-            const aOrder = catalogs.caracteristicas.find(c => c.id === a)?.orden ?? Infinity;
-            const bOrder = catalogs.caracteristicas.find(c => c.id === b)?.orden ?? Infinity;
-            return aOrder - bOrder;
-        });
-        
-        if (yPos > 250) {
-            doc.addPage();
-            yPos = 20;
-        }
-
-        doc.setFontSize(14);
-        doc.setFont(undefined, 'bold');
-        doc.text(ambitoName, 14, yPos);
-        yPos += 10;
-
-        for (const caracId of sortedCaracIds) {
-            const caracteristica = catalogs.caracteristicas.find(c => c.id === caracId);
-            if (!caracteristica) continue;
-            
-            const caracNameWithCode = `${caracteristica.codigo} - ${caracteristica.nombre}`;
-            const docsInCarac = groupedByCaracteristica[caracId];
-
-            docsInCarac.sort((a, b) => {
-                const tipoOrderA = catalogs.tiposDocumento.find(t => t.id === a.tipoDocumentoId)?.orden ?? Infinity;
-                const tipoOrderB = catalogs.tiposDocumento.find(t => t.id === b.tipoDocumentoId)?.orden ?? Infinity;
-                if(tipoOrderA !== tipoOrderB) return tipoOrderA - tipoOrderB;
-                return a.titulo.localeCompare(b.titulo);
-            });
-
-            const tableColumn = ["Título", "Tipo", "Versión", "Fecha Documento", "Vigencia"];
-            const tableRows: (string | undefined)[][] = docsInCarac.map(d => {
-                const vigencia = d.fechaVigenciaDesde
-                    ? `${format(d.fechaVigenciaDesde, "dd/MM/yy")} - ${d.fechaVigenciaHasta ? format(d.fechaVigenciaHasta, "dd/MM/yy") : 'Indefinida'}`
-                    : 'No aplica';
-                return [
-                    d.titulo,
-                    getCatalogName('tiposDocumento', d.tipoDocumentoId),
-                    d.version,
-                    d.fechaDocumento ? format(d.fechaDocumento, 'dd/MM/yyyy') : 'N/A',
-                    vigencia
-                ];
-            });
-
-            if (yPos > 250) {
-                doc.addPage();
-                yPos = 20;
-            }
-
-            doc.setFontSize(11);
-            doc.setFont(undefined, 'bold');
-            doc.setTextColor(50);
-            doc.text(caracNameWithCode, 14, yPos);
-            yPos += 7;
-            doc.setTextColor(0);
-
-            doc.autoTable({
-                startY: yPos,
-                head: [tableColumn],
-                body: tableRows,
-                theme: 'striped',
-                headStyles: { fillColor: [34, 113, 239], fontSize: 9 },
-                bodyStyles: { fontSize: 8 },
-            });
-            yPos = doc.previousAutoTable.finalY + 12;
-        }
+    // 4. Add Page Numbers
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(`Página ${i} de ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
     }
 
-    doc.save('reporte_documentos.pdf');
+    doc.save(`reporte_${reportType}_${new Date().toISOString().split('T')[0]}.pdf`);
     setGenerating(false);
   };
 
   const pageHeader = (
     <div>
-      <h1 className="text-3xl font-bold tracking-tight">Reportes</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Generación de Reportes</h1>
       <p className="text-muted-foreground">
-        Genere reportes en PDF de los documentos del sistema.
+        Configure y genere reportes en PDF de los documentos del sistema.
       </p>
     </div>
   );
@@ -202,7 +234,7 @@ export default function ReportesPage() {
     return (
         <div className="space-y-8">
             {pageHeader}
-            <Card className="mx-auto max-w-2xl">
+            <Card className="mx-auto max-w-3xl">
                 <CardHeader>
                     <Skeleton className="h-6 w-1/2" />
                     <Skeleton className="h-4 w-3/4" />
@@ -223,46 +255,84 @@ export default function ReportesPage() {
     <div className="space-y-8">
       {pageHeader}
 
-      <Card className="mx-auto max-w-2xl">
+      <Card className="mx-auto max-w-3xl">
         <CardHeader>
           <CardTitle>Configuración del Reporte</CardTitle>
           <CardDescription>
-            Seleccione los filtros para generar su reporte de documentos.
+            Seleccione el tipo de reporte y los filtros para generar su documento.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="ambito-select" className="text-sm font-medium">Ámbito</label>
-            <Select value={ambitoFilter} onValueChange={(value) => setAmbitoFilter(value === 'all' ? '' : value)}>
-              <SelectTrigger id="ambito-select">
-                <SelectValue placeholder="Todos los ámbitos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los ámbitos</SelectItem>
-                {catalogs.ambitos.filter(item => item.id).map(ambito => (
-                  <SelectItem key={ambito.id} value={ambito.id}>
-                    {ambito.nombre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <label htmlFor="servicio-select" className="text-sm font-medium">Servicio</label>
-            <Select value={servicioFilter} onValueChange={(value) => setServicioFilter(value === 'all' ? '' : value)}>
-              <SelectTrigger id="servicio-select">
-                <SelectValue placeholder="Todos los servicios" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los servicios</SelectItem>
-                {catalogs.servicios.filter(item => item.id).map(servicio => (
-                  <SelectItem key={servicio.id} value={servicio.id}>
-                    {servicio.nombre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <CardContent className="space-y-6">
+            <div className='space-y-2'>
+                <label className="text-sm font-medium">Tipo de Reporte</label>
+                <Select value={reportType} onValueChange={setReportType}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="general">Listado Maestro de Documentos</SelectItem>
+                        <SelectItem value="vencimiento">Reporte de Vencimientos</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            
+            <Separator />
+            <h3 className="text-md font-semibold">Filtros Avanzados</h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">Ámbito</label>
+                    <Select value={ambitoFilter} onValueChange={(v) => { setAmbitoFilter(v === 'all' ? '' : v); setCaracteristicaFilter(''); setElementoMedibleFilter(''); }}>
+                    <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Todos los ámbitos</SelectItem>
+                        {catalogs.ambitos.map(item => <SelectItem key={item.id} value={item.id}>{item.nombre}</SelectItem>)}
+                    </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">Característica</label>
+                    <Select value={caracteristicaFilter} onValueChange={(v) => { setCaracteristicaFilter(v === 'all' ? '' : v); setElementoMedibleFilter(''); }} disabled={!ambitoFilter}>
+                    <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Todas las características</SelectItem>
+                        {filteredCaracteristicas.map(item => <SelectItem key={item.id} value={item.id}>{item.codigo} - {item.nombre}</SelectItem>)}
+                    </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">Elemento Medible</label>
+                    <Select value={elementoMedibleFilter} onValueChange={(v) => setElementoMedibleFilter(v === 'all' ? '' : v)} disabled={!caracteristicaFilter}>
+                    <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Todos los elementos</SelectItem>
+                        {filteredElementosMedibles.map(item => <SelectItem key={item.id} value={item.id}>{item.codigo} - {item.nombre}</SelectItem>)}
+                    </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">Servicio</label>
+                    <Select value={servicioFilter} onValueChange={(v) => setServicioFilter(v === 'all' ? '' : v)}>
+                    <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Todos los servicios</SelectItem>
+                        {catalogs.servicios.map(item => <SelectItem key={item.id} value={item.id}>{item.nombre}</SelectItem>)}
+                    </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">Estado</label>
+                    <Select value={estadoFilter} onValueChange={(v) => setEstadoFilter(v === 'all' ? '' : v)}>
+                    <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Todos los estados</SelectItem>
+                        {catalogs.estadosAcreditacionDoc.map(item => <SelectItem key={item.id} value={item.id}>{item.nombre}</SelectItem>)}
+                    </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                     <label className="text-sm font-medium">Fecha del Documento</label>
+                    <DateRangePicker />
+                </div>
+            </div>
         </CardContent>
         <CardFooter>
           <Button onClick={handleGeneratePdf} disabled={generating} className="ml-auto">
