@@ -124,6 +124,13 @@ export default function VersionDetailPage() {
       // @ts-ignore
       .find((item: any) => item.id === id)?.nombre || "N/A";
       
+  const getVersionStatusName = (estadoDocId?: string) => {
+    if (!estadoDocId || estadoDocId === "est-sus") return "Histórico";
+  
+    const estado = catalogs.estadosAcreditacionDoc.find((item: any) => item.id === estadoDocId);
+    return estado?.nombre || "Histórico";
+  };
+    
   const getServicioNames = (servicioIds: string[] | undefined) => {
     if (!servicioIds || servicioIds.length === 0) return "No especificado";
     return servicioIds.map(id => getCatalogName("servicios", id)).join(", ");
@@ -131,7 +138,7 @@ export default function VersionDetailPage() {
 
   const detailItems = [
     { icon: GitBranch, label: "Versión", value: version.version },
-    { icon: ShieldCheck, label: "Estado", value: getCatalogName("estadosAcreditacionDoc", version.estadoDocId) || "Sustituido" },
+    { icon: ShieldCheck, label: "Estado", value: getVersionStatusName(version.estadoDocId) },
     { icon: ClipboardList, label: "Tipo", value: getCatalogName("tiposDocumento", version.tipoDocumentoId) },
     { icon: User, label: "Responsable", value: `${version.responsableNombre} (${version.responsableEmail})` },
     { icon: Building, label: "Servicios", value: getServicioNames(version.servicioIds) },

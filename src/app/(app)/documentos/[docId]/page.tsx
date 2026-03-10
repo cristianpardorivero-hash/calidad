@@ -180,6 +180,13 @@ export default function DocumentoDetailPage() {
     catalogs[catalog as keyof typeof catalogs]
       // @ts-ignore
       .find((item: any) => item.id === id)?.nombre || "N/A";
+
+  const getVersionStatusName = (estadoDocId?: string) => {
+    if (!estadoDocId || estadoDocId === "est-sus") return "Histórico";
+  
+    const estado = catalogs.estadosAcreditacionDoc.find((item: any) => item.id === estadoDocId);
+    return estado?.nombre || "Histórico";
+  };
       
   const isExpired = document.estadoDocId === 'est-vig' && document.fechaVigenciaHasta && document.fechaVigenciaHasta < new Date();
   const displayStatusName = isExpired ? 'Vencido' : getCatalogName("estadosAcreditacionDoc", document.estadoDocId);
@@ -291,7 +298,7 @@ export default function DocumentoDetailPage() {
                 <CardHeader><CardTitle className="flex items-center gap-2"><History className="h-5 w-5"/> Historial de Versiones</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
                 {versions.map(version => {
-                    const estadoNombre = getCatalogName("estadosAcreditacionDoc", version.estadoDocId) || 'Histórico';
+                    const estadoNombre = getVersionStatusName(version.estadoDocId);
 
                     const handlePreviewClick = () => {
                       if (!document) return;
