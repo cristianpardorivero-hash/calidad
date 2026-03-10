@@ -604,7 +604,7 @@ export async function createNewVersionAndUpdateDocument(
   const oldVersionRef = doc(collection(db, "document_versions"));
   const parentDocRef = doc(db, "documents", originalDoc.id);
 
-  const versionData: Omit<DocumentVersion, 'id' | 'createdAt' | 'updatedAt'> = {
+  const versionData: Record<string, any> = {
     docId: originalDoc.id,
     hospitalId: originalDoc.hospitalId,
     version: originalDoc.version,
@@ -618,22 +618,24 @@ export async function createNewVersionAndUpdateDocument(
     estadoDocId: 'est-sus',
 
     titulo: originalDoc.titulo,
-    descripcion: originalDoc.descripcion,
+    descripcion: originalDoc.descripcion || "",
     tipoDocumentoId: originalDoc.tipoDocumentoId,
     ambitoId: originalDoc.ambitoId,
     caracteristicaId: originalDoc.caracteristicaId,
     elementoMedibleId: originalDoc.elementoMedibleId,
-    servicioIds: originalDoc.servicioIds,
+    servicioIds: originalDoc.servicioIds || [],
     responsableNombre: originalDoc.responsableNombre,
     responsableEmail: originalDoc.responsableEmail,
-    fechaDocumento: originalDoc.fechaDocumento,
-    fechaVigenciaDesde: originalDoc.fechaVigenciaDesde,
-    fechaVigenciaHasta: originalDoc.fechaVigenciaHasta,
+    
+    fechaDocumento: originalDoc.fechaDocumento ? Timestamp.fromDate(originalDoc.fechaDocumento) : null,
+    fechaVigenciaDesde: originalDoc.fechaVigenciaDesde ? Timestamp.fromDate(originalDoc.fechaVigenciaDesde) : null,
+    fechaVigenciaHasta: originalDoc.fechaVigenciaHasta ? Timestamp.fromDate(originalDoc.fechaVigenciaHasta) : null,
+
     mimeType: originalDoc.mimeType,
     checksum: originalDoc.checksum,
-    tags: originalDoc.tags,
-    linkedDocumentId: originalDoc.linkedDocumentId,
-    searchKeywords: originalDoc.searchKeywords,
+    tags: originalDoc.tags || [],
+    linkedDocumentId: originalDoc.linkedDocumentId || "",
+    searchKeywords: originalDoc.searchKeywords || [],
   };
 
   const parentUpdateData: Record<string, any> = {
@@ -699,12 +701,14 @@ export async function getDocumentVersions(docId: string): Promise<DocumentVersio
     const snapshot = await getDocs(q);
     return snapshot.docs.map((doc) => {
         const data = doc.data();
+        // Fallback to a default date for required fields if they are missing, to prevent crashes.
+        const fallbackDate = new Date(0); 
         return {
             id: doc.id,
             ...data,
-            createdAt: (data.createdAt as Timestamp)?.toDate(),
-            updatedAt: (data.updatedAt as Timestamp)?.toDate(),
-            fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
+            createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : fallbackDate,
+            updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : fallbackDate,
+            fechaDocumento: data.fechaDocumento ? (data.fechaDocumento as Timestamp).toDate() : fallbackDate,
             fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
             fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
         } as DocumentVersion;
