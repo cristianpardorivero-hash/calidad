@@ -301,29 +301,46 @@ export function DocumentForm({
   const linkableDocuments = useMemo(() => {
     if (!documents) return [];
 
-    let filtered = documents.filter(
-      (doc) => !linkableDocTypeIds.includes(doc.tipoDocumentoId)
+    // Base filter: remove the doc being edited and types that can't be linked TO.
+    let baseFiltered = documents.filter(
+      (doc) => {
+        const isSelf = isEditing && document && doc.id === document.id;
+        const isLinkableType = linkableDocTypeIds.includes(doc.tipoDocumentoId);
+        return !isSelf && !isLinkableType;
+      }
     );
-
+    
     if (!hasClassification) return [];
 
+    let finalFiltered = [];
+
     if (elementoMedibleId) {
-      filtered = filtered.filter(
+      // First, try to find documents matching the specific measurable element.
+      const docsByElemento = baseFiltered.filter(
         (doc) => doc.elementoMedibleId === elementoMedibleId
       );
+
+      // If we find any, we use them.
+      if (docsByElemento.length > 0) {
+        finalFiltered = docsByElemento;
+      } else {
+        // If no documents match the specific element, fall back to the parent characteristic.
+        // This shows all documents under the characteristic, regardless of their measurable element.
+        finalFiltered = baseFiltered.filter(
+          (doc) => doc.caracteristicaId === caracteristicaId
+        );
+      }
     } else if (caracteristicaId) {
-      filtered = filtered.filter(
+      // If no measurable element is selected, just filter by characteristic.
+      finalFiltered = baseFiltered.filter(
         (doc) => doc.caracteristicaId === caracteristicaId
       );
     } else if (ambitoId) {
-      filtered = filtered.filter((doc) => doc.ambitoId === ambitoId);
+      // If only an ambito is selected, filter by that.
+      finalFiltered = baseFiltered.filter((doc) => doc.ambitoId === ambitoId);
     }
 
-    if (isEditing && document) {
-      filtered = filtered.filter((doc) => doc.id !== document.id);
-    }
-
-    return filtered.sort((a, b) => a.titulo.localeCompare(b.titulo));
+    return finalFiltered.sort((a, b) => a.titulo.localeCompare(b.titulo));
   }, [
     documents,
     ambitoId,
