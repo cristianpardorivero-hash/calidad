@@ -291,7 +291,7 @@ export default function DocumentoDetailPage() {
                 <CardHeader><CardTitle className="flex items-center gap-2"><History className="h-5 w-5"/> Historial de Versiones</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
                 {versions.map(version => {
-                    const estadoNombre = getCatalogName("estadosAcreditacionDoc", version.estadoDocId) || '';
+                    const estadoNombre = getCatalogName("estadosAcreditacionDoc", version.estadoDocId) || 'Histórico';
 
                     const handlePreviewClick = () => {
                       if (!document) return;
