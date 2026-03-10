@@ -172,7 +172,7 @@ export default function ReportesPage() {
             return (b.fechaDocumento?.getTime() || 0) - (a.fechaDocumento?.getTime() || 0);
         });
 
-        tableHead = ["Título", "Tipo", "Ver.", "Fecha", "Vigencia", "Estado", "Clasificación"];
+        tableHead = ["Clasificación", "Título", "Tipo", "Ver.", "Fecha", "Vigencia", "Estado"];
         tableBody = finalDocs.map(d => {
             const vigencia = d.fechaVigenciaDesde
                 ? `${format(d.fechaVigenciaDesde, "dd/MM/yy")} - ${d.fechaVigenciaHasta ? format(d.fechaVigenciaHasta, "dd/MM/yy") : 'Indef.'}`
@@ -189,13 +189,13 @@ export default function ReportesPage() {
             ].join('\n');
             
             return [
+                clasificacion,
                 d.titulo,
                 getCatalogName('tiposDocumento', d.tipoDocumentoId),
                 d.version,
                 d.fechaDocumento ? format(d.fechaDocumento, 'dd/MM/yyyy') : 'N/A',
                 vigencia,
                 getCatalogName('estadosAcreditacionDoc', d.estadoDocId),
-                clasificacion
             ];
         });
     } else if (reportType === 'vencimiento') {
