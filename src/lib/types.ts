@@ -133,6 +133,7 @@ export interface DocumentVersion {
   createdAt: Date;
   createdByUid: string;
   createdByEmail: string;
+  archivedByUid: string;
   
   // Denormalized fields for display consistency
   titulo: string;
@@ -175,5 +176,3 @@ export interface AuditLog {
   timestamp: Date;
   details: Record<string, any> | string[];
 }
-
-    

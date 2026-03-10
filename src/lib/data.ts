@@ -14,6 +14,7 @@ import {
   Timestamp,
   setDoc,
   orderBy,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "@/firebase/client";
 import type { Catalogs, Documento, UserProfile, DocumentVersion, UserRole } from "./types";
@@ -616,41 +617,54 @@ export async function createNewVersionAndUpdateDocument(
   newData: Documento,
   userId: string
 ): Promise<void> {
-  const oldVersionRef = doc(collection(db, "document_versions"));
+  const versionRef = doc(collection(db, "document_versions"));
   const parentDocRef = doc(db, "documents", originalDoc.id);
 
+  const batch = writeBatch(db);
+
   const versionData: Record<string, any> = {
+    // referencia
     docId: originalDoc.id,
     hospitalId: originalDoc.hospitalId,
+
+    // versión archivada
     version: originalDoc.version,
+    estadoDocId: originalDoc.estadoDocId || "est-sus",
+
+    // archivo histórico
     storagePath: originalDoc.storagePath,
     downloadUrl: originalDoc.downloadUrl,
     fileSize: originalDoc.fileSize,
     fileName: originalDoc.fileName,
     fileExt: originalDoc.fileExt,
-    createdByUid: originalDoc.createdByUid,
-    createdByEmail: originalDoc.createdByEmail,
-    estadoDocId: 'est-sus',
+    mimeType: originalDoc.mimeType || "",
 
-    titulo: originalDoc.titulo,
+    // auditoría
+    createdByUid: originalDoc.createdByUid || userId,
+    createdByEmail: originalDoc.createdByEmail || "",
+    archivedByUid: userId,
+
+    // fotografía completa del documento
+    titulo: originalDoc.titulo || "",
     descripcion: originalDoc.descripcion || "",
-    tipoDocumentoId: originalDoc.tipoDocumentoId,
-    ambitoId: originalDoc.ambitoId,
-    caracteristicaId: originalDoc.caracteristicaId,
-    elementoMedibleId: originalDoc.elementoMedibleId,
+    tipoDocumentoId: originalDoc.tipoDocumentoId || "",
+    ambitoId: originalDoc.ambitoId || "",
+    caracteristicaId: originalDoc.caracteristicaId || "",
+    elementoMedibleId: originalDoc.elementoMedibleId || "",
     servicioIds: originalDoc.servicioIds || [],
-    responsableNombre: originalDoc.responsableNombre,
-    responsableEmail: originalDoc.responsableEmail,
-    
+    responsableNombre: originalDoc.responsableNombre || "",
+    responsableEmail: originalDoc.responsableEmail || "",
     fechaDocumento: originalDoc.fechaDocumento ? Timestamp.fromDate(originalDoc.fechaDocumento) : null,
     fechaVigenciaDesde: originalDoc.fechaVigenciaDesde ? Timestamp.fromDate(originalDoc.fechaVigenciaDesde) : null,
     fechaVigenciaHasta: originalDoc.fechaVigenciaHasta ? Timestamp.fromDate(originalDoc.fechaVigenciaHasta) : null,
-
-    mimeType: originalDoc.mimeType,
-    checksum: originalDoc.checksum,
+    checksum: originalDoc.checksum || "",
     tags: originalDoc.tags || [],
     linkedDocumentId: originalDoc.linkedDocumentId || "",
     searchKeywords: originalDoc.searchKeywords || [],
+
+    // timestamps
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   };
 
   const parentUpdateData: Record<string, any> = {
@@ -680,28 +694,21 @@ export async function createNewVersionAndUpdateDocument(
     updatedAt: serverTimestamp(),
   };
 
+  batch.set(versionRef, versionData);
+  batch.update(parentDocRef, parentUpdateData);
+
   try {
-      await setDoc(oldVersionRef, {
-        ...versionData,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+    await batch.commit();
   } catch (error) {
-      console.error("Failed to create document version history entry. The main document will still be updated.", error);
-  }
-  
-  try {
-    await updateDoc(parentDocRef, parentUpdateData);
-  } catch (error) {
-    errorEmitter.emit(
-      'permission-error',
-      new FirestorePermissionError({
-        path: parentDocRef.path,
-        operation: 'update',
-        requestResourceData: parentUpdateData,
-      })
-    );
-    throw error;
+      errorEmitter.emit(
+        'permission-error',
+        new FirestorePermissionError({
+          path: parentDocRef.path,
+          operation: 'write',
+          requestResourceData: { version: versionData, update: parentUpdateData },
+        })
+      );
+      throw error;
   }
 }
 
