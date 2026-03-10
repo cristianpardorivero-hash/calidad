@@ -9,6 +9,22 @@ import { getCatalogs } from "@/lib/data";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DocumentsTable } from "@/components/documents/documents-table";
 
+// Helper functions to safely convert timestamps to dates
+const safeToDate = (timestamp: any): Date | undefined => {
+    if (timestamp && typeof timestamp.toDate === 'function') {
+        return timestamp.toDate();
+    }
+    return undefined;
+};
+
+const safeToDateRequired = (timestamp: any, fallbackDate = new Date()): Date => {
+    if (timestamp && typeof timestamp.toDate === 'function') {
+        return timestamp.toDate();
+    }
+    return fallbackDate;
+};
+
+
 export default function DocumentosHistoricosPage() {
     const { user } = useUser();
     const [documents, setDocuments] = useState<Documento[]>([]);
@@ -56,32 +72,33 @@ export default function DocumentosHistoricosPage() {
                     return {
                         id: doc.id,
                         ...data,
-                        fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
-                        fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
-                        fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
-                        createdAt: (data.createdAt as Timestamp)?.toDate(),
-                        updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+                        fechaDocumento: safeToDateRequired(data.fechaDocumento),
+                        fechaVigenciaDesde: safeToDate(data.fechaVigenciaDesde),
+                        fechaVigenciaHasta: safeToDate(data.fechaVigenciaHasta),
+                        createdAt: safeToDateRequired(data.createdAt),
+                        updatedAt: safeToDateRequired(data.updatedAt),
                     } as Documento;
                 });
 
                 const substitutedDocs: Documento[] = versionsSnapshot.docs.map(doc => {
                     const data = doc.data();
-                    // Map DocumentVersion to a Documento object for table display
+                    // Map DocumentVersion to a Documento-like object for table display
                     return {
                         ...data,
                         id: doc.id, // The unique ID of the version entry
-                        // Convert all timestamp fields to Date objects
-                        createdAt: (data.createdAt as Timestamp)?.toDate(),
-                        updatedAt: (data.updatedAt as Timestamp)?.toDate() || (data.createdAt as Timestamp)?.toDate(), // Fallback to createdAt
-                        fechaDocumento: (data.fechaDocumento as Timestamp)?.toDate(),
-                        fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
-                        fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
+                        createdAt: safeToDateRequired(data.createdAt),
+                        updatedAt: safeToDateRequired(data.updatedAt, safeToDateRequired(data.createdAt)),
+                        fechaDocumento: safeToDateRequired(data.fechaDocumento),
+                        fechaVigenciaDesde: safeToDate(data.fechaVigenciaDesde),
+                        fechaVigenciaHasta: safeToDate(data.fechaVigenciaHasta),
                         isDeleted: false,
+                        estadoDocId: data.estadoDocId || 'est-hist', // Ensure historical status for display
                     } as Documento;
                 });
 
                 const allHistoricalDocs = [...historicalDocs, ...substitutedDocs];
-                // Safe sort
+                
+                // Safe sort by last update time
                 allHistoricalDocs.sort((a, b) => (b.updatedAt?.getTime() || 0) - (a.updatedAt?.getTime() || 0));
 
                 setDocuments(allHistoricalDocs);
