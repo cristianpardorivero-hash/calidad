@@ -629,7 +629,7 @@ export async function createNewVersionAndUpdateDocument(
 
     // versión archivada
     version: originalDoc.version,
-    estadoDocId: originalDoc.estadoDocId || "est-sus",
+    estadoDocId: "est-hist",
 
     // archivo histórico
     storagePath: originalDoc.storagePath,
