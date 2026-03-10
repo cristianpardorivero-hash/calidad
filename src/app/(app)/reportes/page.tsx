@@ -44,6 +44,7 @@ export default function ReportesPage() {
   const [elementoMedibleFilter, setElementoMedibleFilter] = useState('');
   const [servicioFilter, setServicioFilter] = useState('');
   const [estadoFilter, setEstadoFilter] = useState('');
+  const [tipoDocumentoFilter, setTipoDocumentoFilter] = useState('');
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
@@ -103,10 +104,11 @@ export default function ReportesPage() {
         const elementoMedibleMatch = !elementoMedibleFilter || doc.elementoMedibleId === elementoMedibleFilter;
         const servicioMatch = !servicioFilter || doc.servicioIds?.includes(servicioFilter);
         const estadoMatch = !estadoFilter || doc.estadoDocId === estadoFilter;
+        const tipoDocumentoMatch = !tipoDocumentoFilter || doc.tipoDocumentoId === tipoDocumentoFilter;
         const dateMatch = (!fromDate || (doc.fechaDocumento && doc.fechaDocumento >= fromDate)) &&
                           (!toDate || (doc.fechaDocumento && doc.fechaDocumento <= toDate));
         
-        return ambitoMatch && caracteristicaMatch && elementoMedibleMatch && servicioMatch && estadoMatch && dateMatch;
+        return ambitoMatch && caracteristicaMatch && elementoMedibleMatch && servicioMatch && estadoMatch && dateMatch && tipoDocumentoMatch;
     });
 
     const doc = new jsPDF();
@@ -138,6 +140,7 @@ export default function ReportesPage() {
     addFilterLine('Elemento Medible', getCatalogName('elementosMedibles', elementoMedibleFilter));
     addFilterLine('Servicio', getCatalogName('servicios', servicioFilter));
     addFilterLine('Estado', getCatalogName('estadosAcreditacionDoc', estadoFilter));
+    addFilterLine('Tipo de Documento', getCatalogName('tiposDocumento', tipoDocumentoFilter));
     addFilterLine('Fecha Desde', fromParam);
     addFilterLine('Fecha Hasta', toParam);
     
@@ -351,6 +354,16 @@ export default function ReportesPage() {
                     <SelectContent>
                         <SelectItem value="all">Todos los estados</SelectItem>
                         {catalogs.estadosAcreditacionDoc.map(item => <SelectItem key={item.id} value={item.id}>{item.nombre}</SelectItem>)}
+                    </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">Tipo de Documento</label>
+                    <Select value={tipoDocumentoFilter} onValueChange={(v) => setTipoDocumentoFilter(v === 'all' ? '' : v)}>
+                    <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Todos los tipos</SelectItem>
+                        {catalogs.tiposDocumento.sort((a, b) => a.orden - b.orden).map(item => <SelectItem key={item.id} value={item.id}>{item.nombre}</SelectItem>)}
                     </SelectContent>
                     </Select>
                 </div>
