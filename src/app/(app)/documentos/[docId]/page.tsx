@@ -327,7 +327,9 @@ export default function DocumentoDetailPage() {
                               <FileText className="h-5 w-5 text-muted-foreground"/>
                               <div className="flex flex-col">
                                   <div className="flex items-center gap-2">
-                                    <span className="font-medium text-sm">Versión {version.version}</span>
+                                    <Link href={`/documentos/versiones/${version.id}`} className="font-medium text-sm hover:underline">
+                                      Versión {version.version}
+                                    </Link>
                                     {estadoNombre && <Badge variant="secondary" className="text-xs">{estadoNombre}</Badge>}
                                   </div>
                                   <span className="text-xs text-muted-foreground">

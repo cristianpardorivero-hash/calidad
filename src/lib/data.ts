@@ -1,4 +1,5 @@
 
+
 import {
   collection,
   doc,
@@ -726,4 +727,23 @@ export async function getDocumentVersions(docId: string): Promise<DocumentVersio
             fechaVigenciaHasta: safeToDate(data.fechaVigenciaHasta),
         } as DocumentVersion;
     });
+}
+
+export async function getDocumentVersionById(versionId: string): Promise<DocumentVersion | null> {
+    const docRef = doc(db, "document_versions", versionId);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+        const data = docSnap.data();
+        return {
+            id: docSnap.id,
+            ...data,
+            fechaDocumento: safeToDateRequired(data.fechaDocumento),
+            fechaVigenciaDesde: safeToDate(data.fechaVigenciaDesde),
+            fechaVigenciaHasta: safeToDate(data.fechaVigenciaHasta),
+            createdAt: safeToDateRequired(data.createdAt),
+            updatedAt: safeToDateRequired(data.updatedAt),
+        } as DocumentVersion;
+    }
+    return null;
 }
