@@ -22,6 +22,20 @@ import { initializeApp, deleteApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { firebaseConfig } from "@/firebase/config";
 
+const safeToDate = (timestamp: any): Date | undefined => {
+    if (timestamp && typeof timestamp.toDate === 'function') {
+        return timestamp.toDate();
+    }
+    return undefined;
+};
+
+const safeToDateRequired = (timestamp: any, fallbackDate = new Date(0)): Date => {
+    if (timestamp && typeof timestamp.toDate === 'function') {
+        return timestamp.toDate();
+    }
+    return fallbackDate;
+};
+
 
 export async function getCatalogs(hospitalId: string): Promise<Catalogs> {
   const catalogNames: (keyof Catalogs)[] = [
@@ -80,11 +94,11 @@ export async function getDocuments(
     return {
       id: doc.id,
       ...data,
-      fechaDocumento: data.fechaDocumento ? (data.fechaDocumento as Timestamp).toDate() : undefined,
-      fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
-      fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
-      createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : undefined,
-      updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
+      fechaDocumento: safeToDateRequired(data.fechaDocumento),
+      fechaVigenciaDesde: safeToDate(data.fechaVigenciaDesde),
+      fechaVigenciaHasta: safeToDate(data.fechaVigenciaHasta),
+      createdAt: safeToDateRequired(data.createdAt),
+      updatedAt: safeToDateRequired(data.updatedAt),
     } as Documento;
   });
 }
@@ -100,11 +114,11 @@ export async function getDocumentById(
     return {
       id: docSnap.id,
       ...data,
-      fechaDocumento: data.fechaDocumento ? (data.fechaDocumento as Timestamp).toDate() : undefined,
-      fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
-      fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
-      createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : undefined,
-      updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
+      fechaDocumento: safeToDateRequired(data.fechaDocumento),
+      fechaVigenciaDesde: safeToDate(data.fechaVigenciaDesde),
+      fechaVigenciaHasta: safeToDate(data.fechaVigenciaHasta),
+      createdAt: safeToDateRequired(data.createdAt),
+      updatedAt: safeToDateRequired(data.updatedAt),
     } as Documento;
   }
   return undefined;
@@ -125,11 +139,11 @@ export async function getLinkedDocuments(docId: string, hospitalId: string): Pro
         return {
             id: doc.id,
             ...data,
-            fechaDocumento: data.fechaDocumento ? (data.fechaDocumento as Timestamp).toDate() : undefined,
-            fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
-            fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
-            createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : undefined,
-            updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
+            fechaDocumento: safeToDateRequired(data.fechaDocumento),
+            fechaVigenciaDesde: safeToDate(data.fechaVigenciaDesde),
+            fechaVigenciaHasta: safeToDate(data.fechaVigenciaHasta),
+            createdAt: safeToDateRequired(data.createdAt),
+            updatedAt: safeToDateRequired(data.updatedAt),
         } as Documento;
     });
 }
@@ -165,11 +179,11 @@ export async function getMyDocuments(userId: string, userEmail: string, hospital
             docsMap.set(doc.id, {
                 id: doc.id,
                 ...data,
-                fechaDocumento: data.fechaDocumento ? (data.fechaDocumento as Timestamp).toDate() : undefined,
-                fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
-                fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
-                createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : undefined,
-                updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
+                fechaDocumento: safeToDateRequired(data.fechaDocumento),
+                fechaVigenciaDesde: safeToDate(data.fechaVigenciaDesde),
+                fechaVigenciaHasta: safeToDate(data.fechaVigenciaHasta),
+                createdAt: safeToDateRequired(data.createdAt),
+                updatedAt: safeToDateRequired(data.updatedAt),
             } as Documento);
         }
     });
@@ -216,8 +230,8 @@ export async function createUserProfile(
   return {
     ...newUserData,
     uid,
-    createdAt: (newUserData?.createdAt as Timestamp).toDate(),
-    updatedAt: (newUserData?.updatedAt as Timestamp).toDate(),
+    createdAt: safeToDateRequired(newUserData?.createdAt),
+    updatedAt: safeToDateRequired(newUserData?.updatedAt),
   } as UserProfile;
 }
 
@@ -238,11 +252,11 @@ export async function getDashboardKPIs(hospitalId: string) {
         return {
           id: doc.id,
           ...data,
-          fechaDocumento: data.fechaDocumento ? (data.fechaDocumento as Timestamp).toDate() : undefined,
-          fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
-          fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
-          createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : undefined,
-          updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
+          fechaDocumento: safeToDateRequired(data.fechaDocumento),
+          fechaVigenciaDesde: safeToDate(data.fechaVigenciaDesde),
+          fechaVigenciaHasta: safeToDate(data.fechaVigenciaHasta),
+          createdAt: safeToDateRequired(data.createdAt),
+          updatedAt: safeToDateRequired(data.updatedAt),
         } as Documento;
     });
 
@@ -289,8 +303,8 @@ export async function getUsers(hospitalId: string): Promise<UserProfile[]> {
     return {
         ...data,
         uid: doc.id,
-        createdAt: (data.createdAt as Timestamp)?.toDate(),
-        updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+        createdAt: safeToDateRequired(data.createdAt),
+        updatedAt: safeToDateRequired(data.updatedAt),
     } as UserProfile;
   });
 }
@@ -324,8 +338,8 @@ export async function addUser(user: Omit<UserProfile, 'uid' | 'createdAt' | 'upd
         return {
             ...data,
             uid: newUserSnap.id,
-            createdAt: (data?.createdAt as Timestamp)?.toDate(),
-            updatedAt: (data?.updatedAt as Timestamp)?.toDate(),
+            createdAt: safeToDateRequired(data?.createdAt),
+            updatedAt: safeToDateRequired(data?.updatedAt),
         } as UserProfile;
     } catch (error: any) {
         if (error.code === 'auth/email-already-in-use') {
@@ -377,8 +391,8 @@ export async function updateUser(
   return { 
       ...data,
       uid: updatedDoc.id,
-      createdAt: (data?.createdAt as Timestamp)?.toDate(),
-      updatedAt: (data?.updatedAt as Timestamp)?.toDate(),
+      createdAt: safeToDateRequired(data?.createdAt),
+      updatedAt: safeToDateRequired(data?.updatedAt),
     } as UserProfile;
 }
 
@@ -435,11 +449,11 @@ export async function addDocument(docData: Omit<Documento, "id" | "createdAt" | 
     return {
         id: newDocSnap.id,
         ...data,
-        fechaDocumento: data?.fechaDocumento ? (data.fechaDocumento as Timestamp).toDate() : undefined,
-        fechaVigenciaDesde: data?.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
-        fechaVigenciaHasta: data?.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
-        createdAt: data?.createdAt ? (data.createdAt as Timestamp).toDate() : undefined,
-        updatedAt: data?.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
+        fechaDocumento: safeToDateRequired(data?.fechaDocumento),
+        fechaVigenciaDesde: safeToDate(data?.fechaVigenciaDesde),
+        fechaVigenciaHasta: safeToDate(data?.fechaVigenciaHasta),
+        createdAt: safeToDateRequired(data?.createdAt),
+        updatedAt: safeToDateRequired(data?.updatedAt),
     } as Documento;
   } catch (error) {
     errorEmitter.emit(
@@ -530,8 +544,8 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
           return {
               ...data,
               uid,
-              createdAt: (data.createdAt as Timestamp)?.toDate(),
-              updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+              createdAt: safeToDateRequired(data.createdAt),
+              updatedAt: safeToDateRequired(data.updatedAt),
           } as UserProfile;
       }
       return null;
@@ -701,16 +715,15 @@ export async function getDocumentVersions(docId: string): Promise<DocumentVersio
     const snapshot = await getDocs(q);
     return snapshot.docs.map((doc) => {
         const data = doc.data();
-        // Fallback to a default date for required fields if they are missing, to prevent crashes.
         const fallbackDate = new Date(0); 
         return {
             id: doc.id,
             ...data,
-            createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : fallbackDate,
-            updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : fallbackDate,
-            fechaDocumento: data.fechaDocumento ? (data.fechaDocumento as Timestamp).toDate() : fallbackDate,
-            fechaVigenciaDesde: data.fechaVigenciaDesde ? (data.fechaVigenciaDesde as Timestamp).toDate() : undefined,
-            fechaVigenciaHasta: data.fechaVigenciaHasta ? (data.fechaVigenciaHasta as Timestamp).toDate() : undefined,
+            createdAt: safeToDateRequired(data.createdAt, fallbackDate),
+            updatedAt: safeToDateRequired(data.updatedAt, fallbackDate),
+            fechaDocumento: safeToDateRequired(data.fechaDocumento, fallbackDate),
+            fechaVigenciaDesde: safeToDate(data.fechaVigenciaDesde),
+            fechaVigenciaHasta: safeToDate(data.fechaVigenciaHasta),
         } as DocumentVersion;
     });
 }
