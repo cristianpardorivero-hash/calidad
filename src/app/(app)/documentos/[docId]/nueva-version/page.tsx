@@ -7,6 +7,8 @@ import { useEffect, useState, useMemo } from "react";
 import type { Catalogs, Documento } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useParams } from "next/navigation";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { GitFork } from "lucide-react";
 
 export default function NuevaVersionDocumentoPage() {
   const { user } = useUser();
@@ -53,7 +55,7 @@ export default function NuevaVersionDocumentoPage() {
     <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Crear Nueva Versión</h1>
         <p className="text-muted-foreground">
-          Sube un nuevo archivo para el documento <span className="font-semibold">{documentToVersion?.titulo}</span>. La versión se incrementará y los metadatos se pueden actualizar.
+          Sube un nuevo archivo y actualiza los metadatos para el documento.
         </p>
     </div>
   );
@@ -62,6 +64,7 @@ export default function NuevaVersionDocumentoPage() {
     return (
         <div className="container mx-auto max-w-5xl">
             {pageHeader}
+            <Skeleton className="h-24 w-full mb-8" />
             <div className="space-y-8">
                 <Skeleton className="h-48 w-full" />
                 <Skeleton className="h-64 w-full" />
@@ -82,6 +85,13 @@ export default function NuevaVersionDocumentoPage() {
   return (
     <div className="container mx-auto max-w-5xl">
       {pageHeader}
+      <Alert className="mb-8 border-primary/50 bg-primary/5 text-primary-foreground">
+        <GitFork className="h-4 w-4 text-primary" />
+        <AlertTitle className="font-semibold text-primary">Estás creando una nueva versión para:</AlertTitle>
+        <AlertDescription className="text-primary/90">
+          <span className="font-bold">{documentToVersion?.titulo}</span> (Versión actual: {documentToVersion?.version}). La versión anterior será archivada como histórica.
+        </AlertDescription>
+      </Alert>
       <DocumentForm 
         catalogs={catalogs} 
         documents={documents} 
