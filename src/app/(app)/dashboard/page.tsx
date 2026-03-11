@@ -115,48 +115,54 @@ export default function DashboardPage() {
       {pageHeader}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Documentos Totales
-            </CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{kpis.totalDocs}</div>
-            <p className="text-xs text-muted-foreground">
-              Total de documentos en el sistema
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Documentos Vigentes
-            </CardTitle>
-            <FileCheck2 className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{kpis.vigentes}</div>
-            <p className="text-xs text-muted-foreground">
-              Documentos con estado "Vigente"
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Próximos a Vencer
-            </CardTitle>
-            <FileClock className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{kpis.proximosAVencer}</div>
-            <p className="text-xs text-muted-foreground">
-              En los próximos 60 días
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/documentos" className="group">
+          <Card className="transition-all group-hover:shadow-md group-hover:border-primary/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Documentos Totales
+              </CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpis.totalDocs}</div>
+              <p className="text-xs text-muted-foreground">
+                Total de documentos en el sistema
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/documentos?estadoDocId=est-vig" className="group">
+          <Card className="transition-all group-hover:shadow-md group-hover:border-primary/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Documentos Vigentes
+              </CardTitle>
+              <FileCheck2 className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpis.vigentes}</div>
+              <p className="text-xs text-muted-foreground">
+                Documentos con estado "Vigente"
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/documentos/vencimientos" className="group">
+          <Card className="transition-all group-hover:shadow-md group-hover:border-primary/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Próximos a Vencer
+              </CardTitle>
+              <FileClock className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpis.proximosAVencer}</div>
+              <p className="text-xs text-muted-foreground">
+                En los próximos 60 días
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
       <div className="grid grid-cols-1 gap-8">
         <Card>
