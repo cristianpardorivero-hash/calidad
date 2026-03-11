@@ -24,11 +24,18 @@ import {
   History,
   AreaChart,
   LayoutGrid,
+  Library,
 } from "lucide-react";
 import Link from "next/link";
 import { useUser } from "@/hooks/use-user";
 
 const menuItems = [
+  {
+    href: "/mis-documentos",
+    icon: FileHeart,
+    label: "Mis Documentos",
+    roles: ["admin", "editor", "lector"],
+  },
   {
     href: "/dashboard",
     icon: LayoutDashboard,
@@ -72,9 +79,9 @@ const menuItems = [
     roles: ["admin", "editor"],
   },
   {
-    href: "/mis-documentos",
-    icon: FileHeart,
-    label: "Mis Documentos",
+    href: "/biblioteca",
+    icon: Library,
+    label: "Biblioteca",
     roles: ["admin", "editor", "lector"],
   },
 ];

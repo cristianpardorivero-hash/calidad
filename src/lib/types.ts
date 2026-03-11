@@ -176,3 +176,26 @@ export interface AuditLog {
   timestamp: Date;
   details: Record<string, any> | string[];
 }
+
+export interface LibraryDocument {
+  id: string;
+  hospitalId: string;
+  titulo: string;
+  descripcion?: string;
+  categoria?: string;
+  tags?: string[];
+  fileName: string;
+  fileExt: string;
+  mimeType: string;
+  fileSize: number;
+  storagePath: string;
+  downloadUrl: string;
+  createdByUid: string;
+  createdByEmail: string;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  deletedAt?: Date;
+  deletedByUid?: string;
+  searchKeywords: string[];
+}

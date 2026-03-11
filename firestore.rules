@@ -301,5 +301,16 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if false;
     }
+    
+    // =====================================================================
+    // Library Documents
+    // =====================================================================
+    match /library_documents/{libraryDocumentId} {
+      allow get: if isHospitalMember(resource.data.hospitalId);
+      allow list: if isSignedIn(); // Client MUST filter by hospitalId.
+      allow create: if isHospitalEditor(request.resource.data.hospitalId) && creatorIsSelf() && hospitalIdMatchesCreator();
+      allow update: if resource != null && isHospitalEditor(resource.data.hospitalId) && isImmutable('hospitalId') && isImmutable('createdByUid');
+      allow delete: false;
+    }
   }
 }

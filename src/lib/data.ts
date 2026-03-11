@@ -17,7 +17,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "@/firebase/client";
-import type { Catalogs, Documento, UserProfile, DocumentVersion, UserRole } from "./types";
+import type { Catalogs, Documento, UserProfile, DocumentVersion, UserRole, LibraryDocument } from "./types";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { initializeApp, deleteApp } from "firebase/app";
@@ -169,7 +169,7 @@ export async function getMyDocuments(userId: string, userEmail: string, hospital
   
   const [createdBySnapshot, responsibleForSnapshot] = await Promise.all([
       getDocs(createdByQuery),
-      getDocs(responsibleForQuery)
+      getDocs(responsibleForSnapshot)
   ]);
 
   const docsMap = new Map<string, Documento>();
@@ -762,4 +762,36 @@ export async function getDocumentVersionById(versionId: string): Promise<Documen
         } as DocumentVersion;
     }
     return null;
+}
+
+export async function addLibraryDocument(docData: Omit<LibraryDocument, "id" | "createdAt" | "updatedAt">): Promise<LibraryDocument> {
+  const collRef = collection(db, "library_documents");
+  
+  const dataToSave = {
+    ...docData,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  try {
+    const docRef = await addDoc(collRef, dataToSave);
+    const newDocSnap = await getDoc(docRef);
+    const data = newDocSnap.data();
+    return {
+        id: newDocSnap.id,
+        ...data,
+        createdAt: safeToDateRequired(data?.createdAt),
+        updatedAt: safeToDateRequired(data?.updatedAt),
+    } as LibraryDocument;
+  } catch (error) {
+    errorEmitter.emit(
+      'permission-error',
+      new FirestorePermissionError({
+        path: collRef.path,
+        operation: 'create',
+        requestResourceData: dataToSave,
+      })
+    );
+    throw error;
+  }
 }
