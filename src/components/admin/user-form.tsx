@@ -42,8 +42,9 @@ const availablePages = [
   { id: "/documentos/nuevo", label: "Subir Nuevo Documento" },
   { id: "/documentos/vencimientos", label: "Control de Vencimientos" },
   { id: "/documentos/historicos", label: "Historial de Documentos" },
-  // Reportes
+  // Reportes y Análisis
   { id: "/reportes", label: "Generación de Reportes" },
+  { id: "/matriz-cumplimiento", label: "Matriz de Cumplimiento" },
   // Administración
   { id: "/admin/usuarios", label: "Admin: Gestión de Usuarios" },
   { id: "/admin/usuarios/nuevo", label: "Admin: Crear Nuevo Usuario" },
