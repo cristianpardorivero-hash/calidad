@@ -276,7 +276,7 @@ service cloud.firestore {
     match /document_versions/{documentVersionId} {
       allow get: if isHospitalMember(resource.data.hospitalId);
       allow list: if isSignedIn(); // Client MUST filter by the user's hospitalId for security.
-      allow create: if isHospitalEditor(request.resource.data.hospitalId) && creatorIsSelf() && hospitalIdMatchesCreator();
+      allow create: if isHospitalEditor(request.resource.data.hospitalId) && request.resource.data.archivedByUid == request.auth.uid && hospitalIdMatchesCreator();
       allow update: if false;
       allow delete: if false;
     }
