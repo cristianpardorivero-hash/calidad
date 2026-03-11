@@ -56,12 +56,14 @@ export default function VersionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [documentToPreview, setDocumentToPreview] = useState<Documento | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (hospitalId && versionId) {
       const fetchData = async () => {
         setLoading(true);
         setError(null);
+        setPreviewUrl(null);
         try {
           const [versionData, catalogsData] = await Promise.all([
             getDocumentVersionById(versionId),
@@ -75,6 +77,11 @@ export default function VersionDetailPage() {
           }
           setVersion(versionData);
           setCatalogs(catalogsData);
+
+          if (versionData.fileExt?.toLowerCase() === 'pdf' && versionData.downloadUrl) {
+            const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(versionData.downloadUrl)}&embedded=true`;
+            setPreviewUrl(googleViewerUrl);
+          }
 
         } catch (err) {
           console.error(err);
@@ -104,7 +111,7 @@ export default function VersionDetailPage() {
             {/* Main Content Skeleton */}
             <div className="grid gap-8 lg:grid-cols-3">
                 <div className="lg:col-span-2">
-                    <Card className="h-full min-h-[600px]"><CardHeader><Skeleton className="h-6 w-1/3" /></CardHeader><CardContent className="p-6"><Skeleton className="h-[500px] w-full" /></CardContent></Card>
+                    <Skeleton className="h-[75vh] min-h-[600px] w-full" />
                 </div>
                 <div className="space-y-8">
                     <Card><CardHeader><Skeleton className="h-6 w-1/4" /></CardHeader><CardContent className="space-y-4">{Array.from({length: 4}).map((_,i) => <Skeleton key={i} className="h-8 w-full" />)}</CardContent></Card>
@@ -158,6 +165,41 @@ export default function VersionDetailPage() {
     fileExt: version.fileExt
   } as Documento;
 
+  const renderPreview = () => {
+    if (previewUrl) {
+      return (
+        <Card className="h-full">
+            <CardContent className="p-0 h-[75vh] min-h-[600px] w-full">
+                <iframe
+                    src={previewUrl}
+                    title={version.titulo}
+                    className="w-full h-full border-0"
+                />
+            </CardContent>
+        </Card>
+      );
+    }
+    
+    return (
+        <Card className="h-full">
+            <CardContent className="flex h-[75vh] min-h-[600px] flex-col items-center justify-center rounded-lg border-2 border-dashed bg-muted/50 p-8 text-center">
+                <FileText className="h-16 w-16 text-muted-foreground" />
+                <p className="mt-4 text-lg font-semibold">
+                  {version.fileName}
+                </p>
+                <p className="text-muted-foreground mt-2">
+                  La previsualización solo está disponible para archivos PDF.
+                </p>
+                <Button asChild className="mt-6">
+                    <a href={version.downloadUrl} download={version.fileName}>
+                        <Download className="mr-2 h-4 w-4" /> Descargar Archivo
+                    </a>
+                </Button>
+            </CardContent>
+        </Card>
+    );
+  };
+
   return (
     <>
       <div className="mx-auto max-w-7xl space-y-8">
@@ -183,7 +225,7 @@ export default function VersionDetailPage() {
                 </Link>
             </Button>
             <Button variant="outline" onClick={() => setDocumentToPreview(previewableDocument)}>
-              <Eye className="mr-2 h-4 w-4" /> Ver Archivo
+              <Eye className="mr-2 h-4 w-4" /> Ver en Modal
             </Button>
             <Button asChild>
               <a href={version.downloadUrl} download={version.fileName}>
@@ -196,21 +238,7 @@ export default function VersionDetailPage() {
         {/* Main Content */}
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <Card className="h-full">
-              <CardHeader><CardTitle>Archivo de la Versión {version.version}</CardTitle></CardHeader>
-              <CardContent className="flex h-full min-h-[600px] flex-col items-center justify-center rounded-lg border-2 border-dashed bg-muted/50 p-8 text-center">
-                <FileText className="h-16 w-16 text-muted-foreground" />
-                <p className="mt-4 text-lg font-semibold">
-                  {version.fileName}
-                </p>
-                <p className="text-muted-foreground">
-                  Para ver el contenido del archivo, haz clic en el botón "Ver Archivo".
-                </p>
-                <Button className="mt-6" onClick={() => setDocumentToPreview(previewableDocument)}>
-                  <Eye className="mr-2 h-4 w-4" /> Ver Archivo
-                </Button>
-              </CardContent>
-            </Card>
+            {renderPreview()}
           </div>
 
           {/* Right Column: Details */}
