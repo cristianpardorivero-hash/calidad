@@ -14,6 +14,7 @@ import { collection, query, where, onSnapshot, Timestamp } from "firebase/firest
 import { db } from "@/firebase/client";
 import { useSearchParams } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 
 export default function MisDocumentosPage() {
@@ -123,39 +124,45 @@ export default function MisDocumentosPage() {
     return [...catalogs.tiposDocumento].sort((a, b) => a.orden - b.orden);
   }, [catalogs]);
 
-  const documentsForDisplay = useMemo(() => {
-    if (selectedTab === 'todos') {
-        if (!catalogs) return filteredDocuments;
-        const sortedDocs = [...filteredDocuments].sort((a, b) => {
-            const ambitoA_orden = catalogs.ambitos.find(ambito => ambito.id === a.ambitoId)?.orden ?? Infinity;
-            const ambitoB_orden = catalogs.ambitos.find(ambito => ambito.id === b.ambitoId)?.orden ?? Infinity;
-            if (ambitoA_orden !== ambitoB_orden) {
-                return ambitoA_orden - ambitoB_orden;
-            }
+  const groupedDocuments = useMemo(() => {
+    if (!catalogs) return [];
 
-            const caracA_orden = catalogs.caracteristicas.find(c => c.id === a.caracteristicaId)?.orden ?? Infinity;
-            const caracB_orden = catalogs.caracteristicas.find(c => c.id === b.caracteristicaId)?.orden ?? Infinity;
-            if (caracA_orden !== caracB_orden) {
-                return caracA_orden - caracB_orden;
-            }
+    const docsToProcess = selectedTab === 'todos'
+        ? filteredDocuments
+        : filteredDocuments.filter(doc => doc.tipoDocumentoId === selectedTab);
+        
+    if (docsToProcess.length === 0) return [];
+    
+    // Group documents by ambito and then by caracteristica
+    const groupedByAmbito = docsToProcess.reduce((acc, doc) => {
+        const ambito = catalogs.ambitos.find(a => a.id === doc.ambitoId) || { id: 'sin-ambito', nombre: 'Sin Ámbito', orden: Infinity };
+        if (!acc[ambito.id]) {
+            acc[ambito.id] = { ...ambito, caracteristicas: {}, docCount: 0 };
+        }
 
-            const elemA_orden = catalogs.elementosMedibles.find(e => e.id === a.elementoMedibleId)?.orden ?? Infinity;
-            const elemB_orden = catalogs.elementosMedibles.find(e => e.id === b.elementoMedibleId)?.orden ?? Infinity;
-            if (elemA_orden !== elemB_orden) {
-                return elemA_orden - elemB_orden;
-            }
+        const caracteristica = catalogs.caracteristicas.find(c => c.id === doc.caracteristicaId) || { id: 'sin-caracteristica', nombre: 'Sin Característica', orden: Infinity, codigo: 'S/C' };
+        if (!acc[ambito.id].caracteristicas[caracteristica.id]) {
+            acc[ambito.id].caracteristicas[caracteristica.id] = { ...caracteristica, documentos: [] };
+        }
+        
+        acc[ambito.id].caracteristicas[caracteristica.id].documentos.push(doc);
+        acc[ambito.id].docCount++;
+        return acc;
+    }, {} as any);
 
-            const tipoA_orden = catalogs.tiposDocumento.find(t => t.id === a.tipoDocumentoId)?.orden ?? Infinity;
-            const tipoB_orden = catalogs.tiposDocumento.find(t => t.id === b.tipoDocumentoId)?.orden ?? Infinity;
-            if (tipoA_orden !== tipoB_orden) {
-                return tipoA_orden - tipoB_orden;
-            }
-            
-            return (b.fechaDocumento?.getTime() || 0) - (a.fechaDocumento?.getTime() || 0);
-        });
-        return sortedDocs;
-    }
-    return filteredDocuments.filter(doc => doc.tipoDocumentoId === selectedTab);
+    // Convert the grouped object into sorted arrays
+    const result = Object.values(groupedByAmbito).map((ambito: any) => {
+        const caracteristicasArray = Object.values(ambito.caracteristicas)
+            .map((caracteristica: any) => {
+                caracteristica.documentos.sort((a: Documento, b: Documento) => (b.fechaDocumento?.getTime() || 0) - (a.fechaDocumento?.getTime() || 0));
+                return caracteristica;
+            })
+            .sort((a: any, b: any) => (a.orden || Infinity) - (b.orden || Infinity));
+        
+        return { ...ambito, caracteristicas: caracteristicasArray };
+    }).sort((a: any, b: any) => (a.orden || Infinity) - (b.orden || Infinity));
+
+    return result;
   }, [filteredDocuments, selectedTab, catalogs]);
 
   const pageHeader = (
@@ -206,12 +213,49 @@ export default function MisDocumentosPage() {
         </TabsList>
       </Tabs>
 
-      {documentsForDisplay.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {documentsForDisplay.map(doc => (
-                <MyDocumentCard key={doc.id} document={doc} catalogs={catalogs} />
-            ))}
-        </div>
+      {groupedDocuments && groupedDocuments.length > 0 ? (
+        <Accordion
+          type="multiple"
+          defaultValue={groupedDocuments.map(g => g.id)}
+          className="w-full space-y-4"
+        >
+          {groupedDocuments.map((ambitoGroup) => (
+            <AccordionItem value={ambitoGroup.id} key={ambitoGroup.id} className="border rounded-lg bg-card shadow-sm">
+              <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
+                <div className="flex items-center gap-4">
+                  <span>{ambitoGroup.nombre}</span>
+                  <span className="text-sm font-normal text-muted-foreground bg-muted px-2 py-1 rounded-md">{ambitoGroup.docCount} documentos</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="p-4 pt-0">
+                  <Accordion
+                      type="multiple"
+                      defaultValue={ambitoGroup.caracteristicas.map((c: any) => c.id)}
+                      className="w-full space-y-3"
+                  >
+                      {ambitoGroup.caracteristicas.map((caracteristicaGroup: any) => (
+                          <AccordionItem value={caracteristicaGroup.id} key={caracteristicaGroup.id} className="border rounded-md bg-background">
+                              <AccordionTrigger className="px-4 py-3 text-md font-medium hover:no-underline">
+                                <div className="flex items-center gap-3 text-left">
+                                  <span className="font-mono text-xs bg-muted text-muted-foreground rounded px-1.5 py-0.5">{caracteristicaGroup.codigo}</span>
+                                  <span>{caracteristicaGroup.nombre}</span>
+                                  <span className="text-sm font-normal text-muted-foreground">({caracteristicaGroup.documentos.length})</span>
+                                </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="px-4 pb-4">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 pt-4 border-t">
+                                      {caracteristicaGroup.documentos.map((doc: Documento) => (
+                                          <MyDocumentCard key={doc.id} document={doc} catalogs={catalogs} />
+                                      ))}
+                                  </div>
+                              </AccordionContent>
+                          </AccordionItem>
+                      ))}
+                  </Accordion>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       ) : (
         <div className="text-center py-24 bg-muted/50 rounded-lg">
             <p className="text-lg font-semibold">No se encontraron documentos</p>
