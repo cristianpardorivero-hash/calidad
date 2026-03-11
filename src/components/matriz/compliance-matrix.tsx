@@ -116,10 +116,12 @@ export function ComplianceMatrix({ documents, catalogs }: { documents: Documento
           <table className="w-full border-collapse min-w-[1200px]">
             <thead>
               <tr className="border-b">
-                <th className="sticky left-0 top-0 p-2 text-left font-semibold bg-card z-30 w-[450px]">Elemento Medible</th>
+                <th className="sticky left-0 top-0 p-2 text-left font-semibold bg-card z-30 w-[400px]">Elemento Medible</th>
                 {sortedServicios.map(servicio => (
-                  <th key={servicio.id} className="sticky top-0 p-2 text-center font-semibold text-sm w-36 whitespace-nowrap bg-card z-20">
-                    {servicio.nombre}
+                  <th key={servicio.id} className="sticky top-0 px-1 py-2 bg-card z-20">
+                    <div className="w-24 mx-auto rounded-md bg-muted p-2 text-center font-semibold text-muted-foreground text-xs whitespace-normal break-words">
+                      {servicio.nombre}
+                    </div>
                   </th>
                 ))}
               </tr>
@@ -169,7 +171,7 @@ export function ComplianceMatrix({ documents, catalogs }: { documents: Documento
                                             <TooltipTrigger asChild>
                                                 <Link href={`/documentos?${createQueryString(elem.id, servicio.id)}`} className="block">
                                                     <div className={cn(
-                                                        "w-full h-16 rounded-md border-2 border-transparent flex items-center justify-center text-xl font-bold transition-all",
+                                                        "w-full h-12 rounded-md border-2 border-transparent flex items-center justify-center text-base font-bold transition-all",
                                                         config.className
                                                     )}>
                                                         {cellData && cellData.count > 0 ? cellData.count : ''}
@@ -182,7 +184,7 @@ export function ComplianceMatrix({ documents, catalogs }: { documents: Documento
                                             </TooltipContent>
                                         </Tooltip>
                                     ) : (
-                                        <div className="w-full h-16 rounded-md bg-muted/20"></div>
+                                        <div className="w-full h-12 rounded-md bg-muted/20"></div>
                                     )}
                                 </td>
                                 );
