@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import type { Documento, Catalogs, Caracteristica, TipoDocumento } from '@/lib/types';
+import type { Documento, Catalogs, ElementoMedible } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -11,8 +11,8 @@ import { Badge } from '../ui/badge';
 type CellStatus = 'vigente' | 'proximo_vencer' | 'vencido' | 'inexistente';
 
 interface MatrixData {
-  [caracteristicaId: string]: {
-    [tipoDocId: string]: {
+  [elementoMedibleId: string]: {
+    [servicioId: string]: {
       status: CellStatus;
       count: number;
     };
@@ -43,6 +43,7 @@ const getStatus = (docs: Documento[]): { status: CellStatus; count: number } => 
     return { status: 'vencido', count: docs.length };
   }
 
+  // If there are docs but none are 'vigente' (e.g. all are 'historico')
   return { status: 'inexistente', count: docs.length };
 };
 
@@ -53,51 +54,50 @@ const statusConfig: { [key in CellStatus]: { label: string; className: string } 
   inexistente: { label: 'Inexistente', className: 'bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-700/60 border-slate-400' },
 };
 
-
 export function ComplianceMatrix({ documents, catalogs }: { documents: Documento[]; catalogs: Catalogs }) {
-  const sortedTiposDocumento = useMemo(() => {
-    return [...catalogs.tiposDocumento].sort((a, b) => a.orden - b.orden);
-  }, [catalogs.tiposDocumento]);
+  const sortedServicios = useMemo(() => {
+    return [...catalogs.servicios].sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [catalogs.servicios]);
 
-  const groupedCaracteristicas = useMemo(() => {
-    const grouped = catalogs.caracteristicas.reduce((acc, car) => {
-      const ambito = catalogs.ambitos.find(a => a.id === car.ambitoId);
-      if (ambito) {
-        if (!acc[ambito.id]) {
-          acc[ambito.id] = { ...ambito, caracteristicas: [] };
-        }
-        acc[ambito.id].caracteristicas.push(car);
-      }
-      return acc;
-    }, {} as Record<string, { id: string; nombre: string; orden: number; caracteristicas: Caracteristica[] }>);
-    
-    return Object.values(grouped).sort((a, b) => a.orden - b.orden).map(ambito => {
-        ambito.caracteristicas.sort((a,b) => a.orden - b.orden);
-        return ambito;
-    });
+  const groupedStructure = useMemo(() => {
+    const ambitos = [...catalogs.ambitos].sort((a, b) => a.orden - b.orden);
+    return ambitos.map(ambito => {
+      const caracteristicas = [...catalogs.caracteristicas]
+        .filter(c => c.ambitoId === ambito.id)
+        .sort((a, b) => a.orden - b.orden);
+      
+      const caracteristicasConElementos = caracteristicas.map(caracteristica => {
+        const elementos = [...catalogs.elementosMedibles]
+          .filter(e => e.caracteristicaId === caracteristica.id)
+          .sort((a, b) => a.orden - b.orden);
+        return { ...caracteristica, elementos };
+      }).filter(c => c.elementos.length > 0); // Only show characteristics that have measurable elements
 
-  }, [catalogs.ambitos, catalogs.caracteristicas]);
+      return { ...ambito, caracteristicas: caracteristicasConElementos };
+    }).filter(a => a.caracteristicas.length > 0); // Only show ambitos that have characteristics
+
+  }, [catalogs.ambitos, catalogs.caracteristicas, catalogs.elementosMedibles]);
 
   const matrixData = useMemo<MatrixData>(() => {
     const data: MatrixData = {};
-    catalogs.caracteristicas.forEach(car => {
-      data[car.id] = {};
-      sortedTiposDocumento.forEach(tipoDoc => {
+    catalogs.elementosMedibles.forEach(elem => {
+      data[elem.id] = {};
+      sortedServicios.forEach(serv => {
         const relevantDocs = documents.filter(
-          doc => doc.caracteristicaId === car.id && doc.tipoDocumentoId === tipoDoc.id && !doc.isDeleted
+          doc => doc.elementoMedibleId === elem.id && doc.servicioIds?.includes(serv.id) && !doc.isDeleted
         );
-        data[car.id][tipoDoc.id] = getStatus(relevantDocs);
+        data[elem.id][serv.id] = getStatus(relevantDocs);
       });
     });
     return data;
-  }, [documents, catalogs.caracteristicas, sortedTiposDocumento]);
+  }, [documents, catalogs.elementosMedibles, sortedServicios]);
   
-  if (groupedCaracteristicas.length === 0) {
+  if (groupedStructure.length === 0) {
     return (
         <Card>
             <CardHeader>
                 <CardTitle>Sin Datos</CardTitle>
-                <CardDescription>No hay características definidas en los catálogos para mostrar la matriz.</CardDescription>
+                <CardDescription>No hay características o elementos medibles definidos en los catálogos para mostrar la matriz.</CardDescription>
             </CardHeader>
         </Card>
     );
@@ -110,64 +110,82 @@ export function ComplianceMatrix({ documents, catalogs }: { documents: Documento
           <table className="w-full border-collapse min-w-[1200px]">
             <thead>
               <tr className="border-b">
-                <th className="sticky left-0 p-2 text-left font-semibold bg-card z-10 w-[400px]">Característica</th>
-                {sortedTiposDocumento.map(tipo => (
-                  <th key={tipo.id} className="p-2 text-center font-semibold text-sm w-36">
-                    {tipo.nombre}
+                <th className="sticky left-0 p-2 text-left font-semibold bg-card z-20 w-[450px]">Elemento Medible</th>
+                {sortedServicios.map(servicio => (
+                  <th key={servicio.id} className="p-2 text-center font-semibold text-sm w-36 whitespace-nowrap">
+                    {servicio.nombre}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {groupedCaracteristicas.map((ambito) => (
+              {groupedStructure.map((ambito) => (
                 <>
-                  <tr key={ambito.id} className="bg-muted/50">
-                    <td colSpan={sortedTiposDocumento.length + 1} className="p-2 font-bold text-primary sticky left-0 bg-muted/50 z-10">
+                  <tr key={ambito.id} className="bg-muted/30">
+                    <td colSpan={sortedServicios.length + 1} className="sticky left-0 p-2 font-bold text-primary bg-muted/30 z-20">
                       {ambito.nombre}
                     </td>
                   </tr>
-                  {ambito.caracteristicas.map(car => {
-                    const createQueryString = (caracteristicaId: string, tipoDocumentoId: string) => {
-                        const params = new URLSearchParams();
-                        params.set('caracteristicaId', caracteristicaId);
-                        params.set('tipoDocumentoId', tipoDocumentoId);
-                        return params.toString();
-                    }
-                    return (
-                        <tr key={car.id} className="border-b last:border-b-0">
-                        <td className="sticky left-0 p-2 text-sm bg-card z-10">
-                            <div className='flex items-start gap-2'>
-                                <Badge variant="secondary" className="font-mono mt-1">{car.codigo}</Badge>
-                                <span>{car.nombre}</span>
-                            </div>
+                  {ambito.caracteristicas.map(car => (
+                    <>
+                      <tr key={car.id} className="bg-muted/10">
+                        <td colSpan={sortedServicios.length + 1} className="sticky left-0 py-2 pl-6 pr-2 font-semibold text-foreground bg-muted/10 z-20">
+                          <div className='flex items-start gap-2'>
+                              <Badge variant="secondary" className="font-mono mt-1">{car.codigo}</Badge>
+                              <span>{car.nombre}</span>
+                          </div>
                         </td>
-                        {sortedTiposDocumento.map(tipo => {
-                            const cellData = matrixData[car.id]?.[tipo.id];
-                            const config = cellData ? statusConfig[cellData.status] : statusConfig.inexistente;
-                            return (
-                            <td key={tipo.id} className="p-1 align-middle">
-                                <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Link href={`/documentos?${createQueryString(car.id, tipo.id)}`} className="block">
-                                        <div className={cn(
-                                            "w-full h-16 rounded-md border-2 border-transparent flex items-center justify-center text-sm font-medium transition-all",
-                                            config.className
-                                        )}>
-                                            {cellData && cellData.count > 0 ? cellData.count : ''}
-                                        </div>
-                                    </Link>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p className="font-semibold">{config.label}</p>
-                                    <p>{cellData?.count || 0} documento(s)</p>
-                                </TooltipContent>
-                                </Tooltip>
+                      </tr>
+                      {car.elementos.map(elem => {
+                        const createQueryString = (elementoMedibleId: string, servicioId: string) => {
+                            const params = new URLSearchParams();
+                            params.set('elementoMedibleId', elementoMedibleId);
+                            params.set('servicioId', servicioId);
+                            return params.toString();
+                        }
+                        return (
+                          <tr key={elem.id} className="border-b last:border-b-0">
+                            <td className="sticky left-0 p-2 text-sm bg-card z-10">
+                                <div className='flex items-start gap-2 pl-12'>
+                                    <Badge variant="outline" className="font-mono mt-1">{elem.codigo}</Badge>
+                                    <span>{elem.nombre}</span>
+                                </div>
                             </td>
-                            );
-                        })}
-                        </tr>
-                    )
-                  })}
+                            {sortedServicios.map(servicio => {
+                                const cellData = matrixData[elem.id]?.[servicio.id];
+                                const config = cellData ? statusConfig[cellData.status] : statusConfig.inexistente;
+                                const isApplicable = elem.servicioIds?.includes(servicio.id);
+                                
+                                return (
+                                <td key={servicio.id} className="p-1 align-middle">
+                                    {isApplicable ? (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Link href={`/documentos?${createQueryString(elem.id, servicio.id)}`} className="block">
+                                                    <div className={cn(
+                                                        "w-full h-16 rounded-md border-2 border-transparent flex items-center justify-center text-sm font-medium transition-all",
+                                                        config.className
+                                                    )}>
+                                                        {cellData && cellData.count > 0 ? cellData.count : ''}
+                                                    </div>
+                                                </Link>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p className="font-semibold">{config.label}</p>
+                                                <p>{cellData?.count || 0} documento(s)</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    ) : (
+                                        <div className="w-full h-16 rounded-md bg-muted/20"></div>
+                                    )}
+                                </td>
+                                );
+                            })}
+                          </tr>
+                        )
+                      })}
+                    </>
+                  ))}
                 </>
               ))}
             </tbody>
