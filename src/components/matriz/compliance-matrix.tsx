@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, Fragment } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import type { Documento, Catalogs } from '@/lib/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Card } from '../ui/card';
 
 type CellStatus = 'vigente' | 'proximo_vencer' | 'vencido' | 'inexistente';
 
@@ -71,10 +72,10 @@ export function ComplianceMatrix({ documents, catalogs }: { documents: Documento
           .filter(e => e.caracteristicaId === caracteristica.id)
           .sort((a, b) => a.orden - b.orden);
         return { ...caracteristica, elementos };
-      }).filter(c => c.elementos.length > 0); // Only show characteristics that have measurable elements
+      }).filter(c => c.elementos.length > 0); 
 
       return { ...ambito, caracteristicas: caracteristicasConElementos };
-    }).filter(a => a.caracteristicas.length > 0); // Only show ambitos that have characteristics
+    }).filter(a => a.caracteristicas.length > 0);
 
   }, [catalogs.ambitos, catalogs.caracteristicas, catalogs.elementosMedibles]);
 
@@ -95,109 +96,89 @@ export function ComplianceMatrix({ documents, catalogs }: { documents: Documento
   if (groupedStructure.length === 0) {
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>Sin Datos</CardTitle>
-                <CardDescription>No hay características o elementos medibles definidos en los catálogos para mostrar la matriz.</CardDescription>
-            </CardHeader>
+            <div className="p-6">
+                <h3 className="text-lg font-semibold">Sin Datos</h3>
+                <p className="text-sm text-muted-foreground">No hay características o elementos medibles definidos en los catálogos para mostrar la matriz.</p>
+            </div>
         </Card>
     );
   }
 
+  const createQueryString = (elementoMedibleId: string, servicioId: string) => {
+    const params = new URLSearchParams();
+    params.set('elementoMedibleId', elementoMedibleId);
+    params.set('servicioId', servicioId);
+    return params.toString();
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Matriz de Cumplimiento Detallada</CardTitle>
-        <CardDescription>
-            Vista de Elementos Medibles por Servicio. Pase el cursor sobre una celda para ver el estado y haga clic para ver los documentos.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-4 overflow-x-auto">
-        <TooltipProvider>
-          <table className="w-full border-collapse min-w-[1200px]">
-            <thead>
-              <tr className="border-b-2">
-                <th className="sticky left-0 top-0 p-3 text-left font-semibold bg-slate-100 dark:bg-slate-800 z-30 w-[400px]">Elemento Medible</th>
-                {sortedServicios.map(servicio => (
-                  <th key={servicio.id} className="sticky top-0 p-3 text-center font-semibold bg-slate-100 dark:bg-slate-800 z-20 w-28 text-muted-foreground">
-                    {servicio.nombre}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {groupedStructure.map((ambito) => (
-                <Fragment key={ambito.id}>
-                  <tr className="bg-primary/10">
-                    <td colSpan={sortedServicios.length + 1} className="sticky left-0 p-2 font-bold text-primary bg-primary/10 z-20">
-                      {ambito.nombre}
-                    </td>
-                  </tr>
-                  {ambito.caracteristicas.map(car => (
-                    <Fragment key={car.id}>
-                      <tr className="bg-muted/50">
-                        <td colSpan={sortedServicios.length + 1} className="sticky left-0 py-2 pl-6 pr-2 font-semibold text-foreground bg-muted/50 z-20">
-                          <div className='flex items-start gap-2'>
-                              <Badge variant="secondary" className="font-mono mt-1">{car.codigo}</Badge>
-                              <span>{car.nombre}</span>
-                          </div>
-                        </td>
-                      </tr>
-                      {car.elementos.map(elem => {
-                        const createQueryString = (elementoMedibleId: string, servicioId: string) => {
-                            const params = new URLSearchParams();
-                            params.set('elementoMedibleId', elementoMedibleId);
-                            params.set('servicioId', servicioId);
-                            return params.toString();
-                        }
-                        return (
-                          <tr key={elem.id} className="border-b last:border-b-0 group hover:bg-muted/20">
-                            <td className="sticky left-0 p-2 text-sm bg-card group-hover:bg-muted/20 z-10">
-                                <div className='flex items-start gap-2 pl-12'>
-                                    <Badge variant="outline" className="font-mono mt-1">{elem.codigo}</Badge>
-                                    <span>{elem.nombre}</span>
-                                </div>
-                            </td>
-                            {sortedServicios.map(servicio => {
+    <TooltipProvider>
+      <Accordion type="multiple" collapsible className="w-full space-y-4">
+        {groupedStructure.map((ambito) => (
+          <AccordionItem value={ambito.id} key={ambito.id} className="border rounded-lg bg-card shadow-sm">
+            <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
+              {ambito.nombre}
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4 pt-0">
+              <Accordion type="multiple" collapsible className="w-full space-y-3">
+                {ambito.caracteristicas.map((caracteristica) => (
+                  <AccordionItem value={caracteristica.id} key={caracteristica.id} className="border rounded-md bg-background">
+                    <AccordionTrigger className="px-4 py-3 text-md font-medium text-left hover:no-underline">
+                      <div className='flex items-start gap-2'>
+                        <Badge variant="secondary" className="font-mono mt-1">{caracteristica.codigo}</Badge>
+                        <span>{caracteristica.nombre}</span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      <div className="space-y-4 pt-4 border-t">
+                        {caracteristica.elementos.map((elem) => (
+                          <div key={elem.id} className="p-4 rounded-lg border bg-muted/30">
+                            <h4 className="font-semibold text-sm flex items-center gap-2 mb-3">
+                              <Badge variant="outline" className="font-mono">{elem.codigo}</Badge>
+                              {elem.nombre}
+                            </h4>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+                              {sortedServicios.map((servicio) => {
+                                const isApplicable = elem.servicioIds?.includes(servicio.id);
+                                if (!isApplicable) return null;
+
                                 const cellData = matrixData[elem.id]?.[servicio.id];
                                 const config = cellData ? statusConfig[cellData.status] : statusConfig.inexistente;
-                                const isApplicable = elem.servicioIds?.includes(servicio.id);
-                                
+
                                 return (
-                                <td key={servicio.id} className="p-1 align-middle">
-                                    {isApplicable ? (
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Link href={`/documentos?${createQueryString(elem.id, servicio.id)}`} className="block">
-                                                    <div className={cn(
-                                                        "w-full h-12 rounded-md border-2 border-transparent flex items-center justify-center text-base font-bold transition-all",
-                                                        config.className
-                                                    )}>
-                                                        {cellData && cellData.count > 0 ? cellData.count : ''}
-                                                    </div>
-                                                </Link>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p className="font-semibold">{config.label}</p>
-                                                <p>{cellData?.count || 0} documento(s)</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    ) : (
-                                        <div className="w-full h-12 rounded-md bg-muted/20"></div>
-                                    )}
-                                </td>
+                                  <Tooltip key={servicio.id}>
+                                    <TooltipTrigger asChild>
+                                      <Link href={`/documentos?${createQueryString(elem.id, servicio.id)}`} className="block">
+                                        <div className={cn(
+                                          "p-2 rounded-md border-2 border-transparent flex flex-col items-center justify-center text-center h-full transition-all",
+                                          config.className
+                                        )}>
+                                          <span className="text-xs font-medium text-foreground/80 mb-1 truncate w-full" title={servicio.nombre}>{servicio.nombre}</span>
+                                          <span className="text-xl font-bold">
+                                            {cellData && cellData.count > 0 ? cellData.count : "—"}
+                                          </span>
+                                        </div>
+                                      </Link>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="font-semibold">{config.label}</p>
+                                      <p>{cellData?.count || 0} documento(s)</p>
+                                    </TooltipContent>
+                                  </Tooltip>
                                 );
-                            })}
-                          </tr>
-                        )
-                      })}
-                    </Fragment>
-                  ))}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-        </TooltipProvider>
-      </CardContent>
-    </Card>
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    </TooltipProvider>
   );
 }
