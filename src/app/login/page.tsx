@@ -1,3 +1,4 @@
+
 'use client';
 
 import { LoginForm } from "@/components/auth/login-form";
@@ -12,11 +13,7 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (!authLoading && user) {
-            if (user.role === 'lector') {
-                router.push('/mis-documentos');
-            } else {
-                router.push('/dashboard');
-            }
+            router.push('/mis-documentos');
         }
     }, [user, authLoading, router]);
 

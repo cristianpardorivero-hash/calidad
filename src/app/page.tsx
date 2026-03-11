@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect } from 'react';
@@ -12,11 +13,7 @@ export default function Home() {
   useEffect(() => {
     if (!loading) {
       if (user) {
-        if (user.role === 'lector') {
-          router.push('/mis-documentos');
-        } else {
-          router.push('/dashboard');
-        }
+        router.push('/mis-documentos');
       } else {
         router.push('/login');
       }
