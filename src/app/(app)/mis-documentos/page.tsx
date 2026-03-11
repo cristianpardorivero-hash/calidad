@@ -216,7 +216,7 @@ export default function MisDocumentosPage() {
       {groupedDocuments && groupedDocuments.length > 0 ? (
         <Accordion
           type="multiple"
-          defaultValue={groupedDocuments.map(g => g.id)}
+          collapsible
           className="w-full space-y-4"
         >
           {groupedDocuments.map((ambitoGroup) => (
