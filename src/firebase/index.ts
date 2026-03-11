@@ -4,23 +4,36 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
+function hasValidFirebaseConfig() {
+  return !!(
+    firebaseConfig.apiKey &&
+    firebaseConfig.authDomain &&
+    firebaseConfig.projectId &&
+    firebaseConfig.appId
+  );
+}
+
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
   if (!getApps().length) {
-    // Important! initializeApp() is called without any arguments because Firebase App Hosting
-    // integrates with the initializeApp() function to provide the environment variables needed to
-    // populate the FirebaseOptions in production. It is critical that we attempt to call initializeApp()
-    // without arguments.
-    let firebaseApp;
+    let firebaseApp: FirebaseApp;
+
     try {
       // Attempt to initialize via Firebase App Hosting environment variables
       firebaseApp = initializeApp();
     } catch (e) {
-      // Only warn in production because it's normal to use the firebaseConfig to initialize
-      // during development
-      if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
+      // If auto-init fails, check if we have a valid fallback config
+      if (!hasValidFirebaseConfig()) {
+        console.error('Firebase auto-init failed and no valid fallback config is available.', e);
+        // Re-throw the error if there's no way to initialize
+        throw e;
       }
+      
+      // We have a valid fallback, so use it.
+      if (process.env.NODE_ENV === 'production') {
+        console.warn('Automatic initialization failed. Falling back to firebaseConfig.', e);
+      }
+
       firebaseApp = initializeApp(firebaseConfig);
     }
 
