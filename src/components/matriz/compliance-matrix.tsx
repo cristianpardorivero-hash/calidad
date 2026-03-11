@@ -1,8 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
 import Link from 'next/link';
-import type { Documento, Catalogs } from '@/lib/types';
+import type { Documento, Catalogs, Servicio } from '@/lib/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
@@ -20,34 +19,6 @@ interface MatrixData {
   };
 }
 
-const getStatus = (docs: Documento[]): { status: CellStatus; count: number } => {
-  if (docs.length === 0) {
-    return { status: 'inexistente', count: 0 };
-  }
-
-  const now = new Date();
-  const ninetyDaysFromNow = new Date();
-  ninetyDaysFromNow.setDate(now.getDate() + 90);
-
-  const vigentes = docs.filter(d => d.estadoDocId === 'est-vig' && (!d.fechaVigenciaHasta || d.fechaVigenciaHasta >= now));
-  if (vigentes.length > 0) {
-    return { status: 'vigente', count: docs.length };
-  }
-
-  const proximosAVencer = docs.filter(d => d.estadoDocId === 'est-vig' && d.fechaVigenciaHasta && d.fechaVigenciaHasta >= now && d.fechaVigenciaHasta <= ninetyDaysFromNow);
-  if (proximosAVencer.length > 0) {
-    return { status: 'proximo_vencer', count: docs.length };
-  }
-  
-  const vencidos = docs.filter(d => d.estadoDocId === 'est-vig' && d.fechaVigenciaHasta && d.fechaVigenciaHasta < now);
-  if (vencidos.length > 0) {
-    return { status: 'vencido', count: docs.length };
-  }
-
-  // If there are docs but none are 'vigente' (e.g. all are 'historico')
-  return { status: 'inexistente', count: docs.length };
-};
-
 const statusConfig: { [key in CellStatus]: { label: string; className: string } } = {
   vigente: { label: 'Vigente', className: 'bg-green-100 dark:bg-green-900/50 hover:bg-green-200 dark:hover:bg-green-800/60 border-green-500' },
   proximo_vencer: { label: 'Próximo a Vencer', className: 'bg-yellow-100 dark:bg-yellow-900/50 hover:bg-yellow-200 dark:hover:bg-yellow-800/60 border-yellow-500' },
@@ -55,43 +26,19 @@ const statusConfig: { [key in CellStatus]: { label: string; className: string } 
   inexistente: { label: 'Inexistente', className: 'bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-700/60 border-slate-400' },
 };
 
-export function ComplianceMatrix({ documents, catalogs }: { documents: Documento[]; catalogs: Catalogs }) {
-  const sortedServicios = useMemo(() => {
-    return [...catalogs.servicios].sort((a, b) => a.nombre.localeCompare(b.nombre));
-  }, [catalogs.servicios]);
+interface ComplianceMatrixProps {
+  catalogs: Catalogs;
+  groupedStructure: any[];
+  matrixData: MatrixData;
+  sortedServicios: Servicio[];
+}
 
-  const groupedStructure = useMemo(() => {
-    const ambitos = [...catalogs.ambitos].sort((a, b) => a.orden - b.orden);
-    return ambitos.map(ambito => {
-      const caracteristicas = [...catalogs.caracteristicas]
-        .filter(c => c.ambitoId === ambito.id)
-        .sort((a, b) => a.orden - b.orden);
-      
-      const caracteristicasConElementos = caracteristicas.map(caracteristica => {
-        const elementos = [...catalogs.elementosMedibles]
-          .filter(e => e.caracteristicaId === caracteristica.id)
-          .sort((a, b) => a.orden - b.orden);
-        return { ...caracteristica, elementos };
-      }).filter(c => c.elementos.length > 0); 
-
-      return { ...ambito, caracteristicas: caracteristicasConElementos };
-    }).filter(a => a.caracteristicas.length > 0);
-
-  }, [catalogs.ambitos, catalogs.caracteristicas, catalogs.elementosMedibles]);
-
-  const matrixData = useMemo<MatrixData>(() => {
-    const data: MatrixData = {};
-    catalogs.elementosMedibles.forEach(elem => {
-      data[elem.id] = {};
-      sortedServicios.forEach(serv => {
-        const relevantDocs = documents.filter(
-          doc => doc.elementoMedibleId === elem.id && doc.servicioIds?.includes(serv.id) && !doc.isDeleted
-        );
-        data[elem.id][serv.id] = getStatus(relevantDocs);
-      });
-    });
-    return data;
-  }, [documents, catalogs.elementosMedibles, sortedServicios]);
+export function ComplianceMatrix({ 
+  catalogs,
+  groupedStructure,
+  matrixData,
+  sortedServicios
+}: ComplianceMatrixProps) {
   
   if (groupedStructure.length === 0) {
     return (
@@ -121,7 +68,7 @@ export function ComplianceMatrix({ documents, catalogs }: { documents: Documento
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 pt-0">
               <Accordion type="multiple" collapsible className="w-full space-y-3">
-                {ambito.caracteristicas.map((caracteristica) => (
+                {ambito.caracteristicas.map((caracteristica: any) => (
                   <AccordionItem value={caracteristica.id} key={caracteristica.id} className="border rounded-md bg-background">
                     <AccordionTrigger className="px-4 py-3 text-md font-medium text-left hover:no-underline">
                       <div className='flex items-start gap-2'>
@@ -131,7 +78,7 @@ export function ComplianceMatrix({ documents, catalogs }: { documents: Documento
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">
                       <div className="space-y-4 pt-4 border-t">
-                        {caracteristica.elementos.map((elem) => (
+                        {caracteristica.elementos.map((elem: any) => (
                           <div key={elem.id} className="p-4 rounded-lg border bg-muted/30">
                             <h4 className="font-semibold text-sm flex items-center gap-2 mb-3">
                               <Badge variant="outline" className="font-mono">{elem.codigo}</Badge>
