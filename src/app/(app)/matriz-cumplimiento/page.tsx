@@ -135,71 +135,123 @@ export default function MatrizCumplimientoPage() {
   const handleGeneratePdf = async () => {
     if (!catalogs || !user || !groupedStructure) return;
     setGeneratingPdf(true);
-
+  
     const { default: jsPDF } = await import('jspdf');
     await import('jspdf-autotable');
-    
+  
     type jsPDFWithAutoTable = jsPDF & { autoTable: (options: any) => jsPDFWithAutoTable, previousAutoTable: { finalY: number } };
     const doc = new jsPDF('l', 'mm', 'a4') as jsPDFWithAutoTable;
-
+  
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     let yPos = 20;
-
+  
     // Header
     doc.setFontSize(16).text('Matriz de Cumplimiento', pageWidth / 2, yPos, { align: 'center' });
     yPos += 8;
     doc.setFontSize(11).text(`Hospital: ${user.hospitalId}`, pageWidth / 2, yPos, { align: 'center' });
     yPos += 6;
     doc.setFontSize(9).setTextColor(100).text(`Generado el: ${new Date().toLocaleString('es-CL')}`, pageWidth / 2, yPos, { align: 'center' });
-    yPos = 50;
+    
+    // Legend
+    yPos += 20;
+    doc.setFontSize(11).setTextColor(0);
+    doc.text('Leyenda de Colores:', 14, yPos);
+    yPos += 7;
 
-    for (const ambito of groupedStructure) {
-        if (yPos > pageHeight - 40) { doc.addPage(); yPos = 20; }
-        doc.setFontSize(14);
+    type CellStatusWithNA = CellStatus | 'noAplica';
+    const legendColors: Record<CellStatusWithNA, { label: string, color: [number, number, number] }> = {
+        vigente: { label: 'Vigente', color: [220, 252, 231] },
+        proximo_vencer: { label: 'Próximo a Vencer', color: [254, 249, 195] },
+        vencido: { label: 'Vencido', color: [254, 226, 226] },
+        inexistente: { label: 'Inexistente', color: [241, 245, 249] },
+        noAplica: { label: 'No Aplica', color: [249, 250, 251] }
+    };
+    
+    Object.values(legendColors).forEach(item => {
+        doc.setFillColor(item.color[0], item.color[1], item.color[2]);
+        doc.rect(20, yPos - 4, 5, 5, 'F');
         doc.setTextColor(0);
-        doc.text(`Ámbito: ${ambito.nombre}`, 14, yPos);
-        yPos += 10;
+        doc.text(item.label, 30, yPos);
+        yPos += 7;
+    });
 
-        for (const caracteristica of ambito.caracteristicas) {
-            if (yPos > pageHeight - 40) { doc.addPage(); yPos = 20; }
-            doc.setFontSize(12);
-            doc.setTextColor(40);
-            doc.text(`Característica: ${caracteristica.codigo} - ${caracteristica.nombre}`, 14, yPos);
-            yPos += 8;
-
-            const tableHead = [['Elemento Medible', ...sortedServicios.map(s => s.nombre)]];
-            const tableBody = caracteristica.elementos.map(elem => {
-                const row = [`${elem.codigo} ${elem.nombre}`];
-                sortedServicios.forEach(serv => {
-                    if (elem.servicioIds?.includes(serv.id)) {
-                        const cellData = matrixData[elem.id]?.[serv.id];
-                        row.push(cellData?.count > 0 ? String(cellData.count) : '0');
-                    } else {
-                        row.push('N/A');
-                    }
-                });
-                return row;
-            });
+    doc.addPage();
+    let currentY = 20;
+  
+    for (const ambito of groupedStructure) {
+      if (currentY > pageHeight - 30) { doc.addPage(); currentY = 20; }
+      doc.setFontSize(14);
+      doc.setTextColor(0);
+      doc.text(`Ámbito: ${ambito.nombre}`, 14, currentY);
+      currentY += 10;
+  
+      for (const caracteristica of ambito.caracteristicas) {
+        if (currentY > pageHeight - 30) { doc.addPage(); currentY = 20; }
+        doc.setFontSize(12);
+        doc.setTextColor(40);
+        doc.text(`Característica: ${caracteristica.codigo} - ${caracteristica.nombre}`, 14, currentY);
+        currentY += 8;
+  
+        const tableHead = [['Elemento Medible', ...sortedServicios.map(s => s.nombre)]];
+        const tableBody = caracteristica.elementos.map((elem: any) => {
+          const row = [`${elem.codigo} ${elem.nombre}`];
+          sortedServicios.forEach(serv => {
+            if (elem.servicioIds?.includes(serv.id)) {
+              const cellData = matrixData[elem.id]?.[serv.id];
+              row.push(cellData?.count > 0 ? String(cellData.count) : '0');
+            } else {
+              row.push('N/A');
+            }
+          });
+          return row;
+        });
+  
+        doc.autoTable({
+          head: tableHead,
+          body: tableBody,
+          startY: currentY,
+          theme: 'grid',
+          headStyles: { fillColor: [41, 107, 219], textColor: 255, fontSize: 8, halign: 'center' },
+          bodyStyles: { fontSize: 7, cellPadding: 1.5, halign: 'center', lineWidth: 0.1, lineColor: [226, 232, 240] },
+          columnStyles: { 0: { cellWidth: 60, halign: 'left', fontStyle: 'bold' } },
+          didDrawCell: (data) => {
+            if (data.section === 'body' && data.column.index > 0) {
+              const elem = caracteristica.elementos[data.row.index];
+              const serv = sortedServicios[data.column.index - 1];
+              let status: CellStatusWithNA = 'noAplica';
+  
+              if (elem && serv && elem.servicioIds?.includes(serv.id)) {
+                const cellData = matrixData[elem.id]?.[serv.id];
+                status = cellData?.status || 'inexistente';
+              }
+  
+              const color = legendColors[status].color;
+              doc.setFillColor(color[0], color[1], color[2]);
+              doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+  
+              const text = String(data.cell.raw ?? '');
+              const textPos = data.cell.getTextPos();
+              doc.setTextColor(30, 30, 30); // Dark grey for text
+              doc.text(text, textPos.x, textPos.y, {
+                halign: 'center',
+                valign: 'middle'
+              });
+            }
+          },
+          didDrawPage: (data: any) => {
+            doc.setFontSize(10).setTextColor(100);
+            doc.text(`Matriz de Cumplimiento - ${user.hospitalId}`, 14, 15);
             
-            doc.autoTable({
-                head: tableHead,
-                body: tableBody,
-                startY: yPos,
-                theme: 'striped',
-                headStyles: { fillColor: [34, 113, 239], fontSize: 8, halign: 'center' },
-                bodyStyles: { fontSize: 7, cellPadding: 1.5, halign: 'center' },
-                columnStyles: { 0: { cellWidth: 60, halign: 'left' } },
-                didDrawPage: (data: any) => {
-                    const pageCount = (doc.internal as any).getNumberOfPages();
-                    doc.setFontSize(8).setTextColor(150);
-                    doc.text(`Página ${data.pageNumber} de ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
-                }
-            });
-            yPos = doc.previousAutoTable.finalY + 10;
-        }
+            const pageCount = (doc.internal as any).getNumberOfPages();
+            doc.setFontSize(8).setTextColor(150);
+            doc.text(`Página ${data.pageNumber} de ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+          }
+        });
+        currentY = (doc as any).previousAutoTable.finalY + 10;
+      }
     }
-
+  
     doc.save(`matriz_cumplimiento_${new Date().toISOString().split('T')[0]}.pdf`);
     setGeneratingPdf(false);
   };
