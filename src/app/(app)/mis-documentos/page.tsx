@@ -134,7 +134,6 @@ export default function MisDocumentosPage() {
         
     if (docsToProcess.length === 0) return [];
     
-    // Group documents by ambito and then by caracteristica
     const groupedByAmbito = docsToProcess.reduce((acc, doc) => {
         const ambito = catalogs.ambitos.find(a => a.id === doc.ambitoId) || { id: 'sin-ambito', nombre: 'Sin Ámbito', orden: Infinity };
         if (!acc[ambito.id]) {
@@ -151,17 +150,25 @@ export default function MisDocumentosPage() {
         return acc;
     }, {} as any);
 
-    // Convert the grouped object into sorted arrays
+    const robustSort = (a: any, b: any) => {
+        const orderA = a.orden !== undefined ? Number(a.orden) : Infinity;
+        const orderB = b.orden !== undefined ? Number(b.orden) : Infinity;
+        if (isNaN(orderA) && isNaN(orderB)) return 0;
+        if (isNaN(orderA)) return 1;
+        if (isNaN(orderB)) return -1;
+        return orderA - orderB;
+    };
+
     const result = Object.values(groupedByAmbito).map((ambito: any) => {
         const caracteristicasArray = Object.values(ambito.caracteristicas)
             .map((caracteristica: any) => {
                 caracteristica.documentos.sort((a: Documento, b: Documento) => (b.fechaDocumento?.getTime() || 0) - (a.fechaDocumento?.getTime() || 0));
                 return caracteristica;
             })
-            .sort((a: any, b: any) => (a.orden || Infinity) - (b.orden || Infinity));
+            .sort(robustSort);
         
         return { ...ambito, caracteristicas: caracteristicasArray };
-    }).sort((a: any, b: any) => (a.orden || Infinity) - (b.orden || Infinity));
+    }).sort(robustSort);
 
     return result;
   }, [filteredDocuments, selectedTab, catalogs]);
