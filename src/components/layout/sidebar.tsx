@@ -23,6 +23,7 @@ import {
   FileClock,
   History,
   AreaChart,
+  LayoutGrid,
 } from "lucide-react";
 import Link from "next/link";
 import { useUser } from "@/hooks/use-user";
@@ -62,6 +63,12 @@ const menuItems = [
     href: "/reportes",
     icon: AreaChart,
     label: "Reportes",
+    roles: ["admin", "editor"],
+  },
+  {
+    href: "/matriz-cumplimiento",
+    icon: LayoutGrid,
+    label: "Matriz de Cumplimiento",
     roles: ["admin", "editor"],
   },
   {
