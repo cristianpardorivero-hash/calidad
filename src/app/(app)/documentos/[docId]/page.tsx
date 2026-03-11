@@ -8,6 +8,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
@@ -27,6 +33,7 @@ import {
   Eye,
   GitFork,
   History,
+  AlertTriangle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -37,6 +44,8 @@ import type { Catalogs, Documento, DocumentVersion } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 
 const DocumentPreviewModal = dynamic(
   () => import('@/components/documents/document-preview-modal').then(mod => mod.DocumentPreviewModal),
@@ -59,6 +68,7 @@ export default function DocumentoDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [documentToPreview, setDocumentToPreview] = useState<Documento | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -66,6 +76,7 @@ export default function DocumentoDetailPage() {
       const fetchData = async () => {
         setLoading(true);
         setError(null);
+        setPreviewUrl(null);
         try {
           const [docData, catalogsData, versionsData] = await Promise.all([
             getDocumentById(docId),
@@ -82,6 +93,11 @@ export default function DocumentoDetailPage() {
           setDocument(docData);
           setCatalogs(catalogsData);
           setVersions(versionsData);
+
+          if (docData.fileExt?.toLowerCase() === 'pdf' && docData.downloadUrl) {
+            const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(docData.downloadUrl)}&embedded=true`;
+            setPreviewUrl(googleViewerUrl);
+          }
 
           // Now fetch linked documents based on the docData
           const [linkedDocumentsData, mainDocData] = await Promise.all([
@@ -144,7 +160,7 @@ export default function DocumentoDetailPage() {
     return (
         <div className="mx-auto max-w-7xl space-y-8">
             {/* Header Skeleton */}
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-2">
                     <Skeleton className="h-9 w-80" />
                     <Skeleton className="h-5 w-96" />
@@ -157,11 +173,21 @@ export default function DocumentoDetailPage() {
             {/* Main Content Skeleton */}
             <div className="grid gap-8 lg:grid-cols-3">
                 <div className="lg:col-span-2">
-                    <Card className="h-full min-h-[600px]"><CardHeader><Skeleton className="h-6 w-1/3" /></CardHeader><CardContent className="p-6"><Skeleton className="h-[500px] w-full" /></CardContent></Card>
+                    <Skeleton className="h-[75vh] min-h-[600px] w-full" />
                 </div>
-                <div className="space-y-8">
-                    <Card><CardHeader><Skeleton className="h-6 w-1/4" /></CardHeader><CardContent className="space-y-4">{Array.from({length: 4}).map((_,i) => <Skeleton key={i} className="h-8 w-full" />)}</CardContent></Card>
-                    <Card><CardHeader><Skeleton className="h-6 w-2/4" /></CardHeader><CardContent className="space-y-2">{Array.from({length: 3}).map((_,i) => <Skeleton key={i} className="h-5 w-full" />)}</CardContent></Card>
+                <div>
+                    <Card>
+                        <CardHeader>
+                             <Skeleton className="h-10 w-full" /> {/* For TabsList */}
+                        </CardHeader>
+                        <CardContent className="pt-6 space-y-4">
+                            <Skeleton className="h-6 w-1/4" />
+                            <Skeleton className="h-8 w-full" />
+                            <Skeleton className="h-8 w-full" />
+                            <Skeleton className="h-8 w-full" />
+                            <Skeleton className="h-8 w-full" />
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         </div>
@@ -207,6 +233,41 @@ export default function DocumentoDetailPage() {
     { icon: Binary, label: "Tamaño", value: `${(document.fileSize / 1024).toFixed(2)} KB` },
   ];
 
+  const renderPreview = () => {
+    if (previewUrl) {
+      return (
+        <Card className="h-full">
+            <CardContent className="p-0 h-[75vh] min-h-[600px] w-full">
+                <iframe
+                    src={previewUrl}
+                    title={document.titulo}
+                    className="w-full h-full border-0"
+                />
+            </CardContent>
+        </Card>
+      );
+    }
+    
+    return (
+        <Card className="h-full">
+            <CardContent className="flex h-[75vh] min-h-[600px] flex-col items-center justify-center rounded-lg border-2 border-dashed bg-muted/50 p-8 text-center">
+                <FileText className="h-16 w-16 text-muted-foreground" />
+                <p className="mt-4 text-lg font-semibold">
+                  {document.fileName}
+                </p>
+                <p className="text-muted-foreground mt-2">
+                  La previsualización solo está disponible para archivos PDF.
+                </p>
+                <Button asChild className="mt-6">
+                    <a href={document.downloadUrl} download={document.fileName}>
+                        <Download className="mr-2 h-4 w-4" /> Descargar Archivo
+                    </a>
+                </Button>
+            </CardContent>
+        </Card>
+    );
+  };
+
   return (
     <>
       <div className="mx-auto max-w-7xl space-y-8">
@@ -220,9 +281,6 @@ export default function DocumentoDetailPage() {
             <Button variant="outline" onClick={() => router.back()}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Volver
-            </Button>
-            <Button variant="outline" onClick={() => setDocumentToPreview(document)}>
-              <Eye className="mr-2 h-4 w-4" /> Ver
             </Button>
             <Button asChild>
               <a href={document.downloadUrl} download={document.fileName}>
@@ -250,201 +308,216 @@ export default function DocumentoDetailPage() {
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Left Column: Preview */}
           <div className="lg:col-span-2">
-            <Card className="h-full">
-              <CardHeader><CardTitle>Información del Documento</CardTitle></CardHeader>
-              <CardContent className="flex h-full min-h-[600px] flex-col items-center justify-center rounded-lg border-2 border-dashed bg-muted/50 p-8 text-center">
-                <FileText className="h-16 w-16 text-muted-foreground" />
-                <p className="mt-4 text-lg font-semibold">
-                  {document.fileName}
-                </p>
-                <p className="text-muted-foreground">
-                  Para ver el contenido del documento, haz clic en el botón "Ver".
-                </p>
-                <Button className="mt-6" onClick={() => setDocumentToPreview(document)}>
-                  <Eye className="mr-2 h-4 w-4" /> Ver Documento
-                </Button>
-              </CardContent>
-            </Card>
+            {renderPreview()}
           </div>
 
           {/* Right Column: Details */}
-          <div className="space-y-8">
-            <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><Info className="h-5 w-5"/> Detalles</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                {detailItems.map(item => (
-                  <div key={item.label} className="flex items-start">
-                      <item.icon className="mr-3 h-4 w-4 flex-shrink-0 text-muted-foreground mt-1" />
-                      <div>
-                          <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
-                          <p className="text-sm font-semibold">{item.value}</p>
-                      </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader><CardTitle>Clasificación de Acreditación</CardTitle></CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                  <p><strong>Ámbito:</strong> {getCatalogName("ambitos", document.ambitoId)}</p>
-                  <p><strong>Característica:</strong> {getCatalogName("caracteristicas", document.caracteristicaId)}</p>
-                  <p><strong>Elem. Medible:</strong> {getCatalogName("elementosMedibles", document.elementoMedibleId)}</p>
-              </CardContent>
-            </Card>
-
-            {versions.length > 0 && (
-              <Card>
-                <CardHeader><CardTitle className="flex items-center gap-2"><History className="h-5 w-5"/> Historial de Versiones</CardTitle></CardHeader>
-                <CardContent className="space-y-2">
-                {versions.map(version => {
-                    const estadoNombre = getVersionStatusName(version.estadoDocId);
-
-                    const handlePreviewClick = () => {
-                      if (!document) return;
-                      const previewDocForVersion: Documento = {
-                          ...document,
-                          id: version.id,
-                          version: version.version,
-                          storagePath: version.storagePath,
-                          downloadUrl: version.downloadUrl,
-                          fileName: version.fileName || `${document.titulo} (v${version.version}).${version.fileExt || document.fileExt}`,
-                          fileExt: version.fileExt || document.fileExt,
-                          fileSize: version.fileSize,
-                          updatedAt: version.createdAt,
-                          createdAt: version.createdAt,
-                      };
-                      setDocumentToPreview(previewDocForVersion);
-                    };
-
-                    const handleDownloadClick = (e: React.MouseEvent) => {
-                        e.preventDefault();
-                        if(!document) return;
-                        const link = window.document.createElement('a');
-                        link.href = version.downloadUrl;
-                        link.download = version.fileName || `${document.titulo} (v${version.version}).${version.fileExt || document.fileExt}`;
-                        window.document.body.appendChild(link);
-                        link.click();
-                        window.document.body.removeChild(link);
-                    };
-
-                    return (
-                      <div key={version.id} className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
-                          <div className="flex items-center gap-3">
-                              <FileText className="h-5 w-5 text-muted-foreground"/>
-                              <div className="flex flex-col">
-                                  <div className="flex items-center gap-2">
-                                    <Link href={`/documentos/versiones/${version.id}`} className="font-medium text-sm hover:underline">
-                                      Versión {version.version}
-                                    </Link>
-                                    {estadoNombre && <Badge variant="secondary" className="text-xs">{estadoNombre}</Badge>}
-                                  </div>
-                                  <span className="text-xs text-muted-foreground">
-                                      Archivado {format(version.createdAt, "d 'de' MMMM, yyyy", { locale: es })}
-                                  </span>
-                              </div>
-                          </div>
-                          <div className="flex items-center">
-                              <Button variant="ghost" size="icon" onClick={handlePreviewClick} title="Ver versión">
-                                  <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" onClick={handleDownloadClick} title="Descargar archivo de esta versión">
-                                  <Download className="h-4 w-4" />
-                              </Button>
-                          </div>
-                      </div>
-                    )
-                })}
-                </CardContent>
-              </Card>
-            )}
-
-            {groupedAndSortedLinkedDocuments.length > 0 && (
-              <Card>
-                <CardHeader><CardTitle className="flex items-center gap-2"><LinkIcon className="h-5 w-5"/> Documentos Vinculados</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                {groupedAndSortedLinkedDocuments.map(group => (
-                  <div key={group.typeName}>
-                    <h4 className="font-semibold text-sm mb-2">{group.typeName}</h4>
-                    <div className="space-y-2">
-                      {group.documents.map(linkedDoc => (
-                        <div key={linkedDoc.id} className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
-                            <div className="flex items-center gap-3 overflow-hidden">
-                                <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0"/>
-                                <div className="flex flex-col overflow-hidden">
-                                    <Link href={`/documentos/${linkedDoc.id}`} className="font-medium hover:underline text-sm truncate">
-                                        {linkedDoc.titulo}
-                                    </Link>
-                                    <span className="text-xs text-muted-foreground truncate">
-                                        v{linkedDoc.version} - {linkedDoc.fechaDocumento ? format(linkedDoc.fechaDocumento, "d MMM, yyyy", { locale: es }) : ''}
-                                    </span>
+          <div>
+             <Card>
+                <Tabs defaultValue="detalles" className="w-full">
+                    <TabsList className="grid w-full grid-cols-4">
+                        <TabsTrigger value="detalles">Detalles</TabsTrigger>
+                        <TabsTrigger value="historial" disabled={versions.length === 0}>Historial</TabsTrigger>
+                        <TabsTrigger value="vinculados" disabled={groupedAndSortedLinkedDocuments.length === 0 && !mainDocument}>Vinculados</TabsTrigger>
+                        <TabsTrigger value="etiquetas" disabled={!document.tags || document.tags.length === 0}>Etiquetas</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="detalles" className="pt-6">
+                        <CardContent>
+                            <h3 className="mb-4 text-sm font-semibold uppercase text-muted-foreground flex items-center gap-2"><Info className="h-4 w-4"/>Detalles Generales</h3>
+                            <div className="space-y-4">
+                                {detailItems.map(item => (
+                                <div key={item.label} className="flex items-start">
+                                    <item.icon className="mr-3 h-4 w-4 flex-shrink-0 text-muted-foreground mt-1" />
+                                    <div>
+                                        <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
+                                        <p className="text-sm font-semibold">{item.value}</p>
+                                    </div>
                                 </div>
+                                ))}
                             </div>
-                            <div className="flex items-center flex-shrink-0">
-                                <Button variant="ghost" size="icon" asChild>
-                                    <Link href={`/documentos/${linkedDoc.id}`} title="Ver documento">
-                                        <Eye className="h-4 w-4" />
-                                    </Link>
-                                </Button>
-                                <Button variant="ghost" size="icon" asChild>
-                                    <a href={linkedDoc.downloadUrl} download={linkedDoc.fileName} title="Descargar archivo">
-                                        <Download className="h-4 w-4" />
-                                    </a>
-                                </Button>
+                             <h3 className="mt-8 mb-4 text-sm font-semibold uppercase text-muted-foreground flex items-center gap-2"><ClipboardList className="h-4 w-4"/>Clasificación</h3>
+                             <div className="space-y-3 text-sm">
+                                <p><strong>Ámbito:</strong> {getCatalogName("ambitos", document.ambitoId)}</p>
+                                <p><strong>Característica:</strong> {getCatalogName("caracteristicas", document.caracteristicaId)}</p>
+                                <p><strong>Elem. Medible:</strong> {getCatalogName("elementosMedibles", document.elementoMedibleId)}</p>
                             </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                </CardContent>
-              </Card>
-            )}
+                        </CardContent>
+                    </TabsContent>
+                    
+                    <TabsContent value="historial" className="pt-6">
+                        <CardContent>
+                            <div className="space-y-2">
+                                {versions.map(version => {
+                                    const estadoNombre = getVersionStatusName(version.estadoDocId);
 
-            {mainDocument && (
-                <Card>
-                    <CardHeader><CardTitle className="flex items-center gap-2"><LinkIcon className="h-5 w-5"/> Vinculado al Documento</CardTitle></CardHeader>
-                    <CardContent>
-                    <div className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
-                        <div className="flex items-center gap-3">
-                            <FileText className="h-5 w-5 text-muted-foreground"/>
-                            <div className="flex flex-col">
-                                <Link href={`/documentos/${mainDocument.id}`} className="font-medium hover:underline text-sm">
-                                    {mainDocument.titulo}
-                                </Link>
-                                <span className="text-xs text-muted-foreground">v{mainDocument.version}</span>
-                            </div>
-                        </div>
-                        <div className="flex items-center">
-                            <Button variant="ghost" size="icon" asChild>
-                                <Link href={`/documentos/${mainDocument.id}`} title="Ver documento">
-                                    <Eye className="h-4 w-4" />
-                                </Link>
-                            </Button>
-                            <Button variant="ghost" size="icon" asChild>
-                                <a href={mainDocument.downloadUrl} download={mainDocument.fileName} title="Descargar archivo">
-                                    <Download className="h-4 w-4" />
-                                </a>
-                            </Button>
-                        </div>
-                    </div>
-                    </CardContent>
-                </Card>
-            )}
-            
-            <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><Tags className="h-5 w-5"/> Etiquetas</CardTitle></CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                {document.tags && document.tags.length > 0 ? (
-                  document.tags.map((tag, i) => (
-                    <Badge key={i} variant="secondary">{tag}</Badge>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">Sin etiquetas.</p>
-                )}
-              </CardContent>
-            </Card>
+                                    const handlePreviewClick = () => {
+                                      const previewDocForVersion: Documento = {
+                                        id: version.id,
+                                        hospitalId: version.hospitalId,
+                                        titulo: version.titulo,
+                                        descripcion: version.descripcion,
+                                        tipoDocumentoId: version.tipoDocumentoId,
+                                        version: version.version,
+                                        estadoDocId: version.estadoDocId,
+                                        ambitoId: version.ambitoId,
+                                        caracteristicaId: version.caracteristicaId,
+                                        elementoMedibleId: version.elementoMedibleId,
+                                        servicioIds: version.servicioIds,
+                                        responsableNombre: version.responsableNombre,
+                                        responsableEmail: version.responsableEmail,
+                                        fechaDocumento: version.fechaDocumento,
+                                        fechaVigenciaDesde: version.fechaVigenciaDesde,
+                                        fechaVigenciaHasta: version.fechaVigenciaHasta,
+                                        fileName: version.fileName,
+                                        fileExt: version.fileExt,
+                                        mimeType: version.mimeType,
+                                        fileSize: version.fileSize,
+                                        storagePath: version.storagePath,
+                                        downloadUrl: version.downloadUrl,
+                                        checksum: version.checksum,
+                                        tags: version.tags,
+                                        linkedDocumentId: version.linkedDocumentId,
+                                        createdByUid: version.createdByUid,
+                                        createdByEmail: version.createdByEmail,
+                                        createdAt: version.createdAt,
+                                        updatedAt: version.updatedAt,
+                                        isDeleted: false,
+                                        searchKeywords: version.searchKeywords,
+                                      };
+                                      setDocumentToPreview(previewDocForVersion);
+                                    };
 
+                                    const handleDownloadClick = (e: React.MouseEvent) => {
+                                        e.preventDefault();
+                                        const link = window.document.createElement('a');
+                                        link.href = version.downloadUrl;
+                                        link.download = version.fileName || `${document.titulo} (v${version.version}).${version.fileExt || document.fileExt}`;
+                                        window.document.body.appendChild(link);
+                                        link.click();
+                                        window.document.body.removeChild(link);
+                                    };
+
+                                    return (
+                                      <div key={version.id} className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
+                                          <div className="flex items-center gap-3">
+                                              <FileText className="h-5 w-5 text-muted-foreground"/>
+                                              <div className="flex flex-col">
+                                                  <div className="flex items-center gap-2">
+                                                    <Link href={`/documentos/versiones/${version.id}`} className="font-medium text-sm hover:underline">
+                                                      Versión {version.version}
+                                                    </Link>
+                                                    {estadoNombre && <Badge variant="secondary" className="text-xs">{estadoNombre}</Badge>}
+                                                  </div>
+                                                  <span className="text-xs text-muted-foreground">
+                                                      Archivado {format(version.createdAt, "d 'de' MMMM, yyyy", { locale: es })}
+                                                  </span>
+                                              </div>
+                                          </div>
+                                          <div className="flex items-center">
+                                              <Button variant="ghost" size="icon" onClick={handlePreviewClick} title="Ver versión">
+                                                  <Eye className="h-4 w-4" />
+                                              </Button>
+                                              <Button variant="ghost" size="icon" onClick={handleDownloadClick} title="Descargar archivo de esta versión">
+                                                  <Download className="h-4 w-4" />
+                                              </Button>
+                                          </div>
+                                      </div>
+                                    )
+                                })}
+                            </div>
+                        </CardContent>
+                    </TabsContent>
+
+                    <TabsContent value="vinculados" className="pt-6">
+                        <CardContent>
+                            <div className="space-y-6">
+                                {mainDocument && (
+                                    <div>
+                                        <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">Vinculado al Documento</h3>
+                                        <div className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
+                                            <div className="flex items-center gap-3">
+                                                <FileText className="h-5 w-5 text-muted-foreground"/>
+                                                <div className="flex flex-col">
+                                                    <Link href={`/documentos/${mainDocument.id}`} className="font-medium hover:underline text-sm">
+                                                        {mainDocument.titulo}
+                                                    </Link>
+                                                    <span className="text-xs text-muted-foreground">v{mainDocument.version}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center">
+                                                <Button variant="ghost" size="icon" asChild>
+                                                    <Link href={`/documentos/${mainDocument.id}`} title="Ver documento">
+                                                        <Eye className="h-4 w-4" />
+                                                    </Link>
+                                                </Button>
+                                                <Button variant="ghost" size="icon" asChild>
+                                                    <a href={mainDocument.downloadUrl} download={mainDocument.fileName} title="Descargar archivo">
+                                                        <Download className="h-4 w-4" />
+                                                    </a>
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                {groupedAndSortedLinkedDocuments.length > 0 && (
+                                    <div>
+                                        <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">Documentos Vinculados a Éste</h3>
+                                        <div className="space-y-4">
+                                            {groupedAndSortedLinkedDocuments.map(group => (
+                                                <div key={group.typeName}>
+                                                    <h4 className="font-semibold text-sm mb-2">{group.typeName}</h4>
+                                                    <div className="space-y-2">
+                                                    {group.documents.map(linkedDoc => (
+                                                        <div key={linkedDoc.id} className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
+                                                            <div className="flex items-center gap-3 overflow-hidden">
+                                                                <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0"/>
+                                                                <div className="flex flex-col overflow-hidden">
+                                                                    <Link href={`/documentos/${linkedDoc.id}`} className="font-medium hover:underline text-sm truncate">
+                                                                        {linkedDoc.titulo}
+                                                                    </Link>
+                                                                    <span className="text-xs text-muted-foreground truncate">
+                                                                        v{linkedDoc.version} - {linkedDoc.fechaDocumento ? format(linkedDoc.fechaDocumento, "d MMM, yyyy", { locale: es }) : ''}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center flex-shrink-0">
+                                                                <Button variant="ghost" size="icon" asChild>
+                                                                    <Link href={`/documentos/${linkedDoc.id}`} title="Ver documento">
+                                                                        <Eye className="h-4 w-4" />
+                                                                    </Link>
+                                                                </Button>
+                                                                <Button variant="ghost" size="icon" asChild>
+                                                                    <a href={linkedDoc.downloadUrl} download={linkedDoc.fileName} title="Descargar archivo">
+                                                                        <Download className="h-4 w-4" />
+                                                                    </a>
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </TabsContent>
+
+                    <TabsContent value="etiquetas" className="pt-6">
+                        <CardContent className="flex flex-wrap gap-2">
+                            {document.tags && document.tags.length > 0 ? (
+                            document.tags.map((tag, i) => (
+                                <Badge key={i} variant="secondary">{tag}</Badge>
+                            ))
+                            ) : (
+                            <p className="text-sm text-muted-foreground">Sin etiquetas.</p>
+                            )}
+                        </CardContent>
+                    </TabsContent>
+                </Tabs>
+             </Card>
           </div>
         </div>
       </div>
