@@ -9,45 +9,27 @@ type FirebaseWebAppConfig = {
 };
 
 function getFirebaseConfig(): FirebaseWebAppConfig {
-  let injectedConfig: FirebaseWebAppConfig = {};
+  const fromWebAppConfig = process.env.FIREBASE_WEBAPP_CONFIG;
 
-  try {
-    if (process.env.FIREBASE_WEBAPP_CONFIG) {
-      injectedConfig = JSON.parse(process.env.FIREBASE_WEBAPP_CONFIG);
+  if (fromWebAppConfig) {
+    try {
+      // In production on App Hosting, this will be populated.
+      return JSON.parse(fromWebAppConfig);
+    } catch (error) {
+      console.error("Error parsing FIREBASE_WEBAPP_CONFIG:", error);
     }
-  } catch (error) {
-    console.error("Error parsing FIREBASE_WEBAPP_CONFIG:", error);
   }
 
+  // Fallback for local development using .env files.
   return {
-    apiKey:
-      process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
-      injectedConfig.apiKey ||
-      "",
-    authDomain:
-      process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ||
-      injectedConfig.authDomain ||
-      "",
-    projectId:
-      process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ||
-      injectedConfig.projectId ||
-      "",
-    storageBucket:
-      process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
-      injectedConfig.storageBucket ||
-      "",
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "",
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "",
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "",
     messagingSenderId:
-      process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ||
-      injectedConfig.messagingSenderId ||
-      "",
-    appId:
-      process.env.NEXT_PUBLIC_FIREBASE_APP_ID ||
-      injectedConfig.appId ||
-      "",
-    measurementId:
-      process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID ||
-      injectedConfig.measurementId ||
-      "",
+      process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
+    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "",
   };
 }
 
