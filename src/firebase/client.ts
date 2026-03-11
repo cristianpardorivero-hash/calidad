@@ -1,10 +1,16 @@
 'use client';
 
-import { initializeFirebase } from '@/firebase/index';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+import { validateFirebaseConfig } from '@/firebase/config';
 
-const { firebaseApp, auth, firestore, storage } = initializeFirebase();
+const config = validateFirebaseConfig();
 
-const app = firebaseApp;
-const db = firestore;
+const app = getApps().length ? getApp() : initializeApp(config);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
 export { app, auth, db, storage };
