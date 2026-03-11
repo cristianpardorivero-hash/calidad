@@ -64,6 +64,8 @@ import {
 import { storage } from "@/firebase/client";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { format, parse, isValid } from "date-fns";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = ["pdf", "docx", "xlsx"] as const;
@@ -483,12 +485,12 @@ export function DocumentForm({
       return;
     }
     
-    if (isCreation || isNewVersion) {
-        if (!(values.file instanceof File)) {
-            form.setError("file", { message: "Debes seleccionar un archivo válido." });
-            console.error("[SUBMIT_ERROR] Archivo no válido o no seleccionado.");
-            return;
-        }
+    const fileWasUploaded = values.file instanceof File;
+
+    if ((isCreation || isNewVersion) && !fileWasUploaded) {
+        form.setError("file", { message: "Debes seleccionar un archivo válido." });
+        console.error("[SUBMIT_ERROR] Archivo no válido o no seleccionado para creación/nueva versión.");
+        return;
     }
 
     setIsSubmitting(true);
@@ -497,7 +499,7 @@ export function DocumentForm({
     try {
       let fileData: { downloadURL: string; storagePath: string; mimeType: string, fileExt: string, fileName: string, fileSize: number } | null = null;
       
-      if ((isCreation || isNewVersion) && values.file instanceof File) {
+      if (fileWasUploaded && values.file instanceof File) {
         console.log("[SUBMIT_INFO] Iniciando subida a Firebase Storage...");
         const uploadResult = await uploadFile(
           values.file,
@@ -530,7 +532,7 @@ export function DocumentForm({
       const uniqueSearchKeywords = [...new Set(searchKeywords)];
 
       console.log("[SUBMIT_INFO] Preparando datos para guardar en Firestore...");
-      if (isNewVersion && document && fileData) {
+      if ((isNewVersion || (isEditing && fileWasUploaded)) && document && fileData) {
         const newData: Omit<Documento, 'id'> & {id: string} = {
           ...document,
           titulo: values.titulo,
@@ -1128,53 +1130,66 @@ export function DocumentForm({
             </Card>
           </div>
 
-          {(!isEditing || isNewVersion) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>E) Archivo</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <FormField
-                  control={form.control}
-                  name="file"
-                  render={() => (
-                    <FormItem>
-                      <FormLabel>
-                        Seleccionar archivo{" "}
-                        {isNewVersion && "(requerido para la nueva versión)"}
-                      </FormLabel>
-                      <FormControl>
-                        <div className="relative flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-border bg-card p-8 hover:bg-muted/50">
-                          <UploadCloud className="mb-2 h-10 w-10 text-muted-foreground" />
-                          <div className="text-center">
-                            <p className="font-semibold">
-                              Click para subir o arrastra y suelta
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              PDF, DOCX, XLSX (max. 25MB)
-                            </p>
-                          </div>
-                          <Input
-                            type="file"
-                            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                            onChange={handleFileChange}
-                            accept=".pdf,.docx,.xlsx"
-                          />
+          <Card>
+            {isEditing && !isNewVersion && (
+              <div className="p-6 pb-0">
+                <Alert variant="default" className="border-primary/50 bg-primary/5 text-primary-foreground">
+                  <GitFork className="h-4 w-4 text-primary" />
+                  <AlertTitle className="font-semibold text-primary">Reemplazar Archivo (Opcional)</AlertTitle>
+                  <AlertDescription className="text-primary/90">
+                    Si subes un nuevo archivo, se creará una <strong>nueva versión</strong> del documento y la versión actual será archivada. Si solo quieres editar los metadatos, no subas un archivo.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+            <CardHeader>
+              <CardTitle>E) Archivo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FormField
+                control={form.control}
+                name="file"
+                render={() => (
+                  <FormItem>
+                    <FormLabel>
+                      {isNewVersion
+                        ? "Seleccionar archivo (requerido para la nueva versión)"
+                        : isEditing 
+                        ? "Seleccionar nuevo archivo (opcional)"
+                        : "Seleccionar archivo"
+                      }
+                    </FormLabel>
+                    <FormControl>
+                      <div className="relative flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-border bg-card p-8 hover:bg-muted/50">
+                        <UploadCloud className="mb-2 h-10 w-10 text-muted-foreground" />
+                        <div className="text-center">
+                          <p className="font-semibold">
+                            Click para subir o arrastra y suelta
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            PDF, DOCX, XLSX (max. 25MB)
+                          </p>
                         </div>
-                      </FormControl>
-                      {fileToUpload && (
-                        <div className="mt-4 text-sm text-muted-foreground">
-                          <strong>Archivo seleccionado:</strong> {fileToUpload.name} (
-                          {(fileToUpload.size / 1024 / 1024).toFixed(2)} MB)
-                        </div>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
-          )}
+                        <Input
+                          type="file"
+                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                          onChange={handleFileChange}
+                          accept=".pdf,.docx,.xlsx"
+                        />
+                      </div>
+                    </FormControl>
+                    {fileToUpload && (
+                      <div className="mt-4 text-sm text-muted-foreground">
+                        <strong>Archivo seleccionado:</strong> {fileToUpload.name} (
+                        {(fileToUpload.size / 1024 / 1024).toFixed(2)} MB)
+                      </div>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
@@ -1204,7 +1219,7 @@ export function DocumentForm({
 
           <Separator />
 
-          {isSubmitting && (!isEditing || isNewVersion) && (
+          {isSubmitting && (isNewVersion || (isEditing && fileToUpload)) && (
             <div className="space-y-2">
               <Label>Subiendo documento...</Label>
               <Progress value={uploadProgress} />
@@ -1228,12 +1243,10 @@ export function DocumentForm({
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : isNewVersion ? (
+              ) : isNewVersion || (isEditing && fileToUpload) ? (
                 <GitFork className="mr-2 h-4 w-4" />
-              ) : isEditing ? (
-                <Save className="mr-2 h-4 w-4" />
               ) : (
-                <UploadCloud className="mr-2 h-4 w-4" />
+                <Save className="mr-2 h-4 w-4" />
               )}
               {isNewVersion
                 ? "Crear Versión"
