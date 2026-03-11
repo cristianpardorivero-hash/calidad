@@ -17,7 +17,6 @@ import {
   Users,
   Book,
   FileCog,
-  Shield,
   LifeBuoy,
   User as UserIcon,
   FileHeart,
@@ -84,12 +83,6 @@ const adminMenuItems = [
     href: "/admin/catalogos",
     icon: Book,
     label: "Gestión de Catálogos",
-    roles: ["admin"],
-  },
-  {
-    href: "/admin/auditoria",
-    icon: Shield,
-    label: "Auditoría",
     roles: ["admin"],
   },
   {
