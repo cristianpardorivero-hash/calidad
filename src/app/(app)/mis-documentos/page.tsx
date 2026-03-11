@@ -6,10 +6,10 @@ import { PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { DocumentsFilters } from "@/components/documents/documents-filters";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, Fragment } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUser } from "@/hooks/use-user";
-import type { Catalogs, Documento } from "@/lib/types";
+import type { Catalogs, Documento, TipoDocumento } from "@/lib/types";
 import { collection, query, where, onSnapshot, Timestamp } from "firebase/firestore";
 import { db } from "@/firebase/client";
 import { useSearchParams } from "next/navigation";
@@ -23,6 +23,7 @@ export default function MisDocumentosPage() {
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState("todos");
+  const [caracteristicaFilters, setCaracteristicaFilters] = useState<Record<string, string>>({});
   const searchParams = useSearchParams();
 
   const hospitalId = user?.hospitalId;
@@ -230,27 +231,59 @@ export default function MisDocumentosPage() {
               <AccordionContent className="p-4 pt-0">
                   <Accordion
                       type="multiple"
-                      defaultValue={ambitoGroup.caracteristicas.map((c: any) => c.id)}
+                      collapsible
                       className="w-full space-y-3"
                   >
-                      {ambitoGroup.caracteristicas.map((caracteristicaGroup: any) => (
-                          <AccordionItem value={caracteristicaGroup.id} key={caracteristicaGroup.id} className="border rounded-md bg-background">
-                              <AccordionTrigger className="px-4 py-3 text-md font-medium hover:no-underline">
-                                <div className="flex items-center gap-3 text-left">
-                                  <span className="font-mono text-xs bg-muted text-muted-foreground rounded px-1.5 py-0.5">{caracteristicaGroup.codigo}</span>
-                                  <span>{caracteristicaGroup.nombre}</span>
-                                  <span className="text-sm font-normal text-muted-foreground">({caracteristicaGroup.documentos.length})</span>
-                                </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="px-4 pb-4">
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 pt-4 border-t">
-                                      {caracteristicaGroup.documentos.map((doc: Documento) => (
-                                          <MyDocumentCard key={doc.id} document={doc} catalogs={catalogs} />
-                                      ))}
-                                  </div>
-                              </AccordionContent>
-                          </AccordionItem>
-                      ))}
+                      {ambitoGroup.caracteristicas.map((caracteristicaGroup: any) => {
+                          const tiposEnCaracteristica = [...new Set(caracteristicaGroup.documentos.map((d: Documento) => d.tipoDocumentoId))]
+                            .map(id => catalogs.tiposDocumento.find(t => t.id === id))
+                            .filter((t): t is TipoDocumento => !!t)
+                            .sort((a,b) => a.orden - b.orden);
+
+                          const selectedTipo = caracteristicaFilters[caracteristicaGroup.id] || 'todos';
+
+                          const documentosFiltradosPorTipo = selectedTipo === 'todos'
+                            ? caracteristicaGroup.documentos
+                            : caracteristicaGroup.documentos.filter((doc: Documento) => doc.tipoDocumentoId === selectedTipo);
+
+                          return (
+                            <AccordionItem value={caracteristicaGroup.id} key={caracteristicaGroup.id} className="border rounded-md bg-background">
+                                <AccordionTrigger className="px-4 py-3 text-md font-medium hover:no-underline">
+                                    <div className="flex items-center gap-3 text-left">
+                                        <span className="font-mono text-xs bg-muted text-muted-foreground rounded px-1.5 py-0.5">{caracteristicaGroup.codigo}</span>
+                                        <span>{caracteristicaGroup.nombre}</span>
+                                        <span className="text-sm font-normal text-muted-foreground">({caracteristicaGroup.documentos.length})</span>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="px-4 pb-4">
+                                    {tiposEnCaracteristica.length > 1 && (
+                                        <Tabs 
+                                            value={selectedTipo} 
+                                            onValueChange={(value) => setCaracteristicaFilters(prev => ({...prev, [caracteristicaGroup.id]: value}))} 
+                                            className="mb-4"
+                                        >
+                                            <TabsList className="h-auto flex-wrap justify-start">
+                                                <TabsTrigger value="todos">Todos</TabsTrigger>
+                                                {tiposEnCaracteristica.map(tipo => (
+                                                    <TabsTrigger key={tipo.id} value={tipo.id}>{tipo.nombre}</TabsTrigger>
+                                                ))}
+                                            </TabsList>
+                                        </Tabs>
+                                    )}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 pt-4 border-t">
+                                        {documentosFiltradosPorTipo.map((doc: Documento) => (
+                                            <MyDocumentCard key={doc.id} document={doc} catalogs={catalogs} />
+                                        ))}
+                                    </div>
+                                     {documentosFiltradosPorTipo.length === 0 && (
+                                        <div className="text-center py-10 col-span-full border-t">
+                                            <p className="text-sm text-muted-foreground">No hay documentos de este tipo.</p>
+                                        </div>
+                                    )}
+                                </AccordionContent>
+                            </AccordionItem>
+                          );
+                      })}
                   </Accordion>
               </AccordionContent>
             </AccordionItem>
