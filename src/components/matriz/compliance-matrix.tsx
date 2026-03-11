@@ -115,13 +115,11 @@ export function ComplianceMatrix({ documents, catalogs }: { documents: Documento
         <TooltipProvider>
           <table className="w-full border-collapse min-w-[1200px]">
             <thead>
-              <tr className="border-b">
-                <th className="sticky left-0 top-0 p-2 text-left font-semibold bg-card z-30 w-[400px]">Elemento Medible</th>
+              <tr className="border-b-2">
+                <th className="sticky left-0 top-0 p-3 text-left font-semibold bg-slate-100 dark:bg-slate-800 z-30 w-[400px]">Elemento Medible</th>
                 {sortedServicios.map(servicio => (
-                  <th key={servicio.id} className="sticky top-0 px-1 py-2 bg-card z-20">
-                    <div className="w-24 mx-auto rounded-md bg-muted p-2 text-center font-semibold text-muted-foreground text-xs whitespace-normal break-words">
-                      {servicio.nombre}
-                    </div>
+                  <th key={servicio.id} className="sticky top-0 p-3 text-center font-semibold bg-slate-100 dark:bg-slate-800 z-20 w-28 text-muted-foreground">
+                    {servicio.nombre}
                   </th>
                 ))}
               </tr>
