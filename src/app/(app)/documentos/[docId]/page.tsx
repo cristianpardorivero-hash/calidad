@@ -45,6 +45,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { forceDownload } from "@/lib/utils";
 
 
 const DocumentPreviewModal = dynamic(
@@ -69,6 +71,7 @@ export default function DocumentoDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [documentToPreview, setDocumentToPreview] = useState<Documento | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const { toast } = useToast();
 
 
   useEffect(() => {
@@ -155,6 +158,16 @@ export default function DocumentoDetailPage() {
     return sortedAndNamedGroups.sort((a, b) => a.typeOrder - b.typeOrder);
 
   }, [linkedDocuments, catalogs]);
+
+  const handleVersionDownloadClick = async (version: DocumentVersion) => {
+    if (!version.downloadUrl) {
+        toast({ variant: "destructive", title: "Descarga fallida", description: "URL de la versión no encontrada." });
+        return;
+    }
+    const filename = version.fileName || `${document?.titulo} (v${version.version}).${version.fileExt || document?.fileExt}`;
+    toast({ title: "Iniciando descarga...", description: filename });
+    await forceDownload(version.downloadUrl, filename);
+  };
 
   if (loading) {
     return (
@@ -258,10 +271,18 @@ export default function DocumentoDetailPage() {
                 <p className="text-muted-foreground mt-2">
                   La previsualización solo está disponible para archivos PDF.
                 </p>
-                <Button asChild className="mt-6">
-                    <a href={document.downloadUrl} download={document.fileName}>
-                        <Download className="mr-2 h-4 w-4" /> Descargar Archivo
-                    </a>
+                <Button 
+                    className="mt-6"
+                    onClick={async () => {
+                      if (!document.downloadUrl) {
+                          toast({ variant: "destructive", title: "Descarga fallida", description: "URL no encontrada." });
+                          return;
+                      }
+                      toast({ title: "Iniciando descarga...", description: document.fileName });
+                      await forceDownload(document.downloadUrl, document.fileName);
+                    }}
+                >
+                    <Download className="mr-2 h-4 w-4" /> Descargar Archivo
                 </Button>
             </CardContent>
         </Card>
@@ -282,10 +303,17 @@ export default function DocumentoDetailPage() {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Volver
             </Button>
-            <Button asChild>
-              <a href={document.downloadUrl} download={document.fileName}>
-                <Download className="mr-2 h-4 w-4" /> Descargar
-              </a>
+            <Button
+              onClick={async () => {
+                if (!document.downloadUrl) {
+                  toast({ variant: "destructive", title: "Descarga fallida", description: "URL no encontrada." });
+                  return;
+                }
+                toast({ title: "Iniciando descarga...", description: document.fileName });
+                await forceDownload(document.downloadUrl, document.fileName);
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" /> Descargar
             </Button>
             {canManage && (
               <>
@@ -388,16 +416,6 @@ export default function DocumentoDetailPage() {
                                       setDocumentToPreview(previewDocForVersion);
                                     };
 
-                                    const handleDownloadClick = (e: React.MouseEvent) => {
-                                        e.preventDefault();
-                                        const link = window.document.createElement('a');
-                                        link.href = version.downloadUrl;
-                                        link.download = version.fileName || `${document.titulo} (v${version.version}).${version.fileExt || document.fileExt}`;
-                                        window.document.body.appendChild(link);
-                                        link.click();
-                                        window.document.body.removeChild(link);
-                                    };
-
                                     return (
                                       <div key={version.id} className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
                                           <div className="flex items-center gap-3">
@@ -418,7 +436,7 @@ export default function DocumentoDetailPage() {
                                               <Button variant="ghost" size="icon" onClick={handlePreviewClick} title="Ver versión">
                                                   <Eye className="h-4 w-4" />
                                               </Button>
-                                              <Button variant="ghost" size="icon" onClick={handleDownloadClick} title="Descargar archivo de esta versión">
+                                              <Button variant="ghost" size="icon" onClick={() => handleVersionDownloadClick(version)} title="Descargar archivo de esta versión">
                                                   <Download className="h-4 w-4" />
                                               </Button>
                                           </div>
@@ -451,10 +469,20 @@ export default function DocumentoDetailPage() {
                                                         <Eye className="h-4 w-4" />
                                                     </Link>
                                                 </Button>
-                                                <Button variant="ghost" size="icon" asChild>
-                                                    <a href={mainDocument.downloadUrl} download={mainDocument.fileName} title="Descargar archivo">
-                                                        <Download className="h-4 w-4" />
-                                                    </a>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    title="Descargar archivo"
+                                                    onClick={async () => {
+                                                        if (!mainDocument.downloadUrl) {
+                                                            toast({ variant: "destructive", title: "Descarga fallida", description: "URL no encontrada." });
+                                                            return;
+                                                        }
+                                                        toast({ title: "Iniciando descarga...", description: mainDocument.fileName });
+                                                        await forceDownload(mainDocument.downloadUrl, mainDocument.fileName);
+                                                    }}
+                                                >
+                                                    <Download className="h-4 w-4" />
                                                 </Button>
                                             </div>
                                         </div>
@@ -487,10 +515,20 @@ export default function DocumentoDetailPage() {
                                                                         <Eye className="h-4 w-4" />
                                                                     </Link>
                                                                 </Button>
-                                                                <Button variant="ghost" size="icon" asChild>
-                                                                    <a href={linkedDoc.downloadUrl} download={linkedDoc.fileName} title="Descargar archivo">
-                                                                        <Download className="h-4 w-4" />
-                                                                    </a>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    title="Descargar archivo"
+                                                                    onClick={async () => {
+                                                                        if (!linkedDoc.downloadUrl) {
+                                                                            toast({ variant: "destructive", title: "Descarga fallida", description: "URL no encontrada." });
+                                                                            return;
+                                                                        }
+                                                                        toast({ title: "Iniciando descarga...", description: linkedDoc.fileName });
+                                                                        await forceDownload(linkedDoc.downloadUrl, linkedDoc.fileName);
+                                                                    }}
+                                                                >
+                                                                    <Download className="h-4 w-4" />
                                                                 </Button>
                                                             </div>
                                                         </div>

@@ -386,7 +386,7 @@ export function DocumentForm({
   
       const metadata = {
         contentType: file.type || "application/octet-stream",
-        contentDisposition: file.type === "application/pdf" ? "inline" : undefined,
+        contentDisposition: `attachment; filename="${getSafeFileName(file.name)}"`,
       };
   
       const uploadTask = uploadBytesResumable(storageRef, file, metadata);

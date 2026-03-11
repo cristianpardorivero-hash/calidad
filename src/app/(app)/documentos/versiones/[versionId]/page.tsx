@@ -38,6 +38,8 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { getCatalogs } from "@/lib/data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { forceDownload } from "@/lib/utils";
 
 const DocumentPreviewModal = dynamic(
   () => import('@/components/documents/document-preview-modal').then(mod => mod.DocumentPreviewModal),
@@ -57,6 +59,7 @@ export default function VersionDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [documentToPreview, setDocumentToPreview] = useState<Documento | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (hospitalId && versionId) {
@@ -190,10 +193,18 @@ export default function VersionDetailPage() {
                 <p className="text-muted-foreground mt-2">
                   La previsualización solo está disponible para archivos PDF.
                 </p>
-                <Button asChild className="mt-6">
-                    <a href={version.downloadUrl} download={version.fileName}>
-                        <Download className="mr-2 h-4 w-4" /> Descargar Archivo
-                    </a>
+                <Button 
+                  className="mt-6"
+                  onClick={async () => {
+                      if (!version.downloadUrl) {
+                          toast({ variant: "destructive", title: "Descarga fallida", description: "URL no encontrada." });
+                          return;
+                      }
+                      toast({ title: "Iniciando descarga...", description: version.fileName });
+                      await forceDownload(version.downloadUrl, version.fileName);
+                  }}
+                >
+                    <Download className="mr-2 h-4 w-4" /> Descargar Archivo
                 </Button>
             </CardContent>
         </Card>
@@ -227,10 +238,17 @@ export default function VersionDetailPage() {
             <Button variant="outline" onClick={() => setDocumentToPreview(previewableDocument)}>
               <Eye className="mr-2 h-4 w-4" /> Ver en Modal
             </Button>
-            <Button asChild>
-              <a href={version.downloadUrl} download={version.fileName}>
-                <Download className="mr-2 h-4 w-4" /> Descargar Archivo
-              </a>
+            <Button
+              onClick={async () => {
+                if (!version.downloadUrl) {
+                  toast({ variant: "destructive", title: "Descarga fallida", description: "URL no encontrada." });
+                  return;
+                }
+                toast({ title: "Iniciando descarga...", description: version.fileName });
+                await forceDownload(version.downloadUrl, version.fileName);
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" /> Descargar Archivo
             </Button>
           </div>
         </div>

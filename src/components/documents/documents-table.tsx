@@ -47,6 +47,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { updateDocument } from "@/lib/data";
 import { useUser } from "@/hooks/use-user";
+import { forceDownload } from "@/lib/utils";
 
 const DocumentPreviewModal = dynamic(
   () => import('./document-preview-modal').then(mod => mod.DocumentPreviewModal),
@@ -256,11 +257,23 @@ export function DocumentsTable({
                               <Eye className="mr-2 h-4 w-4" />
                               Ver
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <a href={doc.downloadUrl} download={doc.fileName}>
-                                <Download className="mr-2 h-4 w-4" />
-                                Descargar
-                              </a>
+                            <DropdownMenuItem
+                              onSelect={async (e) => {
+                                e.preventDefault();
+                                if (!doc.downloadUrl) {
+                                  toast({
+                                    variant: "destructive",
+                                    title: "Descarga fallida",
+                                    description: "El documento no tiene una URL de descarga.",
+                                  });
+                                  return;
+                                }
+                                toast({ title: "Iniciando descarga...", description: doc.fileName });
+                                await forceDownload(doc.downloadUrl, doc.fileName);
+                              }}
+                            >
+                              <Download className="mr-2 h-4 w-4" />
+                              Descargar
                             </DropdownMenuItem>
                             {canManage && (
                               <>
