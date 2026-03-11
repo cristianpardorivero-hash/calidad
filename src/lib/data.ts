@@ -274,21 +274,30 @@ export async function getDashboardKPIs(hospitalId: string) {
         }
     }
 
-    const ambitosCatalog = (await getCatalogs(hospitalId)).ambitos;
+    const { ambitos: ambitosCatalog } = await getCatalogs(hospitalId);
 
-    const docsPorAmbito = docs.reduce((acc, doc) => {
-        const ambito = ambitosCatalog.find(a => a.id === doc.ambitoId);
-        if (ambito) {
-            acc[ambito.nombre] = (acc[ambito.nombre] || 0) + 1;
+    // Create a map of counts per ambitoId for efficient lookup
+    const docsPerAmbitoId = docs.reduce((acc, doc) => {
+        if (doc.ambitoId) {
+            acc[doc.ambitoId] = (acc[doc.ambitoId] || 0) + 1;
         }
         return acc;
     }, {} as Record<string, number>);
+
+    // Create the final array, sorted by the 'orden' property from the catalog
+    const docsPorAmbito = [...ambitosCatalog]
+        .sort((a, b) => a.orden - b.orden)
+        .map(ambito => ({
+            name: ambito.nombre,
+            value: docsPerAmbitoId[ambito.id] || 0,
+        }))
+        .filter(ambito => ambito.value > 0); // Only include ámbitos that have documents
 
     return {
         totalDocs: allDocsSnap.size,
         vigentes: vigentesCount,
         proximosAVencer: proximosAVencerCount,
-        docsPorAmbito: Object.entries(docsPorAmbito).map(([name, value]) => ({ name, value }))
+        docsPorAmbito: docsPorAmbito,
     };
 }
 
