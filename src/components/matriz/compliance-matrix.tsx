@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, Fragment } from 'react';
 import Link from 'next/link';
-import type { Documento, Catalogs, ElementoMedible } from '@/lib/types';
+import type { Documento, Catalogs } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -105,14 +105,20 @@ export function ComplianceMatrix({ documents, catalogs }: { documents: Documento
 
   return (
     <Card>
+      <CardHeader>
+        <CardTitle>Matriz de Cumplimiento Detallada</CardTitle>
+        <CardDescription>
+            Vista de Elementos Medibles por Servicio. Pase el cursor sobre una celda para ver el estado y haga clic para ver los documentos.
+        </CardDescription>
+      </CardHeader>
       <CardContent className="p-4 overflow-x-auto">
         <TooltipProvider>
           <table className="w-full border-collapse min-w-[1200px]">
             <thead>
               <tr className="border-b">
-                <th className="sticky left-0 p-2 text-left font-semibold bg-card z-20 w-[450px]">Elemento Medible</th>
+                <th className="sticky left-0 top-0 p-2 text-left font-semibold bg-card z-30 w-[450px]">Elemento Medible</th>
                 {sortedServicios.map(servicio => (
-                  <th key={servicio.id} className="p-2 text-center font-semibold text-sm w-36 whitespace-nowrap">
+                  <th key={servicio.id} className="sticky top-0 p-2 text-center font-semibold text-sm w-36 whitespace-nowrap bg-card z-20">
                     {servicio.nombre}
                   </th>
                 ))}
@@ -120,16 +126,16 @@ export function ComplianceMatrix({ documents, catalogs }: { documents: Documento
             </thead>
             <tbody>
               {groupedStructure.map((ambito) => (
-                <>
-                  <tr key={ambito.id} className="bg-muted/30">
-                    <td colSpan={sortedServicios.length + 1} className="sticky left-0 p-2 font-bold text-primary bg-muted/30 z-20">
+                <Fragment key={ambito.id}>
+                  <tr className="bg-primary/10">
+                    <td colSpan={sortedServicios.length + 1} className="sticky left-0 p-2 font-bold text-primary bg-primary/10 z-20">
                       {ambito.nombre}
                     </td>
                   </tr>
                   {ambito.caracteristicas.map(car => (
-                    <>
-                      <tr key={car.id} className="bg-muted/10">
-                        <td colSpan={sortedServicios.length + 1} className="sticky left-0 py-2 pl-6 pr-2 font-semibold text-foreground bg-muted/10 z-20">
+                    <Fragment key={car.id}>
+                      <tr className="bg-muted/50">
+                        <td colSpan={sortedServicios.length + 1} className="sticky left-0 py-2 pl-6 pr-2 font-semibold text-foreground bg-muted/50 z-20">
                           <div className='flex items-start gap-2'>
                               <Badge variant="secondary" className="font-mono mt-1">{car.codigo}</Badge>
                               <span>{car.nombre}</span>
@@ -144,8 +150,8 @@ export function ComplianceMatrix({ documents, catalogs }: { documents: Documento
                             return params.toString();
                         }
                         return (
-                          <tr key={elem.id} className="border-b last:border-b-0">
-                            <td className="sticky left-0 p-2 text-sm bg-card z-10">
+                          <tr key={elem.id} className="border-b last:border-b-0 group hover:bg-muted/20">
+                            <td className="sticky left-0 p-2 text-sm bg-card group-hover:bg-muted/20 z-10">
                                 <div className='flex items-start gap-2 pl-12'>
                                     <Badge variant="outline" className="font-mono mt-1">{elem.codigo}</Badge>
                                     <span>{elem.nombre}</span>
@@ -163,7 +169,7 @@ export function ComplianceMatrix({ documents, catalogs }: { documents: Documento
                                             <TooltipTrigger asChild>
                                                 <Link href={`/documentos?${createQueryString(elem.id, servicio.id)}`} className="block">
                                                     <div className={cn(
-                                                        "w-full h-16 rounded-md border-2 border-transparent flex items-center justify-center text-sm font-medium transition-all",
+                                                        "w-full h-16 rounded-md border-2 border-transparent flex items-center justify-center text-xl font-bold transition-all",
                                                         config.className
                                                     )}>
                                                         {cellData && cellData.count > 0 ? cellData.count : ''}
@@ -184,9 +190,9 @@ export function ComplianceMatrix({ documents, catalogs }: { documents: Documento
                           </tr>
                         )
                       })}
-                    </>
+                    </Fragment>
                   ))}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
