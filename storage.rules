@@ -12,7 +12,7 @@ service firebase.storage {
       return isSignedIn()
         && exists(/databases/(default)/documents/users/$(request.auth.uid))
         && userDoc().hospitalId == hospitalId
-        && (userDoc().isActive == true || !('isActive' in userDoc())); // por si no lo tienes aún
+        && (userDoc().isActive == true || !('isActive' in userDoc()));
     }
 
     function isEditorOrAdmin(hospitalId) {
@@ -20,36 +20,37 @@ service firebase.storage {
     }
 
     match /documentos/{hospitalId}/{allPaths=**} {
-
       allow read: if isHospitalMember(hospitalId);
-
-      allow create: if isEditorOrAdmin(hospitalId)
-        && request.resource.size < 25 * 1024 * 1024
-        && (
-          request.resource.contentType == 'application/pdf' ||
-          request.resource.contentType == 'application/octet-stream' ||  // opcional pero recomendado
-          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        );
-
+      allow create: if request.auth != null
+                    && exists(/databases/(default)/documents/users/$(request.auth.uid))
+                    && get(/databases/(default)/documents/users/$(request.auth.uid)).data.hospitalId == hospitalId
+                    && (get(/databases/(default)/documents/users/$(request.auth.uid)).data.isActive == true || !('isActive' in get(/databases/(default)/documents/users/$(request.auth.uid)).data))
+                    && get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'editor']
+                    && request.resource.size < 25 * 1024 * 1024
+                    && (request.resource.contentType == 'application/pdf' ||
+                        request.resource.contentType == 'application/octet-stream' ||
+                        request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                        request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       allow update, delete: if false;
     }
 
     match /biblioteca/{hospitalId}/{allPaths=**} {
       allow read: if isHospitalMember(hospitalId);
-      allow create: if isEditorOrAdmin(hospitalId)
-        && request.resource.size < 25 * 1024 * 1024
-        && (
-          request.resource.contentType == 'application/pdf' ||
-          request.resource.contentType == 'application/octet-stream' ||
-          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
-          request.resource.contentType == 'image/jpeg' ||
-          request.resource.contentType == 'image/jpg' ||
-          request.resource.contentType == 'image/png' ||
-          request.resource.contentType == 'application/zip'
-        );
+      allow create: if request.auth != null
+                    && exists(/databases/(default)/documents/users/$(request.auth.uid))
+                    && get(/databases/(default)/documents/users/$(request.auth.uid)).data.hospitalId == hospitalId
+                    && (get(/databases/(default)/documents/users/$(request.auth.uid)).data.isActive == true || !('isActive' in get(/databases/(default)/documents/users/$(request.auth.uid)).data))
+                    && get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'editor']
+                    && request.resource.size < 25 * 1024 * 1024
+                    && (request.resource.contentType == 'application/pdf' ||
+                        request.resource.contentType == 'application/octet-stream' ||
+                        request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                        request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                        request.resource.contentType == 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+                        request.resource.contentType == 'image/jpeg' ||
+                        request.resource.contentType == 'image/jpg' ||
+                        request.resource.contentType == 'image/png' ||
+                        request.resource.contentType == 'application/zip');
       allow update, delete: if false;
     }
   }
