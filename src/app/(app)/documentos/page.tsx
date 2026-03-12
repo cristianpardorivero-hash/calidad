@@ -63,7 +63,8 @@ export default function DocumentosPage() {
             updatedAt: (data.updatedAt as Timestamp)?.toDate(),
           } as Documento;
         });
-        setDocuments(fetchedDocs);
+        const activeDocs = fetchedDocs.filter(doc => doc.estadoDocId !== 'est-hist');
+        setDocuments(activeDocs);
         setLoading(false);
       }, (error) => {
         console.error("Error listening to documents:", error);
