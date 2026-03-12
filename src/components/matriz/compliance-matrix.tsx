@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card } from '../ui/card';
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 type CellStatus = 'vigente' | 'proximo_vencer' | 'vencido' | 'inexistente';
 
@@ -15,6 +17,7 @@ interface MatrixData {
     [servicioId: string]: {
       status: CellStatus;
       count: number;
+      docs: Documento[];
     };
   };
 }
@@ -93,7 +96,7 @@ export function ComplianceMatrix({
                                 const config = cellData ? statusConfig[cellData.status] : statusConfig.inexistente;
 
                                 return (
-                                  <Tooltip key={servicio.id}>
+                                  <Tooltip key={servicio.id} delayDuration={100}>
                                     <TooltipTrigger asChild>
                                       <Link href={`/documentos?${createQueryString(elem.id, servicio.id)}`} className="block">
                                         <div className={cn(
@@ -107,9 +110,23 @@ export function ComplianceMatrix({
                                         </div>
                                       </Link>
                                     </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p className="font-semibold">{config.label}</p>
-                                      <p>{cellData?.count || 0} documento(s)</p>
+                                    <TooltipContent className="p-2">
+                                        <p className="font-semibold text-sm mb-1">{config.label}</p>
+                                        <div className="text-xs text-muted-foreground space-y-2 max-w-xs">
+                                        {cellData && cellData.docs.length > 0 ? (
+                                            cellData.docs.slice(0, 3).map(doc => (
+                                            <div key={doc.id} className="border-t pt-2 first:border-t-0 first:pt-0">
+                                                <p className="font-medium text-foreground truncate">{doc.titulo}</p>
+                                                <p>Versión: {doc.version} &bull; {format(doc.fechaDocumento, "d MMM yyyy", { locale: es })}</p>
+                                            </div>
+                                            ))
+                                        ) : (
+                                            <p>{cellData?.count || 0} documento(s)</p>
+                                        )}
+                                        {cellData && cellData.docs.length > 3 && (
+                                            <p className="border-t pt-1 mt-2 text-center">...y {cellData.docs.length - 3} más</p>
+                                        )}
+                                        </div>
                                     </TooltipContent>
                                   </Tooltip>
                                 );

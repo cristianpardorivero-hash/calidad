@@ -31,6 +31,7 @@ interface MatrixData {
     [servicioId: string]: {
       status: CellStatus;
       count: number;
+      docs: Documento[];
     };
   };
 }
@@ -138,7 +139,11 @@ export default function MatrizCumplimientoPage() {
         const relevantDocs = documents.filter(
           doc => doc.elementoMedibleId === elem.id && doc.servicioIds?.includes(serv.id) && !doc.isDeleted
         );
-        data[elem.id][serv.id] = getStatus(relevantDocs);
+        const statusInfo = getStatus(relevantDocs);
+        data[elem.id][serv.id] = {
+            ...statusInfo,
+            docs: relevantDocs
+        };
       });
     });
     return data;
@@ -212,6 +217,14 @@ export default function MatrizCumplimientoPage() {
       currentY += 10;
   
       for (const caracteristica of caracteristicasConElementosRelevantes) {
+        const elementosParaReporte = caracteristica.elementos.filter((elem: any) =>
+          filteredServicios.some(servicio => elem.servicioIds?.includes(servicio.id))
+        );
+
+        if (elementosParaReporte.length === 0) {
+            continue;
+        }
+
         if (currentY > pageHeight - 30) { doc.addPage(); currentY = 20; }
         doc.setFontSize(12);
         doc.setTextColor(40);
@@ -219,7 +232,7 @@ export default function MatrizCumplimientoPage() {
         currentY += 8;
   
         const tableHead = [['Elemento Medible', ...filteredServicios.map(s => s.nombre)]];
-        const tableBody = caracteristica.elementos.map((elem: any) => {
+        const tableBody = elementosParaReporte.map((elem: any) => {
           const row = [`${elem.codigo} ${elem.nombre}`];
           filteredServicios.forEach(serv => {
             if (elem.servicioIds?.includes(serv.id)) {
@@ -242,7 +255,7 @@ export default function MatrizCumplimientoPage() {
           columnStyles: { 0: { cellWidth: 60, halign: 'left', fontStyle: 'bold' } },
           didDrawCell: (data) => {
             if (data.section === 'body' && data.column.index > 0) {
-              const elem = caracteristica.elementos[data.row.index];
+              const elem = elementosParaReporte[data.row.index];
               const serv = filteredServicios[data.column.index - 1];
               let status: CellStatusWithNA = 'noAplica';
   
