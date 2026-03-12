@@ -24,7 +24,7 @@ declare module 'jspdf' {
   }
 }
 
-type CellStatus = 'vigente' | 'proximo_vencer' | 'vencido' | 'inexistente' | 'no_aplica';
+type CellStatus = 'vigente' | 'proximo_vencer' | 'vencido' | 'inexistente' | 'historico';
 
 interface MatrixData {
   [elementoMedibleId: string]: {
@@ -60,9 +60,11 @@ const getStatus = (docs: Documento[]): { status: CellStatus; count: number } => 
   if (vencidos.length > 0) {
     return { status: 'vencido', count: docs.length };
   }
-
-  // If docs exist but none are compliant (e.g., historical), they are not applicable to compliance checks.
-  return { status: 'no_aplica', count: docs.length };
+  
+  // If we've reached here, it means there are no 'vigente', 'proximo_vencer', or 'vencido' docs.
+  // The only remaining documents must be 'histórico', 'sustituido', or other statuses.
+  // For the purpose of the compliance matrix, we can group these as 'histórico'.
+  return { status: 'historico', count: docs.length };
 };
 
 
@@ -182,7 +184,7 @@ export default function MatrizCumplimientoPage() {
         proximo_vencer: { label: 'Próximo a Vencer', color: [254, 249, 195] },
         vencido: { label: 'Vencido', color: [254, 226, 226] },
         inexistente: { label: 'Inexistente', color: [241, 245, 249] },
-        no_aplica: { label: 'No Aplicable', color: [229, 231, 235] }
+        historico: { label: 'Histórico', color: [229, 231, 235] }
     };
     
     Object.values(legendColors).forEach(item => {
@@ -257,7 +259,7 @@ export default function MatrizCumplimientoPage() {
             if (data.section === 'body' && data.column.index > 0) {
               const elem = elementosParaReporte[data.row.index];
               const serv = filteredServicios[data.column.index - 1];
-              let status: CellStatus = 'no_aplica';
+              let status: CellStatus = 'inexistente';
   
               if (elem && serv && elem.servicioIds?.includes(serv.id)) {
                 const cellData = matrixData[elem.id]?.[serv.id];
