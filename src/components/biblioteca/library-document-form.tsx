@@ -101,7 +101,23 @@ export function LibraryDocumentForm() {
         (snapshot) => setUploadProgress((snapshot.bytesTransferred / snapshot.totalBytes) * 100),
         (error) => {
           console.error("Upload error:", error);
-          toast({ variant: "destructive", title: "Error de Subida", description: "No se pudo subir el archivo." });
+          let errorMessage = "No se pudo subir el archivo. ";
+          switch (error.code) {
+            case 'storage/unauthorized':
+              errorMessage += "Revisa los permisos de Storage.";
+              break;
+            case 'storage/canceled':
+              errorMessage += "La subida fue cancelada.";
+              break;
+            default:
+              errorMessage += "Error desconocido.";
+              break;
+          }
+          toast({ 
+            variant: "destructive", 
+            title: "Error de Subida", 
+            description: errorMessage
+          });
           reject(error);
         },
         async () => {
@@ -163,7 +179,8 @@ export function LibraryDocumentForm() {
 
     } catch (e: any) {
       console.error("Submission failed", e);
-      // Toast is handled in uploadFile for upload errors
+      // Toasts for upload errors are now handled inside the uploadFile function.
+      // Firestore errors will be thrown by addLibraryDocument and should be caught if needed.
     } finally {
       setIsSubmitting(false);
     }

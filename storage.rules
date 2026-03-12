@@ -46,6 +46,7 @@ service firebase.storage {
           request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
           request.resource.contentType == 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
           request.resource.contentType == 'image/jpeg' ||
+          request.resource.contentType == 'image/jpg' ||
           request.resource.contentType == 'image/png' ||
           request.resource.contentType == 'application/zip'
         );
