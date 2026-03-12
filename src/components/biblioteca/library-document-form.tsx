@@ -95,7 +95,12 @@ export function LibraryDocumentForm() {
       const storagePath = `biblioteca/${hospitalId}/${Date.now()}-${safeFileName}`;
       const storageRef = ref(storage, storagePath);
   
-      const uploadTask = uploadBytesResumable(storageRef, file, { contentType: file.type });
+      const metadata = {
+        contentType: file.type || "application/octet-stream",
+        contentDisposition: `attachment; filename="${getSafeFileName(file.name)}"`,
+      };
+
+      const uploadTask = uploadBytesResumable(storageRef, file, metadata);
   
       uploadTask.on( "state_changed",
         (snapshot) => setUploadProgress((snapshot.bytesTransferred / snapshot.totalBytes) * 100),
@@ -123,7 +128,7 @@ export function LibraryDocumentForm() {
         async () => {
           try {
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve({ downloadURL, storagePath, mimeType: file.type });
+            resolve({ downloadURL, storagePath, mimeType: metadata.contentType });
           } catch (error) {
             toast({ variant: "destructive", title: "Error de Subida", description: "No se pudo obtener la URL del archivo." });
             reject(error);
