@@ -7,7 +7,11 @@ import { getCatalogs, getDocuments } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ComplianceMatrix } from '@/components/matriz/compliance-matrix';
 import { Button } from '@/components/ui/button';
-import { FileDown, Loader2 } from 'lucide-react';
+import { FileDown, Loader2, Filter } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
+
 
 // Declaration for jspdf-autotable
 declare module 'jspdf' {
@@ -70,6 +74,7 @@ export default function MatrizCumplimientoPage() {
   const [documents, setDocuments] = useState<Documento[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [selectedServicioIds, setSelectedServicioIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (hospitalId) {
@@ -81,6 +86,7 @@ export default function MatrizCumplimientoPage() {
         .then(([catalogsData, documentsData]) => {
           setCatalogs(catalogsData);
           setDocuments(documentsData);
+          setSelectedServicioIds(catalogsData.servicios.map(s => s.id));
           setLoading(false);
         })
         .catch((error) => {
@@ -92,10 +98,15 @@ export default function MatrizCumplimientoPage() {
     }
   }, [hospitalId, userRole, servicioIds, user]);
 
-  const sortedServicios = useMemo(() => {
+  const allServicios = useMemo(() => {
     if (!catalogs) return [];
     return [...catalogs.servicios].sort((a, b) => a.nombre.localeCompare(b.nombre));
   }, [catalogs]);
+
+  const filteredServicios = useMemo(() => {
+    return allServicios.filter(s => selectedServicioIds.includes(s.id));
+  }, [selectedServicioIds, allServicios]);
+
 
   const groupedStructure = useMemo(() => {
     if (!catalogs) return [];
@@ -122,7 +133,7 @@ export default function MatrizCumplimientoPage() {
     const data: MatrixData = {};
     catalogs.elementosMedibles.forEach(elem => {
       data[elem.id] = {};
-      sortedServicios.forEach(serv => {
+      allServicios.forEach(serv => {
         const relevantDocs = documents.filter(
           doc => doc.elementoMedibleId === elem.id && doc.servicioIds?.includes(serv.id) && !doc.isDeleted
         );
@@ -130,7 +141,7 @@ export default function MatrizCumplimientoPage() {
       });
     });
     return data;
-  }, [documents, catalogs, sortedServicios]);
+  }, [documents, catalogs, allServicios]);
 
   const handleGeneratePdf = async () => {
     if (!catalogs || !user || !groupedStructure) return;
@@ -193,10 +204,10 @@ export default function MatrizCumplimientoPage() {
         doc.text(`Característica: ${caracteristica.codigo} - ${caracteristica.nombre}`, 14, currentY);
         currentY += 8;
   
-        const tableHead = [['Elemento Medible', ...sortedServicios.map(s => s.nombre)]];
+        const tableHead = [['Elemento Medible', ...filteredServicios.map(s => s.nombre)]];
         const tableBody = caracteristica.elementos.map((elem: any) => {
           const row = [`${elem.codigo} ${elem.nombre}`];
-          sortedServicios.forEach(serv => {
+          filteredServicios.forEach(serv => {
             if (elem.servicioIds?.includes(serv.id)) {
               const cellData = matrixData[elem.id]?.[serv.id];
               row.push(cellData?.count > 0 ? String(cellData.count) : '0');
@@ -218,7 +229,7 @@ export default function MatrizCumplimientoPage() {
           didDrawCell: (data) => {
             if (data.section === 'body' && data.column.index > 0) {
               const elem = caracteristica.elementos[data.row.index];
-              const serv = sortedServicios[data.column.index - 1];
+              const serv = filteredServicios[data.column.index - 1];
               let status: CellStatusWithNA = 'noAplica';
   
               if (elem && serv && elem.servicioIds?.includes(serv.id)) {
@@ -265,14 +276,54 @@ export default function MatrizCumplimientoPage() {
           Visualiza el estado de la documentación por elemento medible y servicio.
         </p>
       </div>
-      <Button onClick={handleGeneratePdf} disabled={generatingPdf || loading}>
-        {generatingPdf ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-            <FileDown className="mr-2 h-4 w-4" />
-        )}
-        Generar PDF
-      </Button>
+      <div className="flex items-center gap-2">
+        <Popover>
+          <PopoverTrigger asChild>
+              <Button variant="outline">
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filtrar Servicios ({selectedServicioIds.length} / {allServicios.length})
+              </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-0" align="end">
+              <div className="p-2 border-b">
+                  <p className="text-sm font-semibold">Seleccionar Servicios</p>
+              </div>
+              <ScrollArea className="h-64">
+                  <div className="p-4 space-y-2">
+                      {allServicios.map((servicio) => (
+                          <div key={servicio.id} className="flex items-center space-x-2">
+                              <Checkbox
+                                  id={`servicio-${servicio.id}`}
+                                  checked={selectedServicioIds.includes(servicio.id)}
+                                  onCheckedChange={(checked) => {
+                                      setSelectedServicioIds(prev =>
+                                          checked
+                                          ? [...prev, servicio.id]
+                                          : prev.filter(id => id !== servicio.id)
+                                      );
+                                  }}
+                              />
+                              <label
+                                  htmlFor={`servicio-${servicio.id}`}
+                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                              >
+                                  {servicio.nombre}
+                              </label>
+                          </div>
+                      ))}
+                  </div>
+              </ScrollArea>
+          </PopoverContent>
+        </Popover>
+        <Button onClick={handleGeneratePdf} disabled={generatingPdf || loading}>
+          {generatingPdf ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+              <FileDown className="mr-2 h-4 w-4" />
+          )}
+          Generar PDF
+        </Button>
+      </div>
     </div>
   );
   
@@ -295,7 +346,7 @@ export default function MatrizCumplimientoPage() {
         catalogs={catalogs}
         groupedStructure={groupedStructure}
         matrixData={matrixData}
-        sortedServicios={sortedServicios}
+        sortedServicios={filteredServicios}
       />
     </div>
   );
