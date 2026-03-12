@@ -27,7 +27,7 @@ const statusConfig: { [key in CellStatus]: { label: string; className: string } 
   proximo_vencer: { label: 'Próximo a Vencer', className: 'bg-yellow-100 dark:bg-yellow-900/50 hover:bg-yellow-200 dark:hover:bg-yellow-800/60 border-yellow-500' },
   vencido: { label: 'Vencido', className: 'bg-red-100 dark:bg-red-900/50 hover:bg-red-200 dark:hover:bg-red-800/60 border-red-500' },
   inexistente: { label: 'Inexistente', className: 'bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-700/60 border-slate-400' },
-  historico: { label: 'Histórico', className: 'bg-gray-200 dark:bg-gray-800/50 hover:bg-gray-300 dark:hover:bg-gray-700/60 border-gray-500' },
+  historico: { label: 'Documentos', className: 'bg-gray-200 dark:bg-gray-800/50 hover:bg-gray-300 dark:hover:bg-gray-700/60 border-gray-500' },
 };
 
 interface ComplianceMatrixProps {

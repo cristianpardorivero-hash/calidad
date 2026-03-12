@@ -63,7 +63,7 @@ const getStatus = (docs: Documento[]): { status: CellStatus; count: number } => 
   
   // If we've reached here, it means there are no 'vigente', 'proximo_vencer', or 'vencido' docs.
   // The only remaining documents must be 'histórico', 'sustituido', or other statuses.
-  // For the purpose of the compliance matrix, we can group these as 'histórico'.
+  // For the purpose of the compliance matrix, we can group these as 'historico'.
   return { status: 'historico', count: docs.length };
 };
 
@@ -184,7 +184,7 @@ export default function MatrizCumplimientoPage() {
         proximo_vencer: { label: 'Próximo a Vencer', color: [254, 249, 195] },
         vencido: { label: 'Vencido', color: [254, 226, 226] },
         inexistente: { label: 'Inexistente', color: [241, 245, 249] },
-        historico: { label: 'Histórico', color: [229, 231, 235] }
+        historico: { label: 'Documentos', color: [229, 231, 235] }
     };
     
     Object.values(legendColors).forEach(item => {
