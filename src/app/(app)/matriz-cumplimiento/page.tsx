@@ -11,6 +11,7 @@ import { FileDown, Loader2, Filter } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
 
 
 // Declaration for jspdf-autotable
@@ -267,6 +268,17 @@ export default function MatrizCumplimientoPage() {
     setGeneratingPdf(false);
   };
 
+  const handleSelectAll = (checked: boolean | "indeterminate") => {
+    if (checked === true) {
+      setSelectedServicioIds(allServicios.map(s => s.id));
+    } else {
+      setSelectedServicioIds([]);
+    }
+  };
+
+  const areAllSelected = allServicios.length > 0 && selectedServicioIds.length === allServicios.length;
+  const areSomeSelected = selectedServicioIds.length > 0 && !areAllSelected;
+
 
   const pageHeader = (
     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -285,9 +297,25 @@ export default function MatrizCumplimientoPage() {
               </Button>
           </PopoverTrigger>
           <PopoverContent className="w-64 p-0" align="end">
-              <div className="p-2 border-b">
+              <div className="p-4 border-b">
                   <p className="text-sm font-semibold">Seleccionar Servicios</p>
               </div>
+              <div className="p-4">
+                  <div className="flex items-center space-x-2">
+                      <Checkbox
+                          id="select-all-servicios"
+                          checked={areSomeSelected ? "indeterminate" : areAllSelected}
+                          onCheckedChange={handleSelectAll}
+                      />
+                      <label
+                          htmlFor="select-all-servicios"
+                          className="text-sm font-medium leading-none"
+                      >
+                          Seleccionar Todos
+                      </label>
+                  </div>
+              </div>
+              <Separator />
               <ScrollArea className="h-64">
                   <div className="p-4 space-y-2">
                       {allServicios.map((servicio) => (
