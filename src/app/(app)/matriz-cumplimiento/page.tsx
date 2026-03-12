@@ -192,13 +192,26 @@ export default function MatrizCumplimientoPage() {
     let currentY = 20;
   
     for (const ambito of groupedStructure) {
+      const caracteristicasConElementosRelevantes = ambito.caracteristicas
+        .map((caracteristica: any) => {
+          const elementosRelevantes = caracteristica.elementos.filter((elem: any) =>
+            filteredServicios.some(servicio => elem.servicioIds?.includes(servicio.id))
+          );
+          return { ...caracteristica, elementos: elementosRelevantes };
+        })
+        .filter((caracteristica: any) => caracteristica.elementos.length > 0);
+
+      if (caracteristicasConElementosRelevantes.length === 0) {
+        continue;
+      }
+
       if (currentY > pageHeight - 30) { doc.addPage(); currentY = 20; }
       doc.setFontSize(14);
       doc.setTextColor(0);
       doc.text(`Ámbito: ${ambito.nombre}`, 14, currentY);
       currentY += 10;
   
-      for (const caracteristica of ambito.caracteristicas) {
+      for (const caracteristica of caracteristicasConElementosRelevantes) {
         if (currentY > pageHeight - 30) { doc.addPage(); currentY = 20; }
         doc.setFontSize(12);
         doc.setTextColor(40);
