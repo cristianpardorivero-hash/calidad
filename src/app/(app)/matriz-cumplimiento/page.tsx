@@ -24,7 +24,7 @@ declare module 'jspdf' {
   }
 }
 
-type CellStatus = 'vigente' | 'proximo_vencer' | 'vencido' | 'inexistente';
+type CellStatus = 'vigente' | 'proximo_vencer' | 'vencido' | 'inexistente' | 'no_aplica';
 
 interface MatrixData {
   [elementoMedibleId: string]: {
@@ -45,23 +45,24 @@ const getStatus = (docs: Documento[]): { status: CellStatus; count: number } => 
   const ninetyDaysFromNow = new Date();
   ninetyDaysFromNow.setDate(now.getDate() + 90);
 
-  const vigentes = docs.filter(d => d.estadoDocId === 'est-vig' && (!d.fechaVigenciaHasta || d.fechaVigenciaHasta >= now));
-  if (vigentes.length > 0) {
-    return { status: 'vigente', count: docs.length };
-  }
-
+  // Precedence: about to expire > valid > expired
   const proximosAVencer = docs.filter(d => d.estadoDocId === 'est-vig' && d.fechaVigenciaHasta && d.fechaVigenciaHasta >= now && d.fechaVigenciaHasta <= ninetyDaysFromNow);
   if (proximosAVencer.length > 0) {
     return { status: 'proximo_vencer', count: docs.length };
   }
   
+  const vigentes = docs.filter(d => d.estadoDocId === 'est-vig' && (!d.fechaVigenciaHasta || d.fechaVigenciaHasta >= now));
+  if (vigentes.length > 0) {
+    return { status: 'vigente', count: docs.length };
+  }
+
   const vencidos = docs.filter(d => d.estadoDocId === 'est-vig' && d.fechaVigenciaHasta && d.fechaVigenciaHasta < now);
   if (vencidos.length > 0) {
     return { status: 'vencido', count: docs.length };
   }
 
-  // If there are docs but none are 'vigente' (e.g. all are 'historico')
-  return { status: 'inexistente', count: docs.length };
+  // If docs exist but none are compliant (e.g., historical), they are not applicable to compliance checks.
+  return { status: 'no_aplica', count: docs.length };
 };
 
 
@@ -176,13 +177,12 @@ export default function MatrizCumplimientoPage() {
     doc.text('Leyenda de Colores:', 14, yPos);
     yPos += 7;
 
-    type CellStatusWithNA = CellStatus | 'noAplica';
-    const legendColors: Record<CellStatusWithNA, { label: string, color: [number, number, number] }> = {
+    const legendColors: Record<CellStatus, { label: string, color: [number, number, number] }> = {
         vigente: { label: 'Vigente', color: [220, 252, 231] },
         proximo_vencer: { label: 'Próximo a Vencer', color: [254, 249, 195] },
         vencido: { label: 'Vencido', color: [254, 226, 226] },
         inexistente: { label: 'Inexistente', color: [241, 245, 249] },
-        noAplica: { label: 'No Aplica', color: [249, 250, 251] }
+        no_aplica: { label: 'No Aplicable', color: [229, 231, 235] }
     };
     
     Object.values(legendColors).forEach(item => {
@@ -257,7 +257,7 @@ export default function MatrizCumplimientoPage() {
             if (data.section === 'body' && data.column.index > 0) {
               const elem = elementosParaReporte[data.row.index];
               const serv = filteredServicios[data.column.index - 1];
-              let status: CellStatusWithNA = 'noAplica';
+              let status: CellStatus = 'no_aplica';
   
               if (elem && serv && elem.servicioIds?.includes(serv.id)) {
                 const cellData = matrixData[elem.id]?.[serv.id];
