@@ -193,46 +193,31 @@ export function CatalogForm({ catalogs, item, onSave, onCancel }: CatalogFormPro
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Servicios Asignados (Opcional)</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
-                            >
-                              <span className="truncate">
-                                {field.value && field.value.length > 0
-                                  ? `${field.value.length} seleccionado(s)`
-                                  : "Seleccione servicios"}
-                              </span>
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                          <ScrollArea className="h-48">
-                            <div className="p-2 space-y-1">
-                              {[...catalogs.servicios].sort((a,b) => a.nombre.localeCompare(b.nombre)).map((servicio) => (
-                                <FormItem key={servicio.id} className="flex flex-row items-center space-x-3 space-y-0">
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value?.includes(servicio.id)}
-                                      onCheckedChange={(checked) => {
-                                        const currentValues = field.value || [];
-                                        return checked
-                                          ? field.onChange([...currentValues, servicio.id])
-                                          : field.onChange(currentValues.filter((id) => id !== servicio.id));
-                                      }}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="font-normal">{servicio.nombre}</FormLabel>
-                                </FormItem>
-                              ))}
-                            </div>
-                          </ScrollArea>
-                        </PopoverContent>
-                      </Popover>
+                       <ScrollArea className="rounded-md border h-40 p-4">
+                        {[...catalogs.servicios].sort((a,b) => a.nombre.localeCompare(b.nombre)).map((servicio) => (
+                          <FormItem
+                            key={servicio.id}
+                            className="flex flex-row items-start space-x-3 space-y-0 mb-3"
+                          >
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value?.includes(servicio.id)}
+                                onCheckedChange={(checked) => {
+                                  const currentValues = field.value || [];
+                                  return checked
+                                    ? field.onChange([...currentValues, servicio.id])
+                                    : field.onChange(
+                                      currentValues.filter((id) => id !== servicio.id)
+                                    );
+                                }}
+                              />
+                            </FormControl>
+                            <FormLabel className="font-normal text-sm leading-none">
+                              {servicio.nombre}
+                            </FormLabel>
+                          </FormItem>
+                        ))}
+                      </ScrollArea>
                       <FormMessage />
                     </FormItem>
                   )}
